@@ -1,0 +1,50 @@
+{
+  "_note": "Use case 2 — the internal knowledge assistant. This is the whole point of the cross-tenant demo: EMP-4410 is entitled to CUST-2291's records but NOT to CUST-7788's. A PII recogniser passes an excerpt containing CUST-7788's name and address, because it IS legitimate, well-formed PII. The ENTITLEMENT check blocks it, because it is not this recipient's record. Detection vs authorisation, in fifteen seconds.",
+  "subjects": [
+    {
+      "subject_id": "EMP-4410",
+      "display_name": "Support agent, Tier 1",
+      "department": "customer_support",
+      "entitled_classifications": ["public", "internal"],
+      "entitled_customer_ids": ["CUST-2291"]
+    },
+    {
+      "subject_id": "EMP-2201",
+      "display_name": "Support supervisor",
+      "department": "customer_support",
+      "entitled_classifications": ["public", "internal", "confidential"],
+      "entitled_customer_ids": ["CUST-2291", "CUST-7788"]
+    },
+    {
+      "subject_id": "EMP-9903",
+      "display_name": "Marketing analyst",
+      "department": "marketing",
+      "entitled_classifications": ["public"],
+      "entitled_customer_ids": []
+    }
+  ],
+  "documents": [
+    {
+      "doc_id": "DOC-1042",
+      "title": "Refund policy FAQ (internal)",
+      "classification": "internal",
+      "about_customer_id": null,
+      "body": "Q: How long does a customer have to request a refund? A: Under policy v4.2, seven days from delivery. Requests after that may be eligible for store credit at supervisor discretion."
+    },
+    {
+      "doc_id": "DOC-2277",
+      "title": "Escalated ticket #88213 — delivery dispute",
+      "classification": "internal",
+      "about_customer_id": "CUST-7788",
+      "body": "Customer Priya Raghavan (priya.raghavan@example.com, 14 Lotus Gardens, Bengaluru 560034) reported that order ORD-77301 was marked delivered on 2026-06-02 but never arrived. Refund of INR 18,499 approved by supervisor on 2026-06-09 under the delivery-exception clause.",
+      "_role": "THE CROSS-TENANT LEAK. Legitimate PII, correctly formatted, belonging to a customer EMP-4410 is not entitled to. A PII scanner sees personal data and may flag or may pass; either way it cannot tell you the recipient has no right to THIS customer's record. The entitlement check can."
+    },
+    {
+      "doc_id": "DOC-3310",
+      "title": "Public returns policy summary",
+      "classification": "public",
+      "about_customer_id": null,
+      "body": "Returns are accepted within seven days of delivery. Items must be unworn and in original packaging."
+    }
+  ]
+}

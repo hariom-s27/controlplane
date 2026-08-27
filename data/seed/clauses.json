@@ -1,0 +1,49 @@
+{
+  "_note": "Policy clauses. The v3.8 / v4.2 pair is the heart of the demo: v3.8 is SUPERSEDED but still reachable from the retrieval index, which is exactly the failure VersionRAG measured (naive RAG 0-10% on silent supersession). Replace `text` with real scraped clause text from a public retailer returns policy (Firecrawl, S1) and keep the version metadata as-is.",
+  "clauses": [
+    {
+      "clause_id": "refund_window_v38",
+      "policy_id": "refund_window",
+      "version": "v3.8",
+      "title": "Refunds and returns",
+      "text": "Customers may request a full refund within 30 days of the delivery date. Refunds are issued to the original payment method within 5-7 business days of approval.",
+      "window_days": 30,
+      "effective_from": "2025-11-01",
+      "effective_to": "2026-08-01",
+      "superseded_by": "v4.2"
+    },
+    {
+      "clause_id": "refund_window_v42",
+      "policy_id": "refund_window",
+      "version": "v4.2",
+      "title": "Refunds and returns",
+      "text": "Customers may request a full refund within 7 days of the delivery date. Requests made after 7 days may be eligible for store credit at the discretion of a supervisor. Refunds are issued to the original payment method within 5-7 business days of approval.",
+      "window_days": 7,
+      "effective_from": "2026-08-01",
+      "effective_to": null,
+      "superseded_by": null
+    },
+    {
+      "clause_id": "authority_v20",
+      "policy_id": "refund_authority",
+      "version": "v2.0",
+      "title": "Refund approval authority",
+      "text": "A servicing agent may approve refunds up to and including INR 25,000. Refunds above this amount require supervisor approval.",
+      "window_days": null,
+      "effective_from": "2026-01-01",
+      "effective_to": null,
+      "superseded_by": null
+    },
+    {
+      "clause_id": "doc_sharing_v11",
+      "policy_id": "doc_sharing",
+      "version": "v1.1",
+      "title": "Internal document sharing",
+      "text": "Internal documents may be shared only with employees holding an entitlement to the document's classification. Excerpts containing customer personal data may be shared only with employees entitled to that customer's records.",
+      "window_days": null,
+      "effective_from": "2026-03-01",
+      "effective_to": null,
+      "superseded_by": null
+    }
+  ]
+}
