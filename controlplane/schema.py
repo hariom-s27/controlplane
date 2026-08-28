@@ -191,6 +191,9 @@ class ProposedAction(BaseModel):
     currency: str = "INR"
     recipient_id: str | None = None
     doc_id: str | None = None
+    item_colour: str | None = None  # D52 cross-validation (R3 extended) — declared
+    item_category: str | None = None  # tool args, same mechanism as order_id, never prose
+    excerpt: str | None = None  # send_document's payload text — structural: it IS what would be sent
 
     # --- claimed (from agent prose / retrieved context) ---
     claimed_delivered_at: date | None = None
@@ -211,6 +214,8 @@ class ProposedAction(BaseModel):
             "currency": self.currency,
             "recipient_id": self.recipient_id,
             "doc_id": self.doc_id,
+            "item_colour": self.item_colour,
+            "item_category": self.item_category,
         }
 
 

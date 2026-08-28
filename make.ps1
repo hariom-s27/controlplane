@@ -50,8 +50,9 @@ switch ($Task) {
     "test"     { Need-Venv; & $Py -m pytest tests -v }
     "demo"     { Need-Venv; $env:CP_GATE = "on";  & $Py -m agents.servicing_agent }
     "negative" { Need-Venv; $env:CP_GATE = "off"; & $Py -m agents.servicing_agent }
-    "bench"    { Need-Venv; & $Py bench\seb1_v2_recoverability.py }
+    "bench"    { Need-Venv; & $Py bench\seb1_exp3_cross_validation.py; & $Py bench\seb1_exp5_confusion_matrix.py }
     "report"   { Need-Venv; & $Py bench\report.py }
+    "reviewer" { Need-Venv; & $Py bench\reviewer_console.py }
     "clean" {
         Remove-Item -Recurse -Force -EA SilentlyContinue `
             data\*.db, data\stale_index, reports, decisions.jsonl, .pytest_cache

@@ -6,12 +6,13 @@
 #   SDV                   BUSL-1.1   (source-available, not open source)
 
 # --- core, needed from Step 5 ---
-pydantic>=2.6           # MIT   — the five type contracts
+pydantic>=2.7           # MIT   — the five type contracts
 python-dotenv>=1.0      # BSD   — read .env
-openai>=1.30            # MIT   — OpenAI-compatible client, pointed at Featherless
+openai>=1.40            # MIT   — OpenAI-compatible client, pointed at Featherless
 
 # --- extraction, needed from S4 ---
-instructor>=1.3         # MIT   — structured output. USE Mode.JSON, NOT Mode.TOOLS.
+instructor>=1.5         # MIT   — structured output. USE Mode.JSON, NOT Mode.TOOLS.
+dateparser>=1.2         # BSD   — HARD dependency, not optional: SEB-1 is wrong without it
 
 # --- rules, needed from S7 ---
 zen-engine>=0.30        # MIT   — in-process DMN/JDM decision graphs, no sidecar
@@ -25,6 +26,8 @@ numpy>=1.26             # BSD
 
 # --- testing, needed from S15 ---
 pytest>=8.0             # MIT
+pytest-env>=1.1         # MIT   — makes pytest.ini's `env = CP_DEMO_DATE=...` line real.
+                        #         Without it pytest silently ignores that key (R3).
 hypothesis>=6.100       # MPL-2.0 — property-based testing for the invariants
 
 # --- console, needed from S17 (optional, first to cut) ---
@@ -32,9 +35,19 @@ fastapi>=0.110          # MIT
 uvicorn>=0.29           # BSD
 jinja2>=3.1             # BSD
 
-# --- optional, guarded by env flags ---
-# firecrawl-py>=1.0     # MIT       — CP_USE_FIRECRAWL=1, one-off policy scrape
-# transformers>=4.40    # Apache-2.0 — CP_GROUNDING=on, HHEM-2.1-Open
-# torch>=2.2            # BSD        — CPU wheels only:
-#                       #   pip install torch --index-url https://download.pytorch.org/whl/cpu
-# presidio-analyzer>=2.2 # MIT      — CP_PII=presidio (regex fallback is built in)
+# --- PII, needed from S9 ---
+presidio-analyzer>=2.2  # MIT   — CP_PII=presidio; optional, regex fallback is built in
+
+# --- one-off, needed only to run scripts/scrape_policies.py ---
+firecrawl-py>=1.0       # MIT   — CP_USE_FIRECRAWL=1, one-off policy scrape. Set
+                        #         CP_USE_FIRECRAWL=0 again afterwards; nothing else needs it.
+
+# --- optional, guarded by env flags: CP_GROUNDING=on, ~600MB+ download ---
+# transformers>=5.0 breaks HHEM-2.1-Open's trust_remote_code model class:
+# AttributeError: 'HHEMv2ForSequenceClassification' object has no attribute
+# 'all_tied_weights_keys' — a real version-incompatibility bug hit and
+# confirmed live, not a guess. Pin below 5.0 until Vectara updates the
+# remote code for the new transformers internal loading API.
+transformers>=4.40,<5.0  # Apache-2.0 — HHEM-2.1-Open
+# torch>=2.2               # BSD        — CPU wheels only:
+#                          #   pip install torch --index-url https://download.pytorch.org/whl/cpu

@@ -1,5 +1,5 @@
 {
-  "_note": "Policy clauses. The v3.8 / v4.2 pair is the heart of the demo: v3.8 is SUPERSEDED but still reachable from the retrieval index, which is exactly the failure VersionRAG measured (naive RAG 0-10% on silent supersession). Replace `text` with real scraped clause text from a public retailer returns policy (Firecrawl, S1) and keep the version metadata as-is.",
+  "_note": "Policy clauses. The v3.8 / v4.2 pair is the heart of the demo: v3.8 is SUPERSEDED but still reachable from the retrieval index, which is exactly the failure VersionRAG measured (naive RAG 0-10% on silent supersession). Text is hand-authored, not scraped: scripts/scrape_policies.py was written and run for real, but the FIRECRAWL_API_KEY on hand came back 401 Unauthorized on every URL. Per docs/ROADMAP.md's own guidance that Firecrawl is cuttable, this was cut rather than chased further — see README.md's Honest limitations section.",
   "clauses": [
     {
       "clause_id": "refund_window_v38",

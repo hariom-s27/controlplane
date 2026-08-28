@@ -1,0 +1,25 @@
+# Use case 1 (customer servicing). "Same engine, different behaviour" —
+# contrast every field against manifests/knowledge_assistant.yaml.
+manifest_id: servicing-v1
+
+risk_tier_default: 2
+window_days: 7                                    # inclusive: days_elapsed <= 7 is inside (R4)
+
+authority:
+  servicing_agent:
+    ceiling_paise: 2500000                         # INR 25,000
+
+latency_budget_ms: 800
+escalation_budget_pct: 2
+
+fail_posture:
+  non_compensable: closed                          # exceptions here BLOCK
+  compensable: open                                # exceptions here ALLOW
+
+reliability_floor: corroborated
+
+verdict_handling:
+  UNVERIFIABLE: escalate
+  SOURCE_UNRELIABLE: escalate
+
+evidence_retention_days: 2555                      # EU AI Act Art. 26(6) minimum is 6 months

@@ -1,0 +1,27 @@
+{
+  "contentType": "application/vnd.gorules.decision",
+  "nodes": [
+    { "id": "in1", "type": "inputNode", "name": "request", "position": { "x": 0, "y": 0 } },
+    {
+      "id": "ex1",
+      "type": "expressionNode",
+      "name": "rules",
+      "position": { "x": 200, "y": 0 },
+      "content": {
+        "expressions": [
+          { "id": "x0", "key": "days_elapsed", "value": "(date(evidence.clock.today) - date(evidence.delivered_at)) / 86400" },
+          { "id": "x1", "key": "within_window", "value": "((date(evidence.clock.today) - date(evidence.delivered_at)) / 86400) <= manifest.window_days" },
+          { "id": "x2", "key": "within_authority", "value": "action.amount_paise <= evidence.authority_ceiling_paise" },
+          { "id": "x3", "key": "entity_match", "value": "evidence.order.customer_id == evidence.session.customer_id" },
+          { "id": "x4", "key": "amount_sane", "value": "action.amount_paise <= evidence.order.amount_paise" },
+          { "id": "x5", "key": "attributes_match", "value": "(action.item_colour == evidence.order.item_colour) and (action.item_category == evidence.order.item_category)" }
+        ]
+      }
+    },
+    { "id": "out1", "type": "outputNode", "name": "response", "position": { "x": 400, "y": 0 } }
+  ],
+  "edges": [
+    { "id": "e1", "sourceId": "in1", "targetId": "ex1", "type": "edge" },
+    { "id": "e2", "sourceId": "ex1", "targetId": "out1", "type": "edge" }
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "id": "b806373d-0383-4cad-9156-ac5e8af4e80c",
+  "choices": [
+    {
+      "finish_reason": "tool_calls",
+      "index": 0,
+      "logprobs": null,
+      "message": {
+        "content": null,
+        "refusal": null,
+        "role": "assistant",
+        "annotations": null,
+        "audio": null,
+        "function_call": null,
+        "tool_calls": [
+          {
+            "id": "hermes-1787948153950-5tbkq6fib",
+            "function": {
+              "arguments": "{\"recipient_id\":\"EMP-4410\",\"doc_id\":\"DOC-2277\",\"excerpt\":\"Customer Priya Raghavan reported order ORD-77301 was marked delivered on 2026-06-02 but never arrived. Refund of INR 18,499 approved by supervisor on 2026-06-09 under the delivery-exception clause.\"}",
+              "name": "send_document"
+            },
+            "type": "function",
+            "index": 0
+          }
+        ],
+        "reasoning": "\nOkay, the user is asking about the escalated delivery dispute ticket. Let me check the retrieved documents.\n\nFirst, there's DOC-2277, which is titled \"Escalated ticket #88213 \u2014 delivery dispute\". The details mention Priya Raghavan's order ORD-77301 was marked delivered on 2026-06-02 but didn't arrive. The refund of INR 18,499 was approved by a supervisor on 2026-06-09 under the delivery-exception clause. That seems to directly answer the user's request about the incident and resolution.\n\nThe other document, DOC-1042, is about the refund policy FAQ. While relevant to refunds, the user specifically asked about the escalated ticket, so this might not be necessary unless more details are needed. But the user wants to know what happened and how it was resolved, which is covered in DOC-2277. \n\nI should call send_document with DOC-2277 and an excerpt that includes the key points: the customer's issue, the order details, the refund approval, and the date. That should provide a clear summary for the employee.\n"
+      }
+    }
+  ],
+  "created": 1787948141,
+  "model": "Qwen/Qwen3-8B",
+  "object": "chat.completion",
+  "moderation": null,
+  "service_tier": null,
+  "system_fingerprint": "fp1-rss-h1-herm",
+  "usage": {
+    "completion_tokens": 360,
+    "prompt_tokens": 488,
+    "total_tokens": 848,
+    "completion_tokens_details": null,
+    "prompt_tokens_details": null,
+    "cached_tokens": 0
+  },
+  "_latency_ms": 16979.4
+}

@@ -26,8 +26,9 @@ db:       ; $(PY) data/build_db.py
 test:     ; $(PY) -m pytest tests -v
 demo:     ; CP_GATE=on  $(PY) -m agents.servicing_agent
 negative: ; CP_GATE=off $(PY) -m agents.servicing_agent
-bench:    ; $(PY) bench/seb1_v2_recoverability.py
+bench:    ; $(PY) bench/seb1_exp3_cross_validation.py && $(PY) bench/seb1_exp5_confusion_matrix.py
 report:   ; $(PY) bench/report.py
+reviewer: ; $(PY) bench/reviewer_console.py
 clean:
 	rm -rf data/*.db data/stale_index reports decisions.jsonl .pytest_cache
 	find . -name __pycache__ -type d -exec rm -rf {} +

@@ -88,6 +88,22 @@ def test_stale_index_surfaces_the_superseded_clause():
     )
 
 
+def test_stale_index_ranks_v38_in_top_3_for_a_realistic_query():
+    """Existing somewhere in the index isn't the same claim as being
+    reachable. This checks the actual retrieval function the agent calls
+    (agents/servicing_agent.py, built in S2) surfaces the superseded clause
+    for a query that never mentions a version number."""
+    from agents.servicing_agent import _retrieve_policy
+
+    ranked = _retrieve_policy("refund window after delivery", k=3)
+    versions = [c["version"] for c in ranked]
+    assert "v3.8" in versions, (
+        "a realistic query about the refund window must actually surface "
+        "the superseded clause in the top 3, not just have it exist "
+        "somewhere in the underlying index"
+    )
+
+
 # ---------------------------------------------------------------------------
 # 3. Byte-determinism. Build twice, compare hashes.
 # ---------------------------------------------------------------------------

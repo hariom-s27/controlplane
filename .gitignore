@@ -21,8 +21,17 @@ venv/
 
 # --- editors / os -----------------------------------------------------------
 .vscode/settings.json
+.vscode/mcp.json
 .DS_Store
 Thumbs.db
+
+# --- local tooling, not part of this project ---------------------------------
+.argent/
+.claude/
+.mcp.json
+node_modules/
+package.json
+package-lock.json
 
 # --- big binaries: link them, don't commit them -----------------------------
 *.mp4

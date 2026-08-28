@@ -1,0 +1,6 @@
+{
+  "claimed_delivered_at": null,
+  "claimed_policy_version": null,
+  "claimed_clause_text": null,
+  "claimed_reasoning": "The customer's message does not provide a delivery date, so the claimed_delivered_at field is null. The policy text does not specify a version, so the claimed_policy_version field is null. The retrieved policy text does not include a specific clause text that can be claimed, so the claimed_clause_text field is null."
+}

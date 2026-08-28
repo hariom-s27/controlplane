@@ -1,0 +1,35 @@
+{
+  "id": "76215f29-ad0d-4a66-8730-bba30b4aa4a8",
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "logprobs": null,
+      "message": {
+        "content": "ready",
+        "refusal": null,
+        "role": "assistant",
+        "annotations": null,
+        "audio": null,
+        "function_call": null,
+        "tool_calls": null,
+        "reasoning": "\nOkay, the user wants me to reply with the single word \"ready.\" Let me check the instructions again. They said to reply with just that word. I need to make sure there's no extra text. Maybe they're testing if I follow simple commands. I should respond exactly as asked. No need for any additional words or explanations. Just \"ready.\" Let me confirm there are no hidden requirements. Alright, I'll go with that.\n"
+      }
+    }
+  ],
+  "created": 1787927749,
+  "model": "Qwen/Qwen3-8B",
+  "object": "chat.completion",
+  "moderation": null,
+  "service_tier": null,
+  "system_fingerprint": "fp1-rss-h1",
+  "usage": {
+    "completion_tokens": 94,
+    "prompt_tokens": 15,
+    "total_tokens": 109,
+    "completion_tokens_details": null,
+    "prompt_tokens_details": null,
+    "cached_tokens": 0
+  },
+  "_latency_ms": 21618.8
+}

@@ -1,0 +1,45 @@
+{
+  "id": "35f4d6ab-51b2-4ba8-bd48-612ae85a7de4",
+  "choices": [
+    {
+      "finish_reason": "tool_calls",
+      "index": 0,
+      "logprobs": null,
+      "message": {
+        "content": null,
+        "refusal": null,
+        "role": "assistant",
+        "annotations": null,
+        "audio": null,
+        "function_call": null,
+        "tool_calls": [
+          {
+            "id": "hermes-1787927767314-nlu9y0bp2",
+            "function": {
+              "arguments": "{\"order_id\":\"ORD-88461\",\"amount_paise\":4299900,\"currency\":\"INR\"}",
+              "name": "issue_refund"
+            },
+            "type": "function",
+            "index": 0
+          }
+        ],
+        "reasoning": "\nOkay, let's see. The user wants to refund order ORD-88461 for 4299900 paise in INR. I need to use the issue_refund function. First, check the parameters required: order_id, amount_paise, and currency. The order ID is given as ORD-88461. The amount is 4299900 paise, which is already in the correct unit (paise) as per the function's requirement. The currency is INR. All required parameters are present. Just need to structure the JSON call with these values. Make sure the amount is an integer and currency is a string. Everything looks good. Let me format the tool call.\n"
+      }
+    }
+  ],
+  "created": 1787927762,
+  "model": "Qwen/Qwen3-8B",
+  "object": "chat.completion",
+  "moderation": null,
+  "service_tier": null,
+  "system_fingerprint": "fp1-rss-h1-herm",
+  "usage": {
+    "completion_tokens": 195,
+    "prompt_tokens": 206,
+    "total_tokens": 401,
+    "completion_tokens_details": null,
+    "prompt_tokens_details": null,
+    "cached_tokens": 0
+  },
+  "_latency_ms": 5145.1
+}

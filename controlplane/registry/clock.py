@@ -14,7 +14,7 @@ from __future__ import annotations
 import os
 from datetime import date, datetime, time, timezone
 
-from controlplane.schema import Confidence, Evidence, Reliability
+from controlplane.schema import Claim, Confidence, Evidence, Reliability, SessionContext
 
 _OVERRIDE: date | None = None
 
@@ -51,3 +51,18 @@ def resolve(claim_id: str) -> Evidence:
         confidence=Confidence.CERTAIN,
         note="frozen demo clock" if os.getenv("CP_DEMO_DATE") else "system clock",
     )
+
+
+class ClockResolver:
+    """The Resolver-protocol wrapper around resolve() above, for the S6 spec's
+    literal "four resolvers: orders.py, policy.py, clock.py, entitlements.py."
+    No ClaimKind is actually "about" the clock — there's no claim whose
+    subject is a date, the way ORD-88461 is a claim's subject — so nothing
+    in controlplane/registry/__init__.py's dispatch table routes to this
+    class today. controlplane/intercept.py still calls today() directly for
+    that reason. Kept for interface completeness and because a future
+    ClaimKind (e.g. "claimed_today") could route here without any other
+    change."""
+
+    def resolve(self, claim: Claim, session: SessionContext) -> Evidence:
+        return resolve(claim.id)

@@ -1,0 +1,26 @@
+# Use case 2 (internal knowledge assistant). Same engine, deliberately
+# different behaviour on every field that matters — this file IS the
+# "configurable policy layer" demonstration, not just a second config.
+manifest_id: knowledge_assistant-v1
+
+risk_tier_default: 0                               # informational retrieval, not a mutating action
+window_days: null                                  # no refund-style window applies to this use case
+
+authority:
+  knowledge_assistant:
+    ceiling_paise: 0                                # this use case never moves money
+
+latency_budget_ms: 200                              # a chat answer, not a financial transaction
+escalation_budget_pct: 5
+
+fail_posture:
+  non_compensable: open                             # a wrong answer is bad, not irreversible — fail-open
+  compensable: open
+
+reliability_floor: unverified                       # tolerates weaker sources than servicing does
+
+verdict_handling:
+  UNVERIFIABLE: allow_with_caveat                   # contrast: servicing.yaml escalates the same verdict
+  SOURCE_UNRELIABLE: escalate
+
+evidence_retention_days: 90

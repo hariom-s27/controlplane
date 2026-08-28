@@ -69,7 +69,16 @@ delivery date comes from `orders.db`, the seven-day window from
    one at all if stdlib will do.
 6. **Instructor must be constructed with `Mode.JSON`, explicitly.** Its default
    is `Mode.TOOLS`, which returns silent empty objects on most Featherless
-   models.
+   models. Mode.JSON has its own quiet trap, paid for once in `controlplane/extract.py`:
+   under load, Qwen3-8B sometimes wraps its answer as `{"YourModelName": {...fields...}}`
+   instead of the flat shape asked for. If every field on your `response_model` has a
+   `= None`/`= default` fallback, Pydantic treats the (then-absent) top-level keys as
+   "not provided" and silently validates into an all-default object — **no exception**,
+   so Instructor's retry loop never fires and you get a confident, wrong, empty result.
+   Fix: make fields required-but-nullable (`x: T | None` with **no** `= None`) instead
+   of optional-with-default, wherever "the model didn't say" must be *distinguishable*
+   from "the key came back missing." That turns the wrap into a real validation error,
+   which Instructor retries against and which does self-correct in practice.
 7. **`data/build_db.py` must stay byte-deterministic.** Sorted inserts, fixed
    seed, no timestamps in the DB build. `tests/test_data.py` asserts it.
 
