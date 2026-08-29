@@ -23,7 +23,7 @@ import instructor
 from openai import OpenAI
 from pydantic import BaseModel
 
-from agents.llm import cache_key
+from agents.llm import cache_key, call_with_key_fallback
 from controlplane.schema import Claim, ClaimKind, ProposedAction
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -110,14 +110,12 @@ _ASSERTED_VALUE_FIELD: dict[ClaimKind, str] = {
 }
 
 
-def _fresh_client() -> OpenAI:
+def _fresh_client(key: str) -> OpenAI:
     """Deliberately NOT agents.llm.client()'s memoized singleton. Instructor
     patches whatever client instance it wraps; chat()'s raw, uncached-shape
-    calls must keep using an unpatched one, so extraction gets its own."""
-    return OpenAI(
-        api_key=os.environ["FEATHERLESS_API_KEY"],
-        base_url=os.environ.get("CP_BASE_URL", "https://api.featherless.ai/v1"),
-    )
+    calls must keep using an unpatched one, so extraction gets its own —
+    one per key, since call_with_key_fallback() may need to try several."""
+    return OpenAI(api_key=key, base_url=os.environ.get("CP_BASE_URL", "https://api.featherless.ai/v1"))
 
 
 def extract_action(
@@ -147,9 +145,9 @@ def extract_action(
                 f"No fixture {f.name} and CP_MODE != live. Run with CP_MODE=live once to record it."
             )
 
-        extractor = instructor.from_openai(_fresh_client(), mode=instructor.Mode.JSON)
-        try:
-            claimed = extractor.chat.completions.create(
+        def _call(key: str):
+            extractor = instructor.from_openai(_fresh_client(key), mode=instructor.Mode.JSON)
+            return extractor.chat.completions.create(
                 model=os.environ["CP_MODEL"],
                 response_model=_ClaimedFields,
                 messages=[
@@ -167,6 +165,9 @@ def extract_action(
                 ],
                 max_retries=2,
             )
+
+        try:
+            claimed = call_with_key_fallback("FEATHERLESS_API_KEY", _call)
         except Exception:
             # S4's "what breaks": a model that can't hold the schema after
             # max_retries. All-None claimed_* routes to UNVERIFIABLE

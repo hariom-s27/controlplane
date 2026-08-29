@@ -43,7 +43,20 @@ from dotenv import load_dotenv  # noqa: E402
 
 load_dotenv(ROOT / ".env")
 
+from agents.llm import call_with_key_fallback, numbered_keys  # noqa: E402
+
 OUT = ROOT / "data" / "seed" / "policies_raw.json"
+
+
+def _firecrawl_is_retryable(exc: Exception) -> bool:
+    """firecrawl-py raises its own UnauthorizedError (not an HTTP-status-
+    code-bearing exception the way openai's SDK does) for a bad or
+    out-of-credit key — matched by class name so this doesn't depend on
+    firecrawl-py's exact module path, which has moved before (see the
+    v1-vs-v4 call-shape note above)."""
+    name = type(exc).__name__
+    return name in ("UnauthorizedError", "PaymentRequiredError", "ForbiddenError", "RateLimitError") or \
+        getattr(exc, "status_code", None) in (401, 402, 403, 429)
 
 # Verify each of these actually resolves to a real returns/refund policy page
 # before relying on the output — retailers restructure these URLs often, and
@@ -60,10 +73,13 @@ def main() -> int:
         print("CP_USE_FIRECRAWL != 1 — refusing to spend Firecrawl credits. Set it to 1 and retry.")
         return 1
 
-    api_key = os.environ.get("FIRECRAWL_API_KEY", "")
-    if not api_key:
+    keys = numbered_keys("FIRECRAWL_API_KEY")
+    if not keys:
         print("FIRECRAWL_API_KEY is not set.")
         return 1
+    if len(keys) > 1:
+        print(f"{len(keys)} FIRECRAWL_API_KEY* configured — will fall back through them "
+              "in order if one is invalid or out of credit.\n")
 
     try:
         from firecrawl import FirecrawlApp
@@ -71,15 +87,18 @@ def main() -> int:
         print("firecrawl-py is not installed. pip install firecrawl-py (it's in requirements.txt).")
         return 1
 
-    app = FirecrawlApp(api_key=api_key)
     results = []
 
     for url in URLS:
         print(f"scraping {url} ...")
-        try:
+
+        def _scrape(key: str, url: str = url):
             # firecrawl-py v4's FirecrawlClient.scrape() takes `formats`
             # directly — no `params={...}` wrapper, that was the v1-era shape.
-            resp = app.scrape(url, formats=["markdown"])
+            return FirecrawlApp(api_key=key).scrape(url, formats=["markdown"])
+
+        try:
+            resp = call_with_key_fallback("FIRECRAWL_API_KEY", _scrape, is_retryable=_firecrawl_is_retryable)
             markdown = resp.get("markdown") if isinstance(resp, dict) else getattr(resp, "markdown", None)
             if not markdown:
                 print(f"  WARN  empty content from {url} — likely JS-rendered, skipping")
@@ -93,7 +112,8 @@ def main() -> int:
             )
             print(f"  ok  {len(markdown)} chars")
         except Exception as e:  # noqa: BLE001
-            print(f"  FAIL  {type(e).__name__}: {e}")
+            print(f"  FAIL  {type(e).__name__}: {e}"
+                  + (f"  (all {len(keys)} configured keys failed)" if len(keys) > 1 else ""))
 
     if len(results) < 2:
         print()

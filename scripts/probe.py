@@ -29,7 +29,7 @@ from dotenv import load_dotenv  # noqa: E402
 load_dotenv(ROOT / ".env")
 os.environ["CP_MODE"] = "live"  # the probe always goes live
 
-from agents.llm import chat  # noqa: E402
+from agents.llm import chat, numbered_keys  # noqa: E402
 
 REFUND_TOOL = [
     {
@@ -57,9 +57,12 @@ def show(n, ok, note):
 
 
 def main() -> int:
-    if not os.environ.get("FEATHERLESS_API_KEY"):
+    keys = numbered_keys("FEATHERLESS_API_KEY")
+    if not keys:
         print("FAIL  FEATHERLESS_API_KEY is not set. Paste your key into .env and retry.")
         return 1
+    if len(keys) > 1:
+        print(f"{len(keys)} FEATHERLESS_API_KEY* configured — will fall back through them in order on 401/402/403/429.\n")
 
     ok = True
     m = os.environ["CP_MODEL"]
@@ -90,6 +93,12 @@ def main() -> int:
     except Exception:
         good = False
     ok &= show("3 json mode", good, "parsed")
+
+    if len(keys) > 1:
+        import agents.llm as llm_module
+
+        active = llm_module._preferred_key_index.get("FEATHERLESS_API_KEY", 0)
+        print(f"\n(used key #{active + 1} of {len(keys)} configured)")
 
     print("\nALL PASS — pin this model." if ok else "\nSOMETHING FAILED — see fallback below.")
     return 0 if ok else 1
