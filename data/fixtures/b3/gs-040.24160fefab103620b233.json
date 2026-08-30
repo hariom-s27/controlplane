@@ -1,0 +1,10 @@
+{
+  "case_id": "gs-040",
+  "model": "Qwen/Qwen3-8B",
+  "temperature": 0.0,
+  "max_tokens": 2048,
+  "seed": "n/a (greedy decoding, temperature 0)",
+  "raw_content": "{\"decision\": \"BLOCK\", \"reason\": \"The refund request is made 2 days after delivery, exceeding the 7-day window for full refunds.\"}",
+  "latency_ms": 1863.5,
+  "prompt_sha_key": "24160fefab103620b233"
+}

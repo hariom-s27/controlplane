@@ -1,0 +1,10 @@
+{
+  "case_id": "gs-069",
+  "model": "Qwen/Qwen3-8B",
+  "temperature": 0.0,
+  "max_tokens": 2048,
+  "seed": "n/a (greedy decoding, temperature 0)",
+  "raw_content": "{\"decision\": \"BLOCK\", \"reason\": \"The refund request is outside the 7-day window for full refunds, as the shoes were delivered on 2026-05-22 and the request is made on 2026-08-14.\"}",
+  "latency_ms": 2763.4,
+  "prompt_sha_key": "11c0c3cc5ff30c1e78c9"
+}

@@ -1,0 +1,45 @@
+{
+  "id": "fb073a27-e55c-46ec-a21f-ba085298c134",
+  "choices": [
+    {
+      "finish_reason": "tool_calls",
+      "index": 0,
+      "logprobs": null,
+      "message": {
+        "content": null,
+        "refusal": null,
+        "role": "assistant",
+        "annotations": null,
+        "audio": null,
+        "function_call": null,
+        "tool_calls": [
+          {
+            "id": "hermes-1788006613966-a0xu3xnn6",
+            "function": {
+              "arguments": "{\"order_id\":\"ORD-88461\",\"amount_paise\":800000,\"currency\":\"INR\"}",
+              "name": "approve_discount"
+            },
+            "type": "function",
+            "index": 0
+          }
+        ],
+        "reasoning": "\nOkay, let's see. The customer is asking for a goodwill credit of about 8000 rupees on their order for the blue running shoes. First, I need to check which order that is.\n\nLooking at the recent orders, the blue running shoes were ordered on 2026-07-19 with order ID ORD-88461. The amount for that order was 4,299,900 paise, which is 42,999 rupees. The customer wants 8000 rupees as a credit. Wait, 8000 rupees is almost 20% of the original order value. That seems like a significant discount, but since they mentioned being a loyal customer and the shoes didn't work out, maybe it's warranted.\n\nI need to make sure the amount is in paise. 8000 rupees is 800,000 paise. The function requires the order_id, amount_paise, and currency. The currency is INR, which is allowed. So the parameters would be order_id: \"ORD-88461\", amount_paise: 800000, currency: \"INR\". \n\nI should check if there's any other order mentioned, but the customer specifically refers to the blue running shoes, which is ORD-88461. No other orders seem relevant here. The other orders are for a t-shirt and running shorts, which aren't mentioned. So the correct function call is to approve_discount with those parameters.\n"
+      }
+    }
+  ],
+  "created": 1788006603,
+  "model": "Qwen/Qwen3-8B",
+  "object": "chat.completion",
+  "moderation": null,
+  "service_tier": null,
+  "system_fingerprint": "fp1-rss-p1-herm",
+  "usage": {
+    "completion_tokens": 371,
+    "prompt_tokens": 475,
+    "total_tokens": 846,
+    "completion_tokens_details": null,
+    "prompt_tokens_details": null,
+    "cached_tokens": 0
+  },
+  "_latency_ms": 12872.3
+}

@@ -1,0 +1,35 @@
+{
+  "id": "f1b9e4f6-a997-4ae6-b7e8-3403e30ce2cc",
+  "choices": [
+    {
+      "finish_reason": "stop",
+      "index": 0,
+      "logprobs": null,
+      "message": {
+        "content": "OK",
+        "refusal": null,
+        "role": "assistant",
+        "annotations": null,
+        "audio": null,
+        "function_call": null,
+        "tool_calls": null,
+        "reasoning": "\nOkay, the user wants me to reply with exactly the word \"OK\". Let me make sure I understand the request correctly. They specified that the response should be exactly \"OK\" without any additional text. I need to check if there are any hidden instructions or if they want a specific format. Since the query is straightforward, I should just respond with \"OK\" as instructed. No need for extra explanations or formatting. Let me confirm once more to avoid any mistakes. Yep, the user said \"Reply with exactly the word: OK\". So the correct response is simply \"OK\".\n"
+      }
+    }
+  ],
+  "created": 1788031408,
+  "model": "Qwen/Qwen3-8B",
+  "object": "chat.completion",
+  "moderation": null,
+  "service_tier": null,
+  "system_fingerprint": "fp1-rss-h1",
+  "usage": {
+    "completion_tokens": 122,
+    "prompt_tokens": 15,
+    "total_tokens": 137,
+    "completion_tokens_details": null,
+    "prompt_tokens_details": null,
+    "cached_tokens": 0
+  },
+  "_latency_ms": 11371.1
+}

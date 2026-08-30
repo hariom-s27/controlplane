@@ -1,20 +1,32 @@
 # Use case 1 (customer servicing). "Same engine, different behaviour" —
 # contrast every field against manifests/knowledge_assistant.yaml.
+#
+# Since P02 this file also declares its EVIDENCE BINDINGS (claim_bindings):
+# which claims this use case checks, which resolver answers each, and where
+# each resolved value lands in the predicate payload. That logic used to be
+# a hand-written Python function in controlplane/intercept.py.
 manifest_id: servicing-v1
+schema_version: 1
+
+tool: issue_refund
+predicate_graph: graphs/servicing.json
+policy_id: refund_window
+
+compensation:
+  action: reverse_refund
+  compensability: fully                            # a refund reverses via chargeback
 
 risk_tier_default: 2
-window_days: 7                                    # inclusive: days_elapsed <= 7 is inside (R4)
-
-authority:
-  servicing_agent:
-    ceiling_paise: 2500000                         # INR 25,000
+window_days: 7                                     # inclusive: days_elapsed <= 7 is inside (R4)
+authority_ceiling_paise: 2500000                   # INR 25,000
 
 latency_budget_ms: 800
 escalation_budget_pct: 2
 
 fail_posture:
-  non_compensable: closed                          # exceptions here BLOCK
-  compensable: open                                # exceptions here ALLOW
+  tier_0: open
+  tier_1: closed
+  tier_2: closed                                   # high-risk refund: exhausted budget BLOCKS
 
 reliability_floor: corroborated
 
@@ -23,3 +35,41 @@ verdict_handling:
   SOURCE_UNRELIABLE: escalate
 
 evidence_retention_days: 2555                      # EU AI Act Art. 26(6) minimum is 6 months
+
+# Static payload scaffolding the graph reads that is not backed by a claim.
+predicate_payload:
+  session.customer_id: session.customer_id
+  clock.today: clock.today
+
+# Order here is the order claims appear in on the receipt.
+claim_bindings:
+  - claim_kind: ORDER_BELONGS_TO_CUSTOMER
+    resolver: orders
+    subject: action.order_id
+    predicate_key: order.customer_id
+  - claim_kind: AMOUNT_NOT_EXCEEDING_ORDER
+    resolver: orders
+    subject: action.order_id
+    predicate_key: order.amount_paise
+  - claim_kind: WITHIN_REFUND_WINDOW
+    resolver: orders
+    subject: action.order_id
+    predicate_key: delivered_at
+  - claim_kind: AMOUNT_WITHIN_AUTHORITY
+    resolver: authority
+    subject: action.order_id
+    predicate_key: authority_ceiling_paise
+  - claim_kind: POLICY_CLAUSE_CURRENT
+    resolver: policy
+    subject: manifest.policy_id
+    predicate_key: null                            # checked by decide(), not the graph
+  - claim_kind: CLAUSE_SEMANTICS_MATCH
+    resolver: policy
+    subject: manifest.policy_id
+    predicate_key: null                            # checked by grounding (S8), not the graph
+  - claim_kind: ORDER_ATTRIBUTES_MATCH
+    resolver: orders
+    subject: action.order_id
+    predicate_key:                                 # value is {colour, category}
+      colour: order.item_colour
+      category: order.item_category

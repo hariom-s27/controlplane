@@ -1,0 +1,10 @@
+{
+  "case_id": "gs-005",
+  "model": "Qwen/Qwen3-8B",
+  "temperature": 0.0,
+  "max_tokens": 2048,
+  "seed": "n/a (greedy decoding, temperature 0)",
+  "raw_content": "{\"decision\": \"BLOCK\", \"reason\": \"The refund amount exceeds the agent's authority limit of INR 25,000.\"}",
+  "latency_ms": 1879.1,
+  "prompt_sha_key": "ad6105c0c96385874b58"
+}

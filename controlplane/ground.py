@@ -14,14 +14,18 @@ Why build a whole model for this when R5 (clause_current) already catches
 a version mismatch by metadata? Two reasons. First, this catches the
 subtler case: the version matches but the agent paraphrased the clause
 into something it doesn't actually say — the hallucination case the brief
-names, not the stale-version case. Second, it's what makes the coverage
-number honest — without a real C3 tier, coverage_ratio in schema.py's
-Decision.coverage would either omit C3 entirely or, worse, imply it's as
-checkable as C1/C2, which it demonstrably is not.
+names, not the stale-version case. Second, it's what makes the per-tier
+claim breakdown honest — without a real C3 tier, schema.py's
+Decision.coverage would report every claim as C1/C2, implying the whole
+pipeline is as deterministically checkable as SQL and arithmetic, which it
+demonstrably is not. (The old scalar "coverage_ratio" that collapsed this
+into a single 1.0 was retired — see docs/experiment-audit.md.)
 
-Loaded once, lazily, at first call — never per call, per the roadmap's own
-instruction. The load itself is expected to dominate tail latency; that's a
-measured finding for S11's rule_promotion_cost logger, not a bug to hide.
+Loaded once — never per call, per the roadmap's own instruction. Lazily at
+first `score()` in normal use; `preload()` forces it at process start so a
+latency harness can time it as a clean cold start (P09). The load dominates
+tail latency; P09 measures both (`reports/latency.md` §E cold start,
+§C/§G steady-state `ground` stage), not a bug to hide.
 
 CP_GROUNDING=off (the .env default) means this module is simply never
 imported — controlplane/intercept.py wraps the import in try/except
@@ -31,18 +35,39 @@ torch nor transformers installed. The demo runs fine without it.
 
 from __future__ import annotations
 
+import threading
+
+MODEL_NAME = "vectara/hallucination_evaluation_model"
+
 _model = None
+_load_lock = threading.Lock()
 
 
 def _load():
     global _model
     if _model is None:
-        from transformers import AutoModelForSequenceClassification
+        # Double-checked under the lock: P09 fires the first grounded call from
+        # a 10-worker pool, and without this every worker would load its own
+        # ~0.1B-param copy. The one-time load is the measured cold start.
+        with _load_lock:
+            if _model is None:
+                from transformers import AutoModelForSequenceClassification
 
-        _model = AutoModelForSequenceClassification.from_pretrained(
-            "vectara/hallucination_evaluation_model", trust_remote_code=True
-        )
+                _model = AutoModelForSequenceClassification.from_pretrained(
+                    MODEL_NAME, trust_remote_code=True
+                )
     return _model
+
+
+def preload() -> None:
+    """Load the grounding model once, at process start, so no scored call pays
+    for it. P09's latency harness calls this and times it as the cold start,
+    keeping it out of the steady-state percentile table."""
+    _load()
+
+
+def is_loaded() -> bool:
+    return _model is not None
 
 
 def score(premise: str, hypothesis: str) -> float:
@@ -51,4 +76,4 @@ def score(premise: str, hypothesis: str) -> float:
     return float(model.predict([(premise, hypothesis)])[0])
 
 
-__all__ = ["score"]
+__all__ = ["score", "preload", "is_loaded", "MODEL_NAME"]

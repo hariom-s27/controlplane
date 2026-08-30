@@ -2,6 +2,7 @@
 
 **Compiled 27 Aug 2026 · Deadline ~6 Sep (10 days) · 2–3 people, full days**
 Companion to `controlplane-round2-runbook.md`. Web version: https://claude.ai/code/artifact/5c949be1-5623-41f8-b460-43c8bfc5d8b4
+The Runbook's §02 ("Block 0") is captured verbatim in-repo at `docs/round2-runbook-block0.md` — including the OC-curve reformulation P07 Fix 7 needs.
 Drop this in the repo as `docs/ROADMAP.md` and tick items off as you go.
 
 ---
@@ -32,7 +33,7 @@ The uploaded PDF is the submitted deck: cover · instructions · team details ·
 **Three fixes from your own final-slides doc never made it in:**
 1. Slide 1 still says "Companies have never checked more than 1–5% of interactions" (falsifiable absolute — remove)
 2. Slide 1 still says "3% sample → misses it fully" (shorten to "misses it")
-3. Slide 2's tier table header still says "Traffic" not "**Target traffic**", and the narrative still says "75% of traffic finishes in 1–20 ms" rather than a design target
+3. Slide 2's old "75% of traffic finishes in 1–20 ms" figure was a **design target**, not a measurement — retired. **P09 measured it** (`reports/latency.md`, `summary.json['p09_latency']`): 4 configurations × 1,050 gated calls. Headline: gate end-to-end **median 7.67 ms, p95 12.7 ms, p99 14.5 ms, max 26.5 ms** (C1 — HHEM off, sequential). HHEM-on and concurrency-10 profiles are reported separately (HHEM `ground` stage p50 161 ms dominates every tail metric; concurrency=10 in-process worsens per-call latency ~22× off / ~7× on while roughly halving throughput). Cite the measured number, never the old figure or the n=15/n=24 interims.
 
 **The Team details slide is still placeholder names and stock photos.** The template prints "All fields are mandatory" on it.
 
@@ -60,7 +61,7 @@ The uploaded PDF is the submitted deck: cover · instructions · team details ·
 | **Two constructed statistical artifacts** — bias-probe power tables, verification cost model | R3 stream 8 | The bias answer (S14) and the business case. Both original. |
 | **Round 1 deck + narration script** | Uploaded PDF + final-slides doc | Round 2's baseline. Same template, same claims, tightened. |
 | **Runlayer Condition Field Reference screenshots** | The four mislabelled PNGs | D41's primary evidence. Rename → `docs/evidence/`. |
-| **Block 0 closed** — Wix + Reddy et al. read, distinction paragraph written | Runbook §02 | README positioning + proposal novelty claim. |
+| **Block 0 closed** — Wix + Reddy et al. read, distinction paragraph written | Runbook §02 (captured verbatim: `docs/round2-runbook-block0.md`) | README positioning + proposal novelty claim. |
 
 ## 2. Started but not finished
 
@@ -76,10 +77,10 @@ The uploaded PDF is the submitted deck: cover · instructions · team details ·
 
 | Item | Problem | Fix |
 |---|---|---|
-| **The Deming sentence** | Citations real but paywalled/unread; current phrasing appears to invert the theorem's assumption set (kp rule is proved for a process *in statistical control*) | Use the Runbook §02 reformulation (OC curve i.i.d. assumption). Never put "Deming, 1986" as a bare slide attribution. |
+| **The Deming sentence** | Citations real but paywalled/unread; current phrasing appears to invert the theorem's assumption set (kp rule is proved for a process *in statistical control*) | **P07 Fix 7 — unblocked.** Use the verbatim Runbook §02 reformulation now captured at `docs/round2-runbook-block0.md` ("Safe reformulation, which survives either reading:"): *"Acceptance sampling rests on operating-characteristic curves, and OC curves assume binomial or hypergeometric draws at a constant proportion nonconforming — i.i.d. defects from a process in statistical control. A superseded policy document is a textbook assignable cause: it produces the same error on every retrieval that touches it, which violates the i.i.d. assumption directly rather than merely straining it. And Deming's own inspection criterion says that even in the well-behaved stable case, the cost-optimal policy is zero or everything — never the 1–5% that contact-centre QA actually runs. Sampling theory says sampling is the wrong tool here, and it says so twice, for two different reasons."* Never put "Deming, 1986" as a bare slide attribution; cite Papadakis 1985 only for the 0%/100% criterion. |
 | C-Trace citation | arXiv page returned an empty PDF last fetch | Re-pull, screenshot Table 8, store in `docs/evidence/` |
 | Superseded figures | `+36 points` · `63.3%/99.2%` as headline · `55.8% whole-record` · `8% on HARD` · `15× swing` · `DBNR 2–3%` · `97–98% order accuracy` · the fabricated Runlayer sentence | Grep every artifact. Put the kill list in `docs/limitations.md` as "figures we retired and why" — a differentiator, not an admission. |
-| "75% of traffic finishes in 1–20ms" | Modelled, not measured. Stated as fact on the Round 1 deck. | "Design target" until S11 gives the real distribution, then replace with your own measured number. |
+| "75% of traffic finishes in 1–20ms" | Retired: modelled, not measured. | **Replaced by P09's measured profile** (`reports/latency.md`, 4 configs × 1,050 gated calls): gate end-to-end median **7.67 ms**, p95 12.7 ms (HHEM off, sequential). The old figure and the n=15/n=24 interims are superseded; `summary.json['p09_latency']` holds the exact per-stage percentiles. |
 | SEB-1's closed vocabulary | Extractor's fallback list contains the exact phrases the generator emits | Name it in `docs/limitations.md`. Optionally fix in S16 with LLM-generated paraphrases. |
 
 ## 4. Completely remaining
@@ -88,7 +89,7 @@ Everything in §3 onwards. **There is no product code yet.** Gate, registry, rec
 
 ## 5. What the finished project looks like
 
-A public GitHub repo a stranger can clone and run with one command. It starts a servicing agent that, unprompted, proposes a wrong ₹42,999 refund because it retrieved a superseded policy clause. It shows that action executing with the gate off. Then with the gate on: the tool call is intercepted, the agent's claim is extracted into typed events, each claim is classified on the Checkability Ladder, the delivery date is read from the order database rather than the customer's sentence, the current policy clause is fetched fresh rather than trusted from context, the predicate fires, and the action is blocked with a signed ~1 KB receipt naming the clause, the query, the value, the version and the root cause.
+A public GitHub repo a stranger can clone and run with one command. It starts a servicing agent that, unprompted, proposes a wrong ₹42,999 refund because it retrieved a superseded policy clause. It shows that action executing with the gate off. Then with the gate on: the tool call is intercepted, the agent's claim is extracted into typed events, each claim is classified on the Checkability Ladder, the delivery date is read from the order database rather than the customer's sentence, the current policy clause is fetched fresh rather than trusted from context, the predicate fires, and the action is blocked with a signed receipt (measured median 2,282 bytes, p95 3,763 bytes, n=120) naming the clause, the query, the value, the version and the root cause.
 
 Then the **same engine, same code path, different manifest** runs an internal knowledge assistant where the predicate is entitlement rather than correctness — and blocks a cross-tenant document send that a PII scanner would have waved through, because the leaked data is legitimate PII belonging to someone else.
 
@@ -151,7 +152,7 @@ Alongside it: four measured numbers nobody else will have (claim coverage by tie
         │              manifest supplies thresholds, fail posture, escalation budget
         │              → ALLOW | MODIFY | BLOCK | ESCALATE | OBSERVE_ONLY
         ▼
-  [9] RECEIPT          ~1 KB JSON, PROV-shaped, HMAC-signed → decisions.jsonl + HTML
+  [9] RECEIPT          signed JSON, median 2,282 B / p95 3,763 B (n=120) → decisions.jsonl + HTML
         ▼
   [10] TELEMETRY       coverage · extraction accuracy · per-stage latency · promotion
         ▼
@@ -642,11 +643,11 @@ Mint an **idempotency key** per action and put it on the receipt. If the gate ti
 
 ## S10 — The Decision Receipt · 4h · Day 4 · Track A · 🎯 MILESTONE
 
-**What.** A ~1 KB signed JSON artifact per governed decision, plus an HTML rendering, appended to `decisions.jsonl`.
+**What.** A signed JSON artifact per governed decision, plus an HTML rendering, appended to `decisions.jsonl`. Current measurement: median 2,282 bytes, p95 3,763 bytes over 120 receipts.
 
 **Why.** The brief's "clear audit trail behind every decision" under Governance, and what makes the product defensible to a regulator rather than merely useful to an engineer. **Evidence, not scores.** It's also the most demoable artifact — the thing that goes on screen and makes a judge understand the whole pitch in four seconds.
 
-**How.** Shape it with W3C PROV vocabulary — Entity/Activity/Agent, `wasDerivedFrom`, `wasAttributedTo` — so you inherit a decade of prior art instead of inventing a schema. PoE measured this object at ≈1.1 KB; match that and say so.
+**How.** Shape it with W3C PROV vocabulary — Entity/Activity/Agent, `wasDerivedFrom`, `wasAttributedTo` — so you inherit a decade of prior art instead of inventing a schema. PoE measured its object at ≈1.1 KB; our richer receipt is measured separately at median 2,282 bytes and p95 3,763 bytes (n=120), without claiming a match.
 
 ```json
 { "receipt_id","trace_id","idempotency_key","ts","manifest_id",
@@ -1000,7 +1001,7 @@ The brief names four sections: **implementation approach, solution architecture,
 
 | Brief's section | Where it already exists |
 |---|---|
-| Problem framing | Round 1 Slide 1 + the correlated-failure argument, **using the Runbook §02 reformulation** rather than the current Deming sentence. |
+| Problem framing | Round 1 Slide 1 + the correlated-failure argument, **using the verbatim Runbook §02 reformulation** (`docs/round2-runbook-block0.md`) rather than the current Deming sentence. |
 | Solution design | §3's pipeline + the evidence ladder + the tier model + the four verdicts. |
 | Target users | The market/buyers brief, and the honest answer from the cheat sheet: this is for the enterprise running four models across three clouds, where the policy has to mean the same thing everywhere. **Naming a smaller real market beats claiming a large imaginary one.** |
 | Business case & impact | The cost model: $0.016 vs $34.18 per 1,000, ~2,000×; rule promotion at ~1.7M× per decision moved; the automation-ceiling metric; TM Forum's 51% recovery as the prevention-beats-detection anchor. |
@@ -1011,7 +1012,7 @@ The brief names four sections: **implementation approach, solution architecture,
 
 Same Accenture template. Four housekeeping rules from the template's own instructions slide: **remove the instructions slide, name the file `Team name_Idea Name.pptx`, spell-check, use Arial.** Fill the team slide — it's still placeholder names and stock photos, and "All fields are mandatory" is printed on it.
 
-Carry Slides 1 and 2 forward with the three unapplied fixes (drop the 1–5% absolute; shorten "misses it fully" → "misses it"; "Target traffic" + "design target"), then **replace the design target with your measured number once S11 lands.** Then add:
+Carry Slides 1 and 2 forward. The old "75% in 1–20 ms" figure is retired; **use P09's measured number** (`reports/latency.md`): gate end-to-end median **7.67 ms** (HHEM off, sequential, n=1,050) — at AEGIS's 8.3 ms and well under OAP's 53 ms, and our figure additionally includes a live system-of-record query neither of theirs performs (which biases ours *upward*). Then add:
 
 - **Architecture** — the §3 pipeline, annotated with what's built
 - **The prototype** — a real receipt screenshot and the negative-control transcript side by side
@@ -1047,7 +1048,7 @@ Record on day 9 against a frozen build. Check the **exported file's** duration, 
 | 6 | **Does the demo need an API key to run?** | No. Commit the fixtures so `make demo` works offline; gate the live path behind `MODE=live`. This is the difference between a judge running it and a judge reading about it. |
 | 7 | **Who owns which track** for the ten days? | Decide on day 1 and don't swap. **Track A must be one person start to finish** — the gate doesn't parallelise well below the component level. |
 | 8 | **Second use case: entitlement or a second correctness case?** | Entitlement. It answers privacy *and* multi-use-case with one build, and the cross-tenant demo is sharper than a second refund variant. |
-| 9 | **The Deming sentence.** | Use the Runbook §02 reformulation everywhere — slide, video, proposal, README. Don't put "Deming, 1986" as a bare attribution on a slide until someone has read Papadakis 1985 and Vardeman 1995 directly. |
+| 9 | **The Deming sentence.** | Use the verbatim Runbook §02 reformulation everywhere — slide, video, proposal, README. It is captured in-repo at `docs/round2-runbook-block0.md` (P07 Fix 7 is unblocked). Don't put "Deming, 1986" as a bare attribution on a slide; cite Papadakis 1985 only for the 0%/100% criterion. |
 
 ## Ship no matter what
 - The gate that blocks ORD-88461 with a correct receipt (S3–S10)

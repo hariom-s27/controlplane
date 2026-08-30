@@ -193,18 +193,28 @@ sorted JSON keys, LF line endings written as bytes (not text mode, which would
 translate to CRLF on Windows and make the hash platform-dependent).
 
 `tests/test_gold_set_determinism.py` builds the set twice, asserts the two
-runs are byte-identical, and asserts each file against a pinned SHA-256:
+runs are byte-identical, and pins `gold_set.jsonl` / `ground_truth_holdout.jsonl`
+by content SHA-256 (it separately pins only the *generator's blank* human
+sample template, never the human-edited sheet — see the paragraph below).
+`tests/test_human_label_sample_blind.py` structurally validates and pins the
+human-edited sheets by their own current SHA-256:
 
 ```
-gold_set.jsonl              09deaecb374eb6b60bd03b95c90bbe1c8e3a75562eb9c59edc6c89970cd48c8e
-ground_truth_holdout.jsonl  204e4a8e2af61d0aec109e0226018f4486451044f6de73e282f04aff7a24e3cb
-human_label_sample.csv      48f069133e63ef87fb7f6027e1b259ab5ae534016f41ca1640a375d74130d3c9
+gold_set.jsonl               09deaecb374eb6b60bd03b95c90bbe1c8e3a75562eb9c59edc6c89970cd48c8e
+ground_truth_holdout.jsonl   204e4a8e2af61d0aec109e0226018f4486451044f6de73e282f04aff7a24e3cb
+human_label_sample.csv       ccf356a53088c4ae68562364cade01f0b02b2da6ab7daf1f206b943027c22d91  (pass-2, complete — see §6)
+human_label_sample_pass1.csv 919627b0e3ec1b6fc5d5e71f46561ed767a7aea4fd2961717cf5684e5c0ab729  (immutable, pass-1 archive)
 ```
 
-The `human_label_sample.csv` hash changed in task M4 when the `slice` column
-was removed from the sheet (§6). The same 30 cases are selected by the same
-seed; `gold_set.jsonl` and `ground_truth_holdout.jsonl` are byte-for-byte
-unchanged.
+The **builder-generated (blank)** `human_label_sample.csv` is a pure generator
+output, pinned separately as `PINNED_BLANK_HUMAN_SAMPLE_SHA256` in
+`tests/test_gold_set_determinism.py` and validated structurally (not by
+content hash) in `tests/test_human_label_sample_blind.py`. `_write_human_sample`
+refuses to overwrite a sheet that already carries a human label, so `build()`
+leaves a filled sheet untouched — the generated blank template and a later
+human-edited sheet are two different artifacts and must never be conflated
+(see §6 for why this matters). `gold_set.jsonl` and `ground_truth_holdout.jsonl`
+are byte-for-byte unchanged through every step of §6's instrument repair.
 
 These hashes are taken over the DBs built from the committed seeds (the `.db`
 files themselves are gitignored and rebuilt by `data/build_db.py`). If
@@ -274,13 +284,17 @@ pinned hashes — and every downstream figure — must be regenerated.
 
 ## 6. Human agreement
 
-**Not yet available — no human validation has been performed.** No person has
-filled the sheet; nothing in this repo has a human label.
+**Status: M4 — PASS WITH DISCLOSED SYSTEMATIC AMBIGUITY.** Pass 1 (original
+instrument) is archived. Pass 2, under the repaired instrument, is complete
+and is the number below: n = 30, exact agreement = 24/30 (80.0%), Cohen's
+κ = 0.7321428571428572. See "Pass 1", "Instrument repair" and "Pass 2" below.
 
 `bench/human_label_sample.csv` holds exactly **30 cases**: **all 10** of the
 `ambiguous_under_policy` cases plus **the same 20** other cases the seeded
 sample has always drawn (`SEED = 20260814`, unchanged). `human_label` and
-`human_notes` start **blank** for every row and are never auto-populated.
+`human_notes` **start blank** on the builder-generated sheet and are never
+auto-populated by any tooling — the 30 values now on disk were entered by a
+human under the repaired instrument (pass 2).
 
 ### The sheet is blind to construction intent and to every gold output
 
@@ -328,6 +342,108 @@ the sheet's schema.
 the holdout) and **refuses to report Cohen's kappa until every one of the 30
 rows has a `human_label`.** Until then it prints how many labels are still
 outstanding and exits 0. Once the sheet is complete it prints the kappa
-against `label.py` and every disagreement. **Do not quote a kappa, and do not
-describe this data as "human validated", before that point.** Record the
-number here when it exists.
+against `label.py` and every disagreement.
+
+### Pass 1 (complete, archived, superseded — not the current result)
+
+One annotator labelled all 30 cases under the *original* instrument (no
+`record_lookup_status` column). Preserved immutably at
+`bench/human_label_sample_pass1.csv` (pinned SHA-256
+`919627b0e3ec1b6fc5d5e71f46561ed767a7aea4fd2961717cf5684e5c0ab729`;
+`tests/test_human_label_sample_blind.py::test_pass1_artifact_is_immutable_and_pinned`).
+
+```
+Cohen's kappa (human vs bench/label.py): 0.5454545454545454
+raw agreement: 20/30 (66.7%)
+```
+
+All 10 disagreements were the annotator choosing **BLOCK** where `label.py`
+returns something softer:
+
+* `gs-129`, `gs-130`, `gs-133`, `gs-134` — `corrupted_or_missing_record`
+  (unresolvable / currency-mismatched order id). `label.py` → ESCALATE
+  (SOURCE-UNRELIABLE); the annotator treated "cannot act on this record" as
+  BLOCK.
+* `gs-145`–`gs-150` — the 8–14-day supervisor-discretion band. `label.py` →
+  AMBIGUOUS (§3); the annotator read the clause as "no full refund is
+  established, so block" rather than "escalate for discretion".
+
+A read-only audit of these 10 disagreements found a real defect in the
+*instrument*, not just a judgement difference: the sheet could show a
+complete-looking order-fact block even when the tool-call `order_id` didn't
+resolve to any record (the `gs-129`/`gs-130`/`gs-133`/`gs-134` cases), and the
+annotator rubric didn't distinguish "the record is unverifiable" (ESCALATE)
+from "the record is verified and contradicts the request" (BLOCK) clearly
+enough for either the corrupted-record or the supervisor-discretion cases.
+Pass 1's kappa is therefore **not** treated as the gold-set's human-agreement
+number — it's preserved as evidence of the defect it exposed.
+
+### Instrument repair (task M4)
+
+* Added `record_lookup_status` (`FOUND` / `NO_MATCH`) to the sheet. `NO_MATCH`
+  rows now show no order-record columns at all (blank
+  `order_total_paise` / `order_customer_id` / `order_delivered_at`) instead of
+  a record that looks resolved — see §6's schema list below.
+* Added an explicit annotator rubric, `docs/gold-set-annotation.md`, defining
+  ALLOW / BLOCK / ESCALATE / AMBIGUOUS and stating `NO_MATCH` →
+  unverifiable → ESCALATE.
+* Removed the `slice` column (already noted above) and separated the
+  generated-blank-template determinism contract from the human-edited sheet
+  (§4) so the two are never conflated again.
+* The **same 30 `case_id`s, same order** as pass 1 — no resampling.
+
+### Pass 2 — final repaired-instrument human-validation result
+
+One annotator labelled all 30 cases independently, under the repaired
+instrument and `docs/gold-set-annotation.md` rubric. Pass-1 labels were not
+copied forward
+(`tests/test_human_label_sample_blind.py::test_pass2_is_independent_of_pass1_not_a_copy`).
+`bench/human_label_sample.csv` (pinned SHA-256
+`ccf356a53088c4ae68562364cade01f0b02b2da6ab7daf1f206b943027c22d91`) is now
+this completed pass-2 sheet.
+
+```
+$ python bench/agreement.py
+Cohen's kappa (human vs bench/label.py): 0.732
+agreement: 24/30
+```
+
+* n = 30, n_compared = 30
+* exact agreement = 24/30 = **80.0%**
+* Cohen's κ = **0.7321428571428572**
+* 6 disagreements, all `human=BLOCK` vs `label_py=AMBIGUOUS`:
+  `gs-145`, `gs-146`, `gs-147`, `gs-148`, `gs-149`, `gs-150`
+
+**The four corrupted/unresolvable-record disagreements from pass 1
+(`gs-129`, `gs-130`, `gs-133`, `gs-134`) are gone.** All four now show
+`record_lookup_status = NO_MATCH` with no order-record columns, and the
+annotator now labels all four `ESCALATE` — matching `label.py`'s gold
+`ESCALATE` exactly. This is direct evidence the instrument repair (§6
+"Instrument repair") fixed the presentation defect it targeted, not just a
+coincidental score change.
+
+**The six remaining disagreements are all in the documented
+supervisor-discretion band**, and are reported, not hidden or reclassified.
+For each of `gs-145`–`gs-150`, `bench/label.py` (`bench/label.py:279-286`)
+returns `AMBIGUOUS` specifically because the clause grants the supervisor
+discretion over post-window remedies and the code's own generated rationale
+states *"BLOCK vs ESCALATE-to-supervisor is genuinely arguable"* — the same
+judgement call is baked into the gold-label construction logic itself, not
+asserted only in prose documentation. The human annotator resolved that same
+genuine ambiguity by choosing BLOCK ("no full refund is established, so
+block") rather than ESCALATE ("hold for supervisor discretion"). Per the
+annotator rubric's secondary metric (`docs/gold-set-annotation.md`, "How your
+labels are used"), a `BLOCK` against a gold `AMBIGUOUS` counts as an
+*admissible* interpretation, not an error — reported separately from the
+primary (exact) kappa, which is unchanged by this distinction. Under that
+secondary view, admissible agreement is 30/30; the primary, exact-equality
+Cohen's κ used for M4 remains **0.7321428571428572** and is not redefined by
+this observation.
+
+This is **one rater**, not a validated multi-annotator agreement study — do
+not describe the gold set as "human-validated" beyond that. It does not
+independently prove the gold labels are universally correct; it establishes
+that where `label.py` returns a determinate verdict, an independent human
+reading the same policy text and facts agrees with it, and where it returns
+`AMBIGUOUS`, the human's alternative reading is the one the gold construction
+logic itself already names as the other genuinely defensible answer.

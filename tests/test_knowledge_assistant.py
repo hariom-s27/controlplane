@@ -77,7 +77,10 @@ def test_full_gate_blocks_the_cross_tenant_send():
         Evidence(claim_id="DOC-2277:p", value=True, source="pii:regex", query="...", fetched_at=now(),
                   reliability_class=Reliability.INFERRED, confidence=Confidence.MODERATE, note="PII found"),
     ]
-    manifest = {"reliability_floor": "unverified", "manifest_id": "knowledge_assistant-v1", "_name": "knowledge_assistant"}
+    manifest = {
+        "reliability_floor": "unverified", "manifest_id": "knowledge_assistant-v1", "_name": "knowledge_assistant",
+        "compensation": {"action": "revoke_access", "compensability": "partially"},
+    }
     predicate_result = {"classification_permitted": True, "recipient_entitled": False}
 
     decision = decide(

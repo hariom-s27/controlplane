@@ -33,12 +33,13 @@ def test_gate_off_calls_impl_exactly_once():
 
 
 def test_gate_on_unmodeled_tool_fails_loudly_never_calls_impl(monkeypatch):
-    """extract_action() is mocked out here on purpose: the property under
-    test is extract.py's own claim-kind check propagating up through
-    dispatch_tool without impl ever running, not the (already fixture-
-    tested, see test_extract.py) extraction call itself."""
+    """A tool the active manifest does not govern must fail loudly in
+    _run_gate — never sail through as VERIFIED/ALLOW. extract_action() is
+    mocked so the property under test is the manifest/tool check, not the
+    (fixture-tested) extraction call."""
     from controlplane.schema import ProposedAction
 
+    monkeypatch.setenv("CP_MANIFEST", "servicing")
     monkeypatch.setattr(
         "controlplane.intercept.extract_action",
         lambda **kw: ProposedAction(tool=kw["tool"]),

@@ -1,0 +1,10 @@
+{
+  "case_id": "gs-023",
+  "model": "Qwen/Qwen3-8B",
+  "temperature": 0.0,
+  "max_tokens": 2048,
+  "seed": "n/a (greedy decoding, temperature 0)",
+  "raw_content": "{\"decision\": \"ALLOW\", \"reason\": \"The refund request is within the 7-day return period and the amount is below the INR 25,000 threshold.\"}",
+  "latency_ms": 2072.2,
+  "prompt_sha_key": "874bbd4763fad3b39563"
+}

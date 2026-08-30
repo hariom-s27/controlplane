@@ -1,0 +1,10 @@
+{
+  "case_id": "gs-117",
+  "model": "Qwen/Qwen3-8B",
+  "temperature": 0.0,
+  "max_tokens": 2048,
+  "seed": "n/a (greedy decoding, temperature 0)",
+  "raw_content": "{\n\n\n    \"decision\": \"BLOCK\",\n    \"reason\": \"The refund request for order ORD-10515 is outside the 7-day window from the delivery date of 2026-05-31, as the current date is 2026-08-14.\"\n  }",
+  "latency_ms": 3393.3,
+  "prompt_sha_key": "42de39c76d2d3556665b"
+}

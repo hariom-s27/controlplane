@@ -1,0 +1,10 @@
+{
+  "case_id": "gs-115",
+  "model": "Qwen/Qwen3-8B",
+  "temperature": 0.0,
+  "max_tokens": 2048,
+  "seed": "n/a (greedy decoding, temperature 0)",
+  "raw_content": "{\"decision\": \"BLOCK\", \"reason\": \"The return is outside the 7-day refund period specified in the policy.\"}",
+  "latency_ms": 2078.2,
+  "prompt_sha_key": "abda01dcd03643a0e040"
+}

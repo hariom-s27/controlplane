@@ -1,0 +1,10 @@
+{
+  "case_id": "gs-119",
+  "model": "Qwen/Qwen3-8B",
+  "temperature": 0.0,
+  "max_tokens": 2048,
+  "seed": "n/a (greedy decoding, temperature 0)",
+  "raw_content": "{\"decision\": \"BLOCK\", \"reason\": \"The refund request is outside the 7-day window for full refunds, and the policy does not permit issuing refunds after 7 days.\"}",
+  "latency_ms": 2473.9,
+  "prompt_sha_key": "5ba0af9f10c68921e12b"
+}

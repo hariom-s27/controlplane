@@ -19,6 +19,7 @@ zen-engine>=0.30        # MIT   — in-process DMN/JDM decision graphs, no sidec
 
 # --- config, needed from S12 ---
 pyyaml>=6.0             # MIT   — policy manifests
+jsonschema>=4.20         # MIT   — P02 hardening: manifest structural schema validation
 
 # --- reporting, needed from S11/S18 ---
 matplotlib>=3.8         # PSF-like

@@ -1,0 +1,10 @@
+{
+  "case_id": "gs-096",
+  "model": "Qwen/Qwen3-8B",
+  "temperature": 0.0,
+  "max_tokens": 2048,
+  "seed": "n/a (greedy decoding, temperature 0)",
+  "raw_content": "{\"decision\": \"BLOCK\", \"reason\": \"The refund request is outside the 7-day return window and exceeds the INR 25,000 limit for agent approval.\"}",
+  "latency_ms": 2242.7,
+  "prompt_sha_key": "1874f95655b9d8654b73"
+}

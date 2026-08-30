@@ -1,0 +1,24 @@
+{
+  "contentType": "application/vnd.gorules.decision",
+  "nodes": [
+    { "id": "in1", "type": "inputNode", "name": "request", "position": { "x": 0, "y": 0 } },
+    {
+      "id": "ex1",
+      "type": "expressionNode",
+      "name": "rules",
+      "position": { "x": 200, "y": 0 },
+      "content": {
+        "expressions": [
+          { "id": "x1", "key": "within_authority", "value": "action.amount_paise <= evidence.authority_ceiling_paise" },
+          { "id": "x2", "key": "entity_match", "value": "evidence.order.customer_id == evidence.session.customer_id" },
+          { "id": "x3", "key": "amount_sane", "value": "action.amount_paise <= evidence.order.amount_paise" }
+        ]
+      }
+    },
+    { "id": "out1", "type": "outputNode", "name": "response", "position": { "x": 400, "y": 0 } }
+  ],
+  "edges": [
+    { "id": "e1", "sourceId": "in1", "targetId": "ex1", "type": "edge" },
+    { "id": "e2", "sourceId": "ex1", "targetId": "out1", "type": "edge" }
+  ]
+}

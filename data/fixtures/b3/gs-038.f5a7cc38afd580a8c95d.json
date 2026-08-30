@@ -1,0 +1,10 @@
+{
+  "case_id": "gs-038",
+  "model": "Qwen/Qwen3-8B",
+  "temperature": 0.0,
+  "max_tokens": 2048,
+  "seed": "n/a (greedy decoding, temperature 0)",
+  "raw_content": "{\"decision\": \"BLOCK\", \"reason\": \"The return request is submitted 1 day after delivery, which is within the 7-day window, but the policy states that refunds are issued to the original payment method within 5-7 business days of approval. The agent's reasoning does not address the timing of the refund processing, which is not relevant to the eligibility of the refund itself.\"}",
+  "latency_ms": 3459.5,
+  "prompt_sha_key": "f5a7cc38afd580a8c95d"
+}

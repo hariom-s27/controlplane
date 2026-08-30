@@ -6,10 +6,18 @@
       .\make.ps1 probe      check the LLM provider works
       .\make.ps1 db         rebuild the three SQLite stores
       .\make.ps1 test       run the test suite
-      .\make.ps1 demo       run the gate (blocks ORD-88461)
+      .\make.ps1 demo       use case 1: servicing   (blocks ORD-88461)
+      .\make.ps1 demo2      use case 2: knowledge assistant (cross-tenant block)
+      .\make.ps1 demo3      use case 3: discount approval — manifest + graph data, no engine change
       .\make.ps1 negative   run with the gate OFF (the money moves)
       .\make.ps1 bench      run SEB-1
+      .\make.ps1 goldset    rebuild the P03 independent gold set + label + agreement
+      .\make.ps1 baselines  P04 baseline table B0-B5 (B3 needs CP_MODE=live once)
+      .\make.ps1 ablation   P05 evidence-source ablation (A1-A5) + sweeps
+      .\make.ps1 robustness P08 failure injection (8 scenarios) + wrong-record crossover
+      .\make.ps1 latency    P09 latency profile (4 configs x >=1,000 gated calls)
       .\make.ps1 report     regenerate every number and chart
+      .\make.ps1 review     review pending escalations
       .\make.ps1 clean      delete generated files
 
   If PowerShell refuses to run this, once per machine:
@@ -48,10 +56,31 @@ switch ($Task) {
     "probe"    { Need-Venv; & $Py scripts\probe.py }
     "db"       { Need-Venv; & $Py data\build_db.py }
     "test"     { Need-Venv; & $Py -m pytest tests -v }
+    "ci"       { Need-Venv; & $Py -m pytest tests -q }
     "demo"     { Need-Venv; $env:CP_GATE = "on";  & $Py -m agents.servicing_agent }
+    "demo2"    { Need-Venv; $env:CP_GATE = "on";  & $Py -m agents.knowledge_assistant }
+    "demo3"    { Need-Venv; $env:CP_GATE = "on";  & $Py -m agents.discount_agent }
     "negative" { Need-Venv; $env:CP_GATE = "off"; & $Py -m agents.servicing_agent }
-    "bench"    { Need-Venv; & $Py bench\seb1_exp3_cross_validation.py; & $Py bench\seb1_exp5_confusion_matrix.py }
+    "bench" {
+        Need-Venv
+        & $Py bench\seb1_exp3_cross_validation.py
+        & $Py bench\mutation.py
+        # Exp 5 (confusion matrix) is BLOCKED until a held-out gold set exists
+        # (P03) — it exits non-zero on purpose. See docs/experiment-audit.md.
+        try { & $Py bench\seb1_exp5_confusion_matrix.py } catch { Write-Host $_.Exception.Message -ForegroundColor Yellow }
+    }
+    "goldset" {
+        Need-Venv
+        & $Py bench\gold_set_build.py
+        & $Py bench\label.py
+        & $Py bench\agreement.py
+    }
+    "baselines" { Need-Venv; & $Py bench\baselines.py }
+    "ablation" { Need-Venv; & $Py bench\evidence_ablation.py }
+    "robustness" { Need-Venv; & $Py bench\failure_injection.py --write }
+    "latency"  { Need-Venv; & $Py bench\latency.py --write }
     "report"   { Need-Venv; & $Py bench\report.py }
+    "review"   { Need-Venv; & $Py bench\reviewer_console.py }
     "reviewer" { Need-Venv; & $Py bench\reviewer_console.py }
     "clean" {
         Remove-Item -Recurse -Force -EA SilentlyContinue `
@@ -67,10 +96,18 @@ switch ($Task) {
         Write-Host "  probe     check the LLM provider works        <- do this first"
         Write-Host "  db        rebuild the SQLite stores"
         Write-Host "  test      run the test suite"
-        Write-Host "  demo      run the gate (blocks ORD-88461)"
+        Write-Host "  demo      use case 1: servicing"
+        Write-Host "  demo2     use case 2: knowledge assistant"
+        Write-Host "  demo3     use case 3: discount approval (manifest + graph, no engine change)"
         Write-Host "  negative  run with the gate OFF"
         Write-Host "  bench     run SEB-1"
+        Write-Host "  goldset   rebuild the P03 independent gold set + label + agreement"
+        Write-Host "  baselines P04 baseline table B0-B5 over the gold set"
+        Write-Host "  ablation  P05 evidence-source ablation (A1-A5) + absence/staleness sweeps"
+        Write-Host "  robustness P08 failure injection (8 scenarios) + wrong-record crossover"
+        Write-Host "  latency   P09 latency profile (4 configs x >=1,000 gated calls)"
         Write-Host "  report    regenerate every number and chart"
+        Write-Host "  review    review pending escalations"
         Write-Host "  clean     delete generated files"
         Write-Host ""
     }

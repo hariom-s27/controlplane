@@ -12,8 +12,8 @@ ControlPlane is a **runtime verification layer for enterprise AI agents.** When
 an agent proposes an action — `issue_refund(order_id, amount)` — we intercept
 the tool call *before it executes*, extract the claims inside it, check those
 claims against the enterprise's own live systems of record, and decide whether
-to allow, modify, block or escalate. Every decision emits a signed ~1 KB
-evidence receipt.
+to allow, modify, block or escalate. Every decision emits a signed evidence
+receipt (measured median 2,282 bytes, p95 3,763 bytes over n=120).
 
 The one-line positioning:
 
@@ -62,8 +62,11 @@ delivery date comes from `orders.db`, the seven-day window from
    bad ones). A model is the *last* resort, and when it is used the verdict is
    `UNVERIFIABLE`, not a confidence score.
 4. **`decide()` in `controlplane/decide.py` must stay a pure function.** No I/O,
-   no clock, no logging inside it. The metamorphic invariants and the bias probe
-   call it thousands of times, which only works if it is pure.
+   no clock, no logging inside it. The metamorphic invariants and the mutation
+   harness call it thousands of times, which only works if it is pure. It also
+   must take no protected-attribute parameter — `tests/test_no_protected_attributes.py`
+   enforces this structurally (the bias probe that used to live here was
+   circular and was deleted; see `docs/experiment-audit.md`).
 5. **Every dependency must be MIT or Apache-2.0.** The repo is public and licence
    hygiene is graded. Do not add a dependency without checking, and do not add
    one at all if stdlib will do.
@@ -112,7 +115,7 @@ delivery date comes from `orders.db`, the seven-day window from
 [6] ground           controlplane/ground.py        HHEM NLI, C3 only, optional
 [7] verdict          controlplane/decide.py        4 verdicts
 [8] intervene        controlplane/decide.py        5 interventions + compensability
-[9] receipt          controlplane/receipt.py       ~1 KB signed JSON
+[9] receipt          controlplane/receipt.py       signed JSON; median 2,282 B, p95 3,763 B
 [10] telemetry       controlplane/telemetry.py     the four loggers
 ```
 

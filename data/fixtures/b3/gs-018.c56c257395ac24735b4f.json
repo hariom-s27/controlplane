@@ -1,0 +1,10 @@
+{
+  "case_id": "gs-018",
+  "model": "Qwen/Qwen3-8B",
+  "temperature": 0.0,
+  "max_tokens": 2048,
+  "seed": "n/a (greedy decoding, temperature 0)",
+  "raw_content": "{\"decision\": \"BLOCK\", \"reason\": \"The refund request is outside the 7-day window as the delivery date was 2026-08-12 and the request was made on 2026-08-14, which is 2 days after the 7-day period.\"}",
+  "latency_ms": 3141.0,
+  "prompt_sha_key": "c56c257395ac24735b4f"
+}

@@ -19,7 +19,17 @@ Writes three files, byte-deterministically (fixed seed, sorted keys, LF):
                                    reads this file — tests assert it.
 
   bench/human_label_sample.csv     30 cases (the 10 ambiguous + 20 random) with
-                                   an empty `human_label` column for a human.
+                                   empty `human_label` / `human_notes` columns
+                                   for a human. Reviewer-visible schema only;
+                                   see docs/gold-set-annotation.md. For a case
+                                   whose tool-call order id does not resolve,
+                                   `record_lookup_status` is NO_MATCH and the
+                                   order-record columns are blank (a real
+                                   reviewer would not have them either). This
+                                   sheet is a *blank template* — once a human
+                                   fills it, it is a separate annotation
+                                   artifact and `build()` will not overwrite it
+                                   (see M4 / docs/gold-set.md §4, §6).
 
 CONSTRUCTION RULES (P03)
 -----------------------
@@ -318,7 +328,20 @@ def _corrupt_order_id(order_id: str, variant: int) -> str:
     return f"OR-{digits}"                      # mangled prefix
 
 
-def build(*, write_human_sample: bool = True) -> dict:
+def build(*, write_human_sample: bool = True, out_dir: Path | None = None) -> dict:
+    """Regenerate the gold set. Deterministic given the committed seed DBs.
+
+    ``out_dir`` redirects all three outputs there instead of ``bench/`` — used
+    by tests to prove determinism without rewriting the committed artifacts.
+    ``write_human_sample`` writes the *blank* reviewer template; it never
+    overwrites a sheet that already carries a human label (M4).
+    """
+    gold_path = (out_dir / "gold_set.jsonl") if out_dir else GOLD_SET
+    holdout_path = (out_dir / "ground_truth_holdout.jsonl") if out_dir else HOLDOUT
+    human_path = (out_dir / "human_label_sample.csv") if out_dir else HUMAN_CSV
+    if out_dir:
+        out_dir.mkdir(parents=True, exist_ok=True)
+
     rng = random.Random(SEED)
     rows = _rows()
     by_id = {r["order_id"]: r for r in rows}
@@ -605,10 +628,12 @@ def build(*, write_human_sample: bool = True) -> dict:
             f"has a bug:\n{json.dumps(disagreements, indent=2)}"
         )
 
-    _write_jsonl(GOLD_SET, cases)
-    _write_jsonl(HOLDOUT, holdout)
+    _write_jsonl(gold_path, cases)
+    _write_jsonl(holdout_path, holdout)
     if write_human_sample:
-        _write_human_sample(cases, holdout, rng=random.Random(SEED))
+        # the blank reviewer template; `holdout` is NOT passed — the sheet is
+        # built from the public case list + orders.db only (M4).
+        _write_human_sample(cases, rng=random.Random(SEED), out_path=human_path)
 
     unique_sources = {t["source_order_id"] for t in holdout}
     per_slice_counts = {name: sum(1 for t in holdout if t["intended_slice"] == name)
@@ -629,8 +654,10 @@ def build(*, write_human_sample: bool = True) -> dict:
         "label_py_distribution": label_counts,
         "disagreements": disagreements,
         "sha256": {
-            "gold_set.jsonl": _sha(GOLD_SET),
-            "ground_truth_holdout.jsonl": _sha(HOLDOUT),
+            "gold_set.jsonl": _sha(gold_path),
+            "ground_truth_holdout.jsonl": _sha(holdout_path),
+            **({"human_label_sample.csv": _sha(human_path)}
+               if write_human_sample and human_path.exists() else {}),
         },
     }
 
@@ -673,24 +700,46 @@ def _write_jsonl(path: Path, records: list[dict]) -> None:
     path.write_bytes(body.encode("utf-8"))
 
 
-def _write_human_sample(cases: list[dict], holdout: list[dict], *, rng: random.Random) -> None:
-    """30 rows for a human annotator: the 10 ambiguous cases + 20 random
-    others. The `human_label` column is empty. The sheet is deliberately
-    BLIND — it does not show bench/label.py's verdict, its rationale, the gold
-    label, OR the construction `slice` (whose name states the intended class
-    for five of seven slices). The human judges from the policy text, the
-    order facts and the agent's prose alone. See docs/gold-set.md §6 and
-    tests/test_human_label_sample_blind.py. Task M4 removed the `slice`
-    column; the 30 selected cases and the SEED-driven sampling are unchanged.
+# The reviewer-visible schema. NO construction/answer field: no `slice`, no
+# gold_label / gold_verdict / gold_intervention, no label_rationale /
+# label_source, no holdout field (true_order_id, distractor_order_id,
+# corruption recipe, intended_slice / intended_label). Every column is
+# something a real refund reviewer would legitimately have at decision time.
+# See docs/gold-set-annotation.md for the operational meaning of each.
+HUMAN_SAMPLE_FIELDS = [
+    "case_id", "session_customer_id", "call_order_id", "record_lookup_status",
+    "refund_amount_paise", "order_total_paise", "order_customer_id",
+    "order_delivered_at", "frozen_today", "agent_cited_policy_version",
+    "current_refund_policy_text", "authority_policy_text", "agent_justification",
+    "human_label", "human_notes",
+]
 
-    Join key for bench/agreement.py is the opaque `case_id` -> public
-    bench/gold_set.jsonl -> gold_label. The holdout is never involved."""
-    if HUMAN_CSV.exists():
-        existing = list(csv.DictReader(HUMAN_CSV.read_text(encoding="utf-8").splitlines()))
-        if any((r.get("human_label") or "").strip() for r in existing):
-            return  # never clobber a partly-filled sheet
+# Fields whose value comes from the resolved order record. They are BLANK for a
+# NO_MATCH row — a real reviewer whose lookup failed would not have them, and
+# filling them from the hidden construction source would leak the answer.
+_RECORD_DERIVED_FIELDS = ("order_total_paise", "order_customer_id", "order_delivered_at")
 
-    truth_by_id = {t["id"]: t for t in holdout}
+
+def _resolve_order_row(order_id: str | None) -> dict | None:
+    """Look the tool-call order id up in the PUBLIC orders.db, exactly as a
+    reviewer's record check would. Returns None when it does not resolve."""
+    if not order_id:
+        return None
+    conn = sqlite3.connect(ORDERS_DB)
+    conn.row_factory = sqlite3.Row
+    try:
+        row = conn.execute(
+            "SELECT * FROM orders WHERE order_id = ?", (order_id,)
+        ).fetchone()
+    finally:
+        conn.close()
+    return dict(row) if row is not None else None
+
+
+def _human_sample_rows(cases: list[dict], *, rng: random.Random) -> list[dict]:
+    """The 30 reviewer-visible rows: the 10 ambiguous cases + 20 SEED-sampled
+    others, in case_id order. Built from the public case list + orders.db only
+    — the construction holdout is never consulted."""
     ambiguous = [c for c in cases if c["slice"] == "ambiguous_under_policy"]
     others = sorted((c for c in cases if c["slice"] != "ambiguous_under_policy"),
                     key=lambda c: c["id"])
@@ -699,32 +748,22 @@ def _write_human_sample(cases: list[dict], holdout: list[dict], *, rng: random.R
 
     policy_text = _clause_text("refund_window")
     authority_text = _clause_text("refund_authority")
-    # NOTE (M4): no `slice`, no gold_label / gold_verdict / gold_intervention,
-    # no label_rationale / label_source, no holdout field (true_order_id,
-    # distractor_order_id, corruption, intended_slice/label). Every column below
-    # is something a real refund reviewer would legitimately have.
-    fields = [
-        "case_id", "session_customer_id", "call_order_id",
-        "refund_amount_paise", "order_total_paise", "order_customer_id",
-        "order_delivered_at", "frozen_today", "agent_cited_policy_version",
-        "current_refund_policy_text", "authority_policy_text", "agent_justification",
-        "human_label", "human_notes",
-    ]
-    lines = [",".join(fields)]
+
+    out: list[dict] = []
     for c in sample:
-        t = truth_by_id[c["id"]]
-        src = t["source_row"]
         args = c["tool_call"]["args"]
-        # for a corrupted-id case the call order id is unresolvable by design;
-        # show the annotator the real source row so they can still reason
+        rec = _resolve_order_row(args.get("order_id"))
+        found = rec is not None
         row = {
             "case_id": c["id"],
             "session_customer_id": c["session"]["customer_id"],
-            "call_order_id": args["order_id"],
+            "call_order_id": args.get("order_id"),
+            "record_lookup_status": "FOUND" if found else "NO_MATCH",
             "refund_amount_paise": args["amount_paise"],
-            "order_total_paise": src["amount_paise"],
-            "order_customer_id": src["customer_id"],
-            "order_delivered_at": src["delivered_at"],
+            # record-derived: only for a resolved record; blank for NO_MATCH
+            "order_total_paise": rec["amount_paise"] if found else "",
+            "order_customer_id": rec["customer_id"] if found else "",
+            "order_delivered_at": rec["delivered_at"] if found else "",
             "frozen_today": FROZEN_TODAY.isoformat(),
             "agent_cited_policy_version": c.get("claimed_policy_version") or "",
             "current_refund_policy_text": policy_text,
@@ -733,8 +772,49 @@ def _write_human_sample(cases: list[dict], holdout: list[dict], *, rng: random.R
             "human_label": "",
             "human_notes": "",
         }
-        lines.append(",".join(_csv_cell(row[f]) for f in fields))
-    HUMAN_CSV.write_bytes(("\n".join(lines) + "\n").encode("utf-8"))
+        out.append(row)
+    return out
+
+
+def _write_human_sample(cases: list[dict], *, rng: random.Random,
+                        out_path: Path, force: bool = False) -> None:
+    """Write the BLANK reviewer template (M4 instrument, repaired).
+
+    30 rows: the 10 ambiguous cases + 20 SEED-sampled others. `human_label` and
+    `human_notes` are empty. The sheet is BLIND — no `slice`, no gold output,
+    no holdout field. `record_lookup_status` (FOUND / NO_MATCH) tells the
+    reviewer whether the tool-call order id resolves; NO_MATCH rows carry no
+    order-record columns. See docs/gold-set-annotation.md.
+
+    Never overwrites a sheet that already carries a human label unless
+    ``force`` — a filled sheet is a separate annotation artifact.
+    """
+    if not force and out_path.exists():
+        # utf-8-sig: a returned sheet is often re-saved with a UTF-8 BOM
+        existing = list(csv.DictReader(
+            out_path.read_text(encoding="utf-8-sig").splitlines()))
+        if any((r.get("human_label") or "").strip() for r in existing):
+            return  # never clobber a partly-filled sheet
+
+    lines = [",".join(HUMAN_SAMPLE_FIELDS)]
+    for row in _human_sample_rows(cases, rng=rng):
+        lines.append(",".join(_csv_cell(row[f]) for f in HUMAN_SAMPLE_FIELDS))
+    out_path.write_bytes(("\n".join(lines) + "\n").encode("utf-8"))
+
+
+def regenerate_blank_human_sample(out_path: Path | None = None, *,
+                                  gold_set_path: Path | None = None,
+                                  force: bool = False) -> Path:
+    """Rewrite ONLY the blank reviewer template from the committed public
+    ``gold_set.jsonl`` (+ orders.db / policy_store.db). Touches neither
+    ``gold_set.jsonl`` nor ``ground_truth_holdout.jsonl``. ``force`` is
+    required to replace a sheet that already has human labels."""
+    gold_set_path = gold_set_path or GOLD_SET
+    dst = out_path or HUMAN_CSV
+    cases = [json.loads(l) for l in
+             gold_set_path.read_text(encoding="utf-8").splitlines() if l.strip()]
+    _write_human_sample(cases, rng=random.Random(SEED), out_path=dst, force=force)
+    return dst
 
 
 def _csv_cell(value) -> str:

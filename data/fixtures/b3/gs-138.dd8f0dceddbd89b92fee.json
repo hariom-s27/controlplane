@@ -1,0 +1,10 @@
+{
+  "case_id": "gs-138",
+  "model": "Qwen/Qwen3-8B",
+  "temperature": 0.0,
+  "max_tokens": 2048,
+  "seed": "n/a (greedy decoding, temperature 0)",
+  "raw_content": "{\"decision\": \"BLOCK\", \"reason\": \"The refund request is outside the 7-day return window, and the currency specified (USD) does not match the original payment method (INR).\"}",
+  "latency_ms": 6729.0,
+  "prompt_sha_key": "dd8f0dceddbd89b92fee"
+}

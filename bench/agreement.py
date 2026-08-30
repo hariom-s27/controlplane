@@ -59,7 +59,10 @@ def _sheet_case_ids() -> list[str]:
         return []
     return [
         row["case_id"]
-        for row in csv.DictReader(HUMAN_CSV.read_text(encoding="utf-8").splitlines())
+        # utf-8-sig: an annotator's spreadsheet often re-saves the sheet with a
+        # UTF-8 BOM; without this the first header key becomes "﻿case_id"
+        # and every case_id lookup KeyErrors.
+        for row in csv.DictReader(HUMAN_CSV.read_text(encoding="utf-8-sig").splitlines())
         if (row.get("case_id") or "").strip()
     ]
 
@@ -68,7 +71,9 @@ def _human_labels() -> dict[str, str]:
     if not HUMAN_CSV.exists():
         return {}
     out: dict[str, str] = {}
-    for row in csv.DictReader(HUMAN_CSV.read_text(encoding="utf-8").splitlines()):
+    # utf-8-sig: tolerate a UTF-8 BOM the annotator's editor may have added
+    # (see _sheet_case_ids). No effect when the BOM is absent.
+    for row in csv.DictReader(HUMAN_CSV.read_text(encoding="utf-8-sig").splitlines()):
         raw = (row.get("human_label") or "").strip().upper()
         if not raw:
             continue

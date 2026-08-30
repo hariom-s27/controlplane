@@ -1,7 +1,7 @@
-"""S6 — the entitlements.db resolver, for use case 2 (the internal knowledge
-assistant). Built per spec; nothing calls it yet since agents/servicing_agent.py
-is use case 1 only and the knowledge-assistant agent doesn't exist. Kept
-here, tested directly, ready for when it does.
+"""S6 — the entitlements.db resolver: answers entitlement-shaped claims
+(is this recipient allowed this document? is this classification within
+their remit?). Which manifests route claims here is up to those manifests'
+``claim_bindings`` — this file names no use case.
 """
 
 from __future__ import annotations
@@ -11,6 +11,7 @@ import sqlite3
 from pathlib import Path
 
 from controlplane.registry.clock import now
+from controlplane.registry.sqlite_source import connect_readwrite, translate_availability
 from controlplane.schema import Claim, ClaimKind, Confidence, Evidence, Reliability, SessionContext
 
 ROOT = Path(__file__).resolve().parent.parent.parent
@@ -21,13 +22,17 @@ class EntitlementsResolver:
     def resolve(self, claim: Claim, session: SessionContext) -> Evidence:
         """claim.subject is the doc_id."""
         doc_id = claim.subject
-        conn = sqlite3.connect(DB)
+        conn = connect_readwrite(DB, source="entitlements.db")
         conn.row_factory = sqlite3.Row
         try:
-            doc = conn.execute(
-                "SELECT classification, about_customer_id FROM documents WHERE doc_id = ?",
-                (doc_id,),
-            ).fetchone()
+            try:
+                doc = conn.execute(
+                    "SELECT classification, about_customer_id FROM documents WHERE doc_id = ?",
+                    (doc_id,),
+                ).fetchone()
+            except sqlite3.OperationalError as exc:
+                translate_availability(exc, source="entitlements.db", operation="read document")
+                raise AssertionError("translate_availability must raise")  # pragma: no cover
 
             if doc is None:
                 return Evidence(
@@ -54,10 +59,14 @@ class EntitlementsResolver:
             #     particular customer's ticket.
             subject_id = session.subject_id
             query = f"SELECT entitled_classifications, entitled_customer_ids FROM subjects WHERE subject_id = {subject_id!r}"
-            subj = conn.execute(
-                "SELECT entitled_classifications, entitled_customer_ids FROM subjects WHERE subject_id = ?",
-                (subject_id,),
-            ).fetchone()
+            try:
+                subj = conn.execute(
+                    "SELECT entitled_classifications, entitled_customer_ids FROM subjects WHERE subject_id = ?",
+                    (subject_id,),
+                ).fetchone()
+            except sqlite3.OperationalError as exc:
+                translate_availability(exc, source="entitlements.db", operation="read subject entitlements")
+                raise AssertionError("translate_availability must raise")  # pragma: no cover
 
             if subj is None:
                 return Evidence(

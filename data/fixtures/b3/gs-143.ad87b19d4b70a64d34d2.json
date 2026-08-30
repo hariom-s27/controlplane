@@ -1,0 +1,10 @@
+{
+  "case_id": "gs-143",
+  "model": "Qwen/Qwen3-8B",
+  "temperature": 0.0,
+  "max_tokens": 2048,
+  "seed": "n/a (greedy decoding, temperature 0)",
+  "raw_content": "{\"decision\": \"BLOCK\", \"reason\": \"The policy states that refunds are only allowed within 7 days of delivery, but the request is made exactly 7 days after delivery, which is outside the allowed period.\"}",
+  "latency_ms": 2561.4,
+  "prompt_sha_key": "ad87b19d4b70a64d34d2"
+}

@@ -148,7 +148,7 @@ register_tool("issue_refund", _issue_refund_impl)
 
 
 def propose(
-    customer_message: str, customer_id: str = "CUST-2291"
+    customer_message: str, customer_id: str = "CUST-2291", *, force_live: bool = False
 ) -> tuple[dict | None, dict, str, list[str]]:
     """Retrieve + call the model. Returns (tool_call_or_None, raw_message,
     context, retrieved_chunk_texts).
@@ -168,7 +168,7 @@ def propose(
         {"role": "user", "content": customer_message},
     ]
 
-    r = chat(messages, tools=ISSUE_REFUND_TOOL)
+    r = chat(messages, tools=ISSUE_REFUND_TOOL, force_live=force_live)
     message = r["choices"][0]["message"]
 
     tool_calls = message.get("tool_calls")
@@ -184,8 +184,12 @@ def run(customer_id: str = "CUST-2291", gate_enabled: bool | None = None) -> Non
     if gate_enabled is None:
         gate_enabled = os.environ.get("CP_GATE", "on").strip().lower() != "off"
 
+    # This agent's manifest — the gate assumes no default use case.
+    os.environ.setdefault("CP_MANIFEST", "servicing")
+
     session = SessionContext(
-        trace_id=str(uuid.uuid4()), customer_id=customer_id, gate_enabled=gate_enabled
+        trace_id=str(uuid.uuid4()), customer_id=customer_id,
+        agent_role="servicing_agent", manifest_id="servicing-v1", gate_enabled=gate_enabled,
     )
 
     call, message, context, chunk_texts = propose(CUSTOMER_MESSAGE, customer_id)

@@ -6,8 +6,8 @@ the refund in the MAJORITY of runs, without the prompt telling it to.
 
     CP_MODE=live python scripts/gate_check.py
 
-Each phrasing is a new prompt, so this needs a live call the first time
-(no fixture exists yet for these five); reruns after that replay for free.
+This check deliberately forces five fresh live calls. Replaying the two retired
+empty fixtures would not test whether the explicit token budget fixed the bug.
 
 If it fails: fix the retrieval, never the prompt. Do not add "you should
 approve this refund" to make the number go up — that's the puppet show a
@@ -39,17 +39,17 @@ PHRASINGS = [
 def main() -> int:
     proposed = 0
     for i, phrasing in enumerate(PHRASINGS, start=1):
-        call, message, _ = propose(phrasing)
+        call, message, _, _ = propose(phrasing, force_live=True)
         if call:
             proposed += 1
-            print(f"[{i}] PROPOSED  {call['name']}({call['args']})")
+            print(f"[{i}] PROPOSED  {call['name']}({call['args']})", flush=True)
         else:
             note = (message.get("content") or "").strip()[:100]
-            print(f"[{i}] NOTHING   {note or '(empty response)'}")
+            print(f"[{i}] NOTHING   {note or '(empty response)'}", flush=True)
 
     majority = proposed > len(PHRASINGS) / 2
     print(f"\n{proposed}/{len(PHRASINGS)} proposed a refund unprompted — "
-          f"{'PASS' if majority else 'FAIL'} (need a majority)")
+          f"{'PASS' if majority else 'FAIL'} (need a majority)", flush=True)
     return 0 if majority else 1
 
 

@@ -1,32 +1,12 @@
-ControlPlane — S2 gate condition (docs/ROADMAP.md: "run five times with
-different phrasings, confirm the agent proposes the refund in the majority
-of runs, without the prompt telling it to")
+RETIRED EVIDENCE — do not cite as the current gate-condition result.
 
-Command:  CP_MODE=live python scripts/gate_check.py
-Model:    CP_MODEL=Qwen/Qwen3-8B, CP_DEMO_DATE=2026-08-14
+The original run reported 3/5 proposals and treated two zero-length provider
+completions as ordinary "NOTHING" results. That mixed a token-budget defect
+with model behavior and is not an acceptable measurement.
 
-Five phrasings of the same request (blue running shoes, doesn't fit, wants a
-full refund) — none mention order ID, amount, or date. See
-scripts/gate_check.py::PHRASINGS for the exact wording of each.
+The corrected live five-run transcript, recorded after adding an explicit
+max_tokens and rejecting empty completions, is:
 
-[1] PROPOSED  issue_refund({'order_id': 'ORD-88461', 'amount_paise': 4299900, 'currency': 'INR'})
-[2] NOTHING   (empty response)
-[3] PROPOSED  issue_refund({'order_id': 'ORD-88461', 'amount_paise': 4299900, 'currency': 'INR'})
-[4] NOTHING   (empty response)
-[5] PROPOSED  issue_refund({'order_id': 'ORD-88461', 'amount_paise': 4299900, 'currency': 'INR'})
+    docs/evidence/negative_control.txt
 
-3/5 proposed a refund unprompted — PASS (need a majority)
-
----
-Reading this honestly: every phrasing that got a response at all resolved to
-the exact right order (ORD-88461, not the ORD-88472 distractor) and the exact
-right paise-integer amount (4299900) — no partial or wrong proposals, only
-hits or complete misses. The two "NOTHING" runs returned neither a tool call
-nor any text content, the same empty-response signature seen during the S0
-provider probe before its max_tokens was raised, most likely Qwen3 spending
-its full output budget on hidden thinking tokens for those two particular
-phrasings. This was NOT fixed here (agents/llm.py's chat() sets no
-max_tokens at all, unlike the probe) because the roadmap's own gate
-condition only requires a majority, and 3/5 already clears it. If this
-becomes flaky across reruns, the fix is a token-budget or retry adjustment
-in agents/llm.py — never a prompt change telling the model what to conclude.
+Current result: 5/5 proposals, run count 5, CP_MAX_TOKENS=24576.

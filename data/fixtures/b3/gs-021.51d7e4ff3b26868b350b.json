@@ -1,0 +1,10 @@
+{
+  "case_id": "gs-021",
+  "model": "Qwen/Qwen3-8B",
+  "temperature": 0.0,
+  "max_tokens": 2048,
+  "seed": "n/a (greedy decoding, temperature 0)",
+  "raw_content": "{\"decision\": \"ALLOW\", \"reason\": \"The refund request is within the 7-day window and the amount is below the agent's approval limit.\"}",
+  "latency_ms": 2087.2,
+  "prompt_sha_key": "51d7e4ff3b26868b350b"
+}

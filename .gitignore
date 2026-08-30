@@ -6,9 +6,27 @@
 data/*.db
 data/*.db-journal
 data/stale_index/
-reports/
+reports/*
+!reports/baselines.md
+!reports/summary.json
+!reports/evidence-ablation.md
+!reports/evidence-ablation-absence.png
+!reports/evidence-ablation-staleness.png
+!reports/robustness.md
+!reports/latency.md
+!reports/tau2-bench.md
+
+# P05: the store replica is rebuilt at run start from the frozen stores.
+# The context fixtures ARE committed (synthetic, SHA-pinned).
+bench/fixtures/p05/_replica/
 decisions.jsonl
 decisions_privileged.jsonl
+# SEB-1 Exp 3: rebuilt deterministically by bench/exp3_corpus.py from CP_SEED.
+# exp3_ground_truth.jsonl is held out from the checker by design (see
+# docs/experiment-audit.md); none of the three is hand-authored.
+bench/exp3_cases.jsonl
+bench/exp3_ground_truth.jsonl
+bench/exp3_predictions.jsonl
 
 # --- python -----------------------------------------------------------------
 __pycache__/

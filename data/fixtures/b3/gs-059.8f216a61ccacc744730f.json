@@ -1,0 +1,10 @@
+{
+  "case_id": "gs-059",
+  "model": "Qwen/Qwen3-8B",
+  "temperature": 0.0,
+  "max_tokens": 2048,
+  "seed": "n/a (greedy decoding, temperature 0)",
+  "raw_content": "{\n\n\n    \"decision\": \"BLOCK\",\n    \"reason\": \"The refund request is made after the 7-day period, so it should be processed as store credit, not a full refund.\"\n  }",
+  "latency_ms": 2119.1,
+  "prompt_sha_key": "8f216a61ccacc744730f"
+}

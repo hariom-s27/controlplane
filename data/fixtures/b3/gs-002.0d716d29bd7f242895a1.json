@@ -1,0 +1,10 @@
+{
+  "case_id": "gs-002",
+  "model": "Qwen/Qwen3-8B",
+  "temperature": 0.0,
+  "max_tokens": 2048,
+  "seed": "n/a (greedy decoding, temperature 0)",
+  "raw_content": "{\"decision\": \"ALLOW\", \"reason\": \"The refund request is within the 7-day window from delivery date 2026-08-09, and the amount is less than the full price of the item.\"}",
+  "latency_ms": 3881.2,
+  "prompt_sha_key": "0d716d29bd7f242895a1"
+}

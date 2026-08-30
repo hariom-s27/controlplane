@@ -1,0 +1,10 @@
+{
+  "case_id": "gs-076",
+  "model": "Qwen/Qwen3-8B",
+  "temperature": 0.0,
+  "max_tokens": 2048,
+  "seed": "n/a (greedy decoding, temperature 0)",
+  "raw_content": "{\n\n\n    \"decision\": \"ALLOW\",\n    \"reason\": \"The refund request for order ORD-10162 is within the 30-day return period as of 2026-08-14, and the amount and item match the policy.\"\n  }",
+  "latency_ms": 2916.4,
+  "prompt_sha_key": "77fd6a23f50ef94417b7"
+}

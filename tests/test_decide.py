@@ -22,41 +22,46 @@ from controlplane.schema import (
     Verdict,
 )
 
-MANIFEST = {"reliability_floor": "corroborated", "verdict_handling": {"UNVERIFIABLE": "escalate"}}
+def _manifest(compensability="fully", action="reverse_refund", **extra):
+    return {
+        "reliability_floor": "corroborated",
+        "verdict_handling": {"UNVERIFIABLE": "escalate"},
+        "manifest_id": "test-v1",
+        "_name": "test",
+        "compensation": {"compensability": compensability, "action": action},
+        **extra,
+    }
 
 
-# --- one test per docs/compensability.md row ---------------------------
+MANIFEST = _manifest()
 
 
-def test_issue_refund_is_fully_compensable():
-    c = compensation_for("issue_refund")
+# --- compensation is manifest-declared now (P02) ----------------------
+
+
+def test_manifest_declares_a_fully_compensable_action():
+    c = compensation_for(_manifest("fully", "reverse_refund"))
     assert c.compensability is Compensability.FULLY
     assert c.action == "reverse_refund"
 
 
-def test_update_entitlement_is_partially_compensable():
-    c = compensation_for("update_entitlement")
-    assert c.compensability is Compensability.PARTIALLY
-    assert c.action == "restore_entitlement"
-
-
-def test_send_customer_email_is_not_compensable():
-    c = compensation_for("send_customer_email")
-    assert c.compensability is Compensability.NOT
-    assert c.action is None
-
-
-def test_send_document_is_partially_compensable():
-    c = compensation_for("send_document")
+def test_manifest_declares_a_partially_compensable_action():
+    c = compensation_for(_manifest("partially", "revoke_access"))
     assert c.compensability is Compensability.PARTIALLY
     assert c.action == "revoke_access"
 
 
-def test_unregistered_tool_raises():
+def test_manifest_declares_a_non_compensable_action():
+    c = compensation_for(_manifest("not", None))
+    assert c.compensability is Compensability.NOT
+    assert c.action is None
+
+
+def test_manifest_without_a_compensation_block_raises():
     import pytest
 
     with pytest.raises(KeyError):
-        compensation_for("delete_customer_account")
+        compensation_for({"_name": "broken"})
 
 
 # --- decide() basics ------------------------------------------------------
@@ -142,19 +147,20 @@ def _c3_only_claim_and_evidence():
 
 
 def test_d49_demonstration_irreversibility_dominates_severity():
-    """Identical weak (C3-only, grounding score below threshold) evidence.
-    Fully compensable -> escalates (D3: low confidence never blocks).
-    Not compensable -> blocks anyway (D49: no undo for this class)."""
+    """Identical action, identical weak (C3-only, grounding score below
+    threshold) evidence — the ONLY thing that differs is the manifest's
+    declared compensability. Fully compensable -> escalates (D3: low
+    confidence never blocks). Not compensable -> blocks anyway (D49: no undo
+    for this class). This is the whole 'same engine, different manifest'
+    argument, at one decision."""
     claim, ev = _c3_only_claim_and_evidence()
+    action = ProposedAction(tool="an_action", order_id="ORD-1", amount_paise=100000, currency="INR")
 
-    compensable_action = ProposedAction(tool="issue_refund", order_id="ORD-1", amount_paise=100000, currency="INR")
     compensable_decision = decide(
-        "t1", "servicing-v1", compensable_action, [claim], ev, {}, MANIFEST, grounding_score=0.2,
+        "t1", "servicing-v1", action, [claim], ev, {}, _manifest("fully", "reverse_it"), grounding_score=0.2,
     )
-
-    not_compensable_action = ProposedAction(tool="send_customer_email", order_id=None, currency="INR")
     not_compensable_decision = decide(
-        "t2", "servicing-v1", not_compensable_action, [claim], ev, {}, MANIFEST, grounding_score=0.2,
+        "t2", "servicing-v1", action, [claim], ev, {}, _manifest("not", None), grounding_score=0.2,
     )
 
     assert compensable_decision.verdict == Verdict.CONTRADICTED

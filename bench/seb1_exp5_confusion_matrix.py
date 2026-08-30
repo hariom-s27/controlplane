@@ -1,28 +1,51 @@
 #!/usr/bin/env python3
 """SEB-1, Experiment 5 — a per-verdict confusion matrix.
 
-The brief asks for false-positive and false-negative rates explicitly
-under "Metrics & monitoring" — a single accuracy number can't answer that,
-because a false ALLOW and a false BLOCK have completely different costs
-(D49's whole point, applied to measurement instead of intervention design).
+STATUS: BLOCKED. See docs/experiment-audit.md.
 
-Four gold categories, generated directly (not via the LLM agent — this
-benchmarks the VERIFICATION layer's own accuracy on known-truth inputs,
-the same scoping choice controlplane/bias_probe.py makes and for the same
-reason: reproducible, labelled, and fast enough to run at n=200+):
+The brief asks for false-positive and false-negative rates explicitly under
+"Metrics & monitoring" — a single accuracy number can't answer that, because
+a false ALLOW and a false BLOCK have completely different costs. That ask is
+still valid. The way this experiment used to answer it was not.
 
-  ALLOW              genuinely clean: in window, in authority, right customer
-  BLOCK              genuinely bad: a reliable, real predicate violation
-  ESCALATE           genuinely unresolvable: a load-bearing claim has no evidence
-  SOURCE_UNRELIABLE  genuinely uncertain: reliable facts look fine, but the
-                     evidence backing them is below the reliability floor
+The previous implementation generated every "gold" case by calling decide()
+with arguments chosen to force a known verdict, then scored decide() on those
+same inputs. Label and prediction were the same function call, so accuracy
+was exactly 1.000 for every seed and every n — a restatement of "decide() is
+deterministic," not a measurement. The generator has been deleted.
+
+An honest confusion matrix needs a gold set whose labels are assigned
+independently of decide() and whose facts are resolved by the real registry +
+predicate pipeline, not chosen to hit a target. That artifact is
+`bench/gold_set.jsonl`, built in task P03 — it now EXISTS (150 cases, labels
+from bench/label.py, an independent re-implementation). What is still missing
+is the non-executing pipeline driver `_predict_class()` needs; until that
+lands, run() raises SystemExit rather than emit a passing-but-meaningless
+number. See docs/gold-set.md.
+
+Expected `bench/gold_set.jsonl` schema (one JSON object per line), so this
+file is ready to score the moment P03 lands:
+
+    {
+      "id": "gs-001",
+      "tool_call": {"name": "issue_refund", "args": {...}},
+      "session": {"trace_id": "...", "customer_id": "...", "gate_enabled": true},
+      "justification": "<agent prose, verbatim>",
+      "retrieved_chunks": ["<chunk text>", ...],
+      "gold_intervention": "ALLOW|BLOCK|ESCALATE|MODIFY",
+      "gold_verdict": "VERIFIED|CONTRADICTED|UNVERIFIABLE|SOURCE_UNRELIABLE",
+      "label_source": "<who/what assigned this, and how>",
+      "note": "<why this case is in the set>"
+    }
+
+`gold_intervention` / `gold_verdict` MUST NOT be produced by decide(). P03 is
+responsible for that guarantee; this file only consumes the result.
 """
 
 from __future__ import annotations
 
-import random
+import json
 import sys
-from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 try:
@@ -30,139 +53,140 @@ try:
 except ImportError:
     raise SystemExit("FATAL: dateparser missing. Results are invalid without it.")
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
 
-from controlplane.decide import decide
-from controlplane.ladder import classify_claims
-from controlplane.schema import Claim, ClaimKind, Confidence, Evidence, Intervention, ProposedAction, Reliability, Tier, Verdict
+GOLD_SET = ROOT / "bench" / "gold_set.jsonl"
 
-TODAY = date(2026, 8, 14)
-NOW = datetime.now(timezone.utc)
-MANIFEST = {"reliability_floor": "corroborated", "verdict_handling": {"UNVERIFIABLE": "escalate", "SOURCE_UNRELIABLE": "escalate"},
-            "manifest_id": "servicing-v1", "_name": "servicing"}
+# SOURCE_UNRELIABLE is a verdict, not an Intervention; it is surfaced as its
+# own confusion-matrix class because a reviewer cares whether an escalation
+# means "the evidence itself is shaky" versus any other reason to escalate.
 CLASSES = ["ALLOW", "BLOCK", "ESCALATE", "SOURCE_UNRELIABLE"]
 
-# Illustrative, clearly-labelled ASSUMPTIONS, not measured figures — no
-# published per-review or per-refund-reversal cost exists in this repo.
-# Swap these for real numbers the moment finance/ops has them.
-ASSUMED_COST_PER_HUMAN_REVIEW_PAISE = 50_000  # INR 500/review, assumed
-ASSUMED_MEAN_REFUND_PAISE = 1_500_000  # INR 15,000, assumed
+_BLOCKED_MESSAGE = (
+    "\n".join(
+        [
+            "SEB-1 Exp 5 is BLOCKED — no honest number is available.",
+            "",
+            f"  bench/gold_set.jsonl not found at: {GOLD_SET}",
+            "",
+            "  The previous confusion matrix was circular: cases were generated",
+            "  by calling decide() with parameters chosen to force a verdict, then",
+            "  scored against decide() on the same inputs. Accuracy was 1.000 by",
+            "  construction. The generator has been deleted.",
+            "",
+            "  This experiment resumes when task P03 delivers a held-out gold set",
+            "  whose labels are assigned independently of decide(). See",
+            "  docs/experiment-audit.md and docs/retired-figures.md.",
+        ]
+    )
+)
 
 
-def _outcome_label(decision) -> str:
-    """SOURCE_UNRELIABLE is a verdict in schema.py, not an Intervention —
-    surfaced as its own confusion-matrix class because a human reviewer
-    cares whether an escalation means "the evidence itself is shaky" versus
-    any other reason to escalate."""
-    if decision.verdict is Verdict.SOURCE_UNRELIABLE:
+def _load_gold_set(path: Path = GOLD_SET) -> list[dict]:
+    if not path.exists():
+        raise SystemExit(_BLOCKED_MESSAGE)
+    records = []
+    for i, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+        line = line.strip()
+        if not line:
+            continue
+        rec = json.loads(line)
+        for required in ("id", "tool_call", "gold_intervention", "gold_verdict", "label_source"):
+            if required not in rec:
+                raise SystemExit(f"gold_set.jsonl line {i}: missing required key {required!r}")
+        records.append(rec)
+    if not records:
+        raise SystemExit(_BLOCKED_MESSAGE)
+    return records
+
+
+def _gold_class(rec: dict) -> str:
+    if rec["gold_verdict"] == "SOURCE_UNRELIABLE":
         return "SOURCE_UNRELIABLE"
-    return decision.intervention.value
+    return rec["gold_intervention"]
 
 
-def _decide(days_ago: int, amount_paise: int, customer_ok: bool, reliability: Reliability, confidence: Confidence) -> object:
-    claim = Claim(id="w", kind=ClaimKind.WITHIN_REFUND_WINDOW, subject="ORD-X", tier=Tier.C2)
-    entity_claim = Claim(id="e", kind=ClaimKind.ORDER_BELONGS_TO_CUSTOMER, subject="ORD-X", tier=Tier.C1)
-    claims = classify_claims([claim, entity_claim])
-    delivered_at = (TODAY - timedelta(days=days_ago)).isoformat()
-    evidence = [
-        Evidence(claim_id="w", value=delivered_at, source="orders.db", query="...", fetched_at=NOW,
-                  reliability_class=reliability, confidence=confidence),
-        Evidence(claim_id="e", value="CUST-A" if customer_ok else "CUST-B", source="orders.db", query="...",
-                  fetched_at=NOW, reliability_class=Reliability.CORROBORATED, confidence=Confidence.HIGH),
-    ]
-    predicate_result = {"within_window": days_ago <= 7, "entity_match": customer_ok}
-    action = ProposedAction(tool="issue_refund", order_id="ORD-X", amount_paise=amount_paise, currency="INR")
-    return decide("t", "servicing-v1", action, claims, evidence, predicate_result, MANIFEST)
+def _predict_class(rec: dict) -> str:
+    """Run the REAL gate on the gold case and read its verdict/intervention.
+
+    P03 must land the plumbing this needs: a way to drive
+    controlplane/intercept.py's pipeline for a recorded tool call without
+    executing the tool. Deliberately not stubbed with a decide() shortcut —
+    that shortcut is exactly what made the old version circular.
+    """
+    raise NotImplementedError(
+        "Exp 5 scoring path is not wired until P03 provides the held-out gold "
+        "set and the non-executing pipeline driver. See docs/experiment-audit.md."
+    )
 
 
-def _generate(rng: random.Random, gold: str) -> object:
-    amount = rng.randint(50_000, 2_000_000)
-    if gold == "ALLOW":
-        return _decide(rng.randint(0, 7), amount, True, Reliability.CORROBORATED, Confidence.HIGH)
-    if gold == "BLOCK":
-        return _decide(rng.randint(8, 30), amount, True, Reliability.CORROBORATED, Confidence.HIGH)
-    if gold == "ESCALATE":
-        return _decide(rng.randint(0, 7), amount, True, Reliability.CORROBORATED, Confidence.NONE)
-    if gold == "SOURCE_UNRELIABLE":
-        return _decide(rng.randint(0, 7), amount, True, Reliability.INFERRED, Confidence.HIGH)
-    raise ValueError(gold)
-
-
-def run(n_per_class: int = 50, seed: int = 20260814) -> dict:
-    rng = random.Random(seed)
+def _confusion(records: list[dict]) -> dict:
     matrix = {g: {p: 0 for p in CLASSES} for g in CLASSES}
-
-    for gold in CLASSES:
-        for _ in range(n_per_class):
-            decision = _generate(rng, gold)
-            predicted = _outcome_label(decision)
-            if predicted not in CLASSES:
-                predicted = "OTHER"
-                matrix[gold].setdefault("OTHER", 0)
-                matrix[gold]["OTHER"] += 1
-            else:
-                matrix[gold][predicted] += 1
+    for rec in records:
+        gold = _gold_class(rec)
+        predicted = _predict_class(rec)
+        if gold not in CLASSES:
+            raise SystemExit(f"gold_set.jsonl {rec['id']}: gold class {gold!r} not in {CLASSES}")
+        if predicted not in CLASSES:
+            matrix[gold].setdefault("OTHER", 0)
+            matrix[gold]["OTHER"] += 1
+        else:
+            matrix[gold][predicted] += 1
 
     per_class = {}
-    total = n_per_class * len(CLASSES)
-    correct = sum(matrix[g][g] for g in CLASSES)
     for cls in CLASSES:
         tp = matrix[cls][cls]
-        fn = sum(matrix[cls][p] for p in CLASSES if p != cls)
+        fn = sum(v for p, v in matrix[cls].items() if p != cls)
         fp = sum(matrix[g][cls] for g in CLASSES if g != cls)
-        precision = tp / (tp + fp) if (tp + fp) else float("nan")
-        recall = tp / (tp + fn) if (tp + fn) else float("nan")
-        per_class[cls] = {"precision": precision, "recall": recall, "tp": tp, "fp": fp, "fn": fn}
+        per_class[cls] = {
+            "precision": tp / (tp + fp) if (tp + fp) else float("nan"),
+            "recall": tp / (tp + fn) if (tp + fn) else float("nan"),
+            "tp": tp,
+            "fp": fp,
+            "fn": fn,
+        }
+    total = len(records)
+    correct = sum(matrix[g][g] for g in CLASSES)
+    return {"total": total, "accuracy": correct / total if total else float("nan"),
+            "matrix": matrix, "per_class": per_class}
 
-    # Cost-weighted error: a false ALLOW (gold BLOCK/ESCALATE/SOURCE_UNRELIABLE,
-    # predicted ALLOW) costs a refund; a false BLOCK (gold ALLOW, predicted
-    # anything stricter) costs one human review. Assumed unit costs above.
-    false_allow_paise = 0
-    false_block_reviews = 0
-    for gold in CLASSES:
-        for predicted, count in matrix[gold].items():
-            if predicted not in CLASSES or gold == predicted:
-                continue
-            if predicted == "ALLOW":
-                false_allow_paise += count * ASSUMED_MEAN_REFUND_PAISE
-            elif gold == "ALLOW":
-                false_block_reviews += count
 
-    return {
-        "n_per_class": n_per_class,
-        "total": total,
-        "accuracy": correct / total,
-        "matrix": matrix,
-        "per_class": per_class,
-        "cost_weighted": {
-            "false_allow_total_paise": false_allow_paise,
-            "false_block_review_count": false_block_reviews,
-            "false_block_total_paise": false_block_reviews * ASSUMED_COST_PER_HUMAN_REVIEW_PAISE,
-            "note": "costs use ASSUMED_* constants in this file, not measured figures",
-        },
-    }
+_DRIVER_MISSING_MESSAGE = "\n".join(
+    [
+        "SEB-1 Exp 5 is BLOCKED — no honest number is available yet.",
+        "",
+        "  Task P03 has landed the held-out gold set (bench/gold_set.jsonl,",
+        f"  {GOLD_SET.name}) with labels assigned independently of decide() by",
+        "  bench/label.py. That was the first of two things this experiment",
+        "  needs.",
+        "",
+        "  Still missing: the non-executing pipeline driver — a way to run",
+        "  controlplane/intercept.py's gate for each recorded tool call WITHOUT",
+        "  executing the refund, so _predict_class() can read a real verdict.",
+        "  It is deliberately not stubbed with a decide() shortcut; that",
+        "  shortcut is what made the previous confusion matrix circular.",
+        "",
+        "  This experiment resumes when that driver exists. See",
+        "  docs/experiment-audit.md and docs/gold-set.md.",
+    ]
+)
+
+
+def run() -> dict:
+    """Blocked. Until P03 (done: gold set) *and* the non-executing pipeline
+    driver (pending) both exist, this raises SystemExit rather than emit a
+    meaningless number."""
+    records = _load_gold_set()
+    # The gold set is here; the scoring driver is not. Fail loudly and
+    # specifically rather than let _predict_class()'s NotImplementedError
+    # surface as an opaque crash.
+    raise SystemExit(_DRIVER_MISSING_MESSAGE)
+    return _confusion(records)  # noqa: unreachable — kept for when the driver lands
 
 
 def main() -> int:
-    result = run()
-    print("SEB-1 Exp 5 — confusion matrix (gold vs predicted)")
-    print(f"  n per class: {result['n_per_class']}  ·  total: {result['total']}  ·  accuracy: {result['accuracy']:.3f}")
-    print()
-    header = "gold\\pred".ljust(20) + "".join(c.ljust(20) for c in CLASSES)
-    print(header)
-    for gold in CLASSES:
-        row = gold.ljust(20) + "".join(str(result["matrix"][gold].get(p, 0)).ljust(20) for p in CLASSES)
-        print(row)
-    print()
-    for cls, m in result["per_class"].items():
-        print(f"  {cls:20s} precision={m['precision']:.3f}  recall={m['recall']:.3f}  (tp={m['tp']} fp={m['fp']} fn={m['fn']})")
-    print()
-    cw = result["cost_weighted"]
-    print(f"  false ALLOW cost (assumed INR {ASSUMED_MEAN_REFUND_PAISE // 100:,}/refund) : "
-          f"INR {cw['false_allow_total_paise'] // 100:,}")
-    print(f"  false BLOCK reviews (assumed INR {ASSUMED_COST_PER_HUMAN_REVIEW_PAISE // 100:,}/review): "
-          f"{cw['false_block_review_count']} -> INR {cw['false_block_total_paise'] // 100:,}")
-    print(f"  ({cw['note']})")
+    run()
     return 0
 
 

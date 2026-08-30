@@ -1,0 +1,10 @@
+{
+  "case_id": "gs-020",
+  "model": "Qwen/Qwen3-8B",
+  "temperature": 0.0,
+  "max_tokens": 2048,
+  "seed": "n/a (greedy decoding, temperature 0)",
+  "raw_content": "{\"decision\": \"BLOCK\", \"reason\": \"The refund request is made 2 days after delivery, which is within the 7-day window for full refunds, but the amount requested (INR 25,000.00) is not specified in the policy. The policy does not mention any discount or reduced amount for refunds, so the amount is not justified.\"}",
+  "latency_ms": 8238.0,
+  "prompt_sha_key": "e01e8fcc74ff0f72b073"
+}

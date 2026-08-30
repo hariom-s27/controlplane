@@ -123,7 +123,7 @@ class ClaimKind(str, Enum):
     loudly rather than silently defaulting to C5 — see tests/test_ladder.py.
     """
 
-    # --- use case 1: customer servicing (correctness) ---
+    # --- order / amount / policy shaped claims ---
     WITHIN_REFUND_WINDOW = "within_refund_window"
     AMOUNT_WITHIN_AUTHORITY = "amount_within_authority"
     ORDER_BELONGS_TO_CUSTOMER = "order_belongs_to_customer"
@@ -131,8 +131,11 @@ class ClaimKind(str, Enum):
     POLICY_CLAUSE_CURRENT = "policy_clause_current"
     CLAUSE_SEMANTICS_MATCH = "clause_semantics_match"
     ORDER_ATTRIBUTES_MATCH = "order_attributes_match"  # D52 cross-validation
+    # P08-only high-severity fixture: the source column is explicitly marked
+    # inferred in orders.db.  No production manifest binds this claim today.
+    ORDER_STATUS_SUPPORTS_ACTION = "order_status_supports_action"
 
-    # --- use case 2: internal knowledge assistant (entitlement) ---
+    # --- entitlement shaped claims ---
     RECIPIENT_ENTITLED_TO_DOC = "recipient_entitled_to_doc"
     EXCERPT_CONTAINS_THIRD_PARTY_PII = "excerpt_contains_third_party_pii"
     DOC_CLASSIFICATION_PERMITTED = "doc_classification_permitted"
@@ -153,10 +156,10 @@ class SessionContext(BaseModel):
 
     trace_id: str
     customer_id: str | None = None
-    subject_id: str | None = None  # employee id, for use case 2
-    agent_role: str = "servicing_agent"
-    use_case: str = "customer_support_assistant"
-    manifest_id: str = "servicing_v1"
+    subject_id: str | None = None  # employee id, for an entitlement use case
+    agent_role: str = "agent"
+    use_case: str = "default"
+    manifest_id: str = "default"
     gate_enabled: bool = True
 
 
@@ -193,7 +196,7 @@ class ProposedAction(BaseModel):
     doc_id: str | None = None
     item_colour: str | None = None  # D52 cross-validation (R3 extended) — declared
     item_category: str | None = None  # tool args, same mechanism as order_id, never prose
-    excerpt: str | None = None  # send_document's payload text — structural: it IS what would be sent
+    excerpt: str | None = None  # an outbound document payload — structural: it IS what would be sent
 
     # --- claimed (from agent prose / retrieved context) ---
     claimed_delivered_at: date | None = None
@@ -279,6 +282,18 @@ class CompensationPlan(BaseModel):
     compensability: Compensability
 
 
+class FailureContext(BaseModel):
+    """Structured operational degradation recorded inside the signed receipt."""
+
+    kind: str
+    stage: str
+    source: str | None = None
+    risk_tier: int | None = None
+    fail_posture: Literal["open", "closed"] | None = None
+    posture_outcome: str | None = None
+    detail: str | None = None
+
+
 class Decision(BaseModel):
     trace_id: str
     manifest_id: str
@@ -293,8 +308,22 @@ class Decision(BaseModel):
     compensation: CompensationPlan | None = None
     idempotency_key: str | None = None
     modified_args: dict[str, Any] | None = None
+    # Operational availability is separate from the evidence verdict.  A
+    # fail-open action can therefore be explicitly unverified without
+    # pretending that a source outage was an ordinary policy decision.
+    verification_state: Literal["verified", "unverified"] = "verified"
+    failure_context: FailureContext | None = None
+    component_status: dict[str, Any] = Field(default_factory=dict)
 
     # --- coverage telemetry (S11 logger 1) ---
+    # Per-tier claim COUNTS are descriptive telemetry and stay. The old
+    # "coverage_ratio" (C1+C2+C3 / total) does NOT: every ClaimKind a
+    # governed tool can emit is C1/C2/C3 by construction (ladder.py maps them
+    # all; the only C5 kind, CUSTOMER_INTENT, is in no tool's claim list), so
+    # the ratio was deterministically 1.0 and measured nothing about traffic.
+    # "Every ClaimKind is mapped to a tier" is an invariant, enforced at
+    # import in ladder.py and tested in tests/test_ladder.py — a violation is
+    # a bug, not a low metric. See docs/experiment-audit.md.
     @property
     def coverage(self) -> dict[str, Any]:
         total = len(self.claims)
@@ -302,12 +331,10 @@ class Decision(BaseModel):
         for c in self.claims:
             key = c.tier.value if c.tier else "unclassified"
             by_tier[key] = by_tier.get(key, 0) + 1
-        checkable = sum(by_tier.get(t, 0) for t in ("C1", "C2", "C3"))
         return {
             "claims_total": total,
             "by_tier": by_tier,
             "deterministically_checkable": by_tier.get("C1", 0) + by_tier.get("C2", 0),
-            "coverage_ratio": (checkable / total) if total else 0.0,
         }
 
 
@@ -333,6 +360,7 @@ __all__ = [
     "Evidence",
     "Reason",
     "CompensationPlan",
+    "FailureContext",
     "Decision",
     "utcnow",
 ]

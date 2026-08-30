@@ -1,7 +1,9 @@
 """S9 — verdict + intervention. Pure function: no I/O, no clock, no logging
-(hard constraint #4). S15's metamorphic invariants and bias probe call this
-thousands of times, which only works if it has no side effects and no
-hidden inputs — every fact it uses is a parameter.
+(hard constraint #4). S15's metamorphic invariants and the mutation harness
+call this thousands of times, which only works if it has no side effects and
+no hidden inputs — every fact it uses is a parameter. That same property is
+what tests/test_no_protected_attributes.py checks structurally: decide() has
+no protected-attribute parameter, so it cannot discriminate on one.
 
 Verdict precedence, per-claim not global: a hard (C1/C2) contradiction from
 evidence that WAS above the reliability floor always wins the verdict
@@ -68,7 +70,7 @@ _RELIABILITY_RANK: dict[Reliability, int] = {
 }
 
 
-def _idempotency_key(trace_id: str, action: ProposedAction) -> str:
+def idempotency_key_for(trace_id: str, action: ProposedAction) -> str:
     """Deterministic, not random — decide() is pure. The same trace_id and
     action must always mint the same key, so a retried caller can be
     recognized and refused a double-execution."""
@@ -189,7 +191,7 @@ def decide(
     else:
         verdict = Verdict.VERIFIED
 
-    comp = compensation_for(action.tool)
+    comp = compensation_for(manifest)
     verdict_handling = manifest.get("verdict_handling", {})
 
     def _intervention_for(v: Verdict, c3_only: bool) -> Intervention:
@@ -228,8 +230,13 @@ def decide(
         evidence=evidence,
         predicate_trace={**predicate_result, "clause_match": clause_match, "grounding_score": grounding_score},
         compensation=comp,
-        idempotency_key=_idempotency_key(trace_id, action),
+        idempotency_key=idempotency_key_for(trace_id, action),
+        verification_state=(
+            "unverified"
+            if verdict in {Verdict.UNVERIFIABLE, Verdict.SOURCE_UNRELIABLE}
+            else "verified"
+        ),
     )
 
 
-__all__ = ["decide"]
+__all__ = ["decide", "idempotency_key_for"]

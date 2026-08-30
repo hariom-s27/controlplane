@@ -1,0 +1,10 @@
+{
+  "case_id": "gs-008",
+  "model": "Qwen/Qwen3-8B",
+  "temperature": 0.0,
+  "max_tokens": 2048,
+  "seed": "n/a (greedy decoding, temperature 0)",
+  "raw_content": "{\"decision\": \"BLOCK\", \"reason\": \"The customer requested a refund 5 days after delivery, which is within the 7-day window for full refunds, but the policy states refunds are issued to the original payment method within 5-7 business days of approval. The agent's reasoning does not address the timing of the refund processing, which is required by the policy.\"}",
+  "latency_ms": 3322.1,
+  "prompt_sha_key": "97172daa8db64932dd20"
+}

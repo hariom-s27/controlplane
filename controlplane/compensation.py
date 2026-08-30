@@ -1,29 +1,27 @@
-"""D49 — the compensation registry. Risk tier and compensability are
-DIFFERENT AXES: a high-risk fully-compensable action (a refund, reversible
-by a chargeback) is a completely different design problem from a low-risk
-non-compensable one (an email already sent). See docs/compensability.md.
+"""D49 — compensability. Risk tier and compensability are DIFFERENT AXES: a
+high-risk fully-compensable action (a refund, reversible by a chargeback) is
+a completely different design problem from a low-risk non-compensable one
+(an email already sent). See docs/compensability.md.
+
+Compensability is declared per manifest (the ``compensation:`` block),
+because it is a property of the specific action a use case takes. The engine
+reads it; it does not decide it. "Block" is mandatory for a NOT-compensable
+action regardless of how the verdict was reached.
 """
 
 from __future__ import annotations
 
 from controlplane.schema import Compensability, CompensationPlan
 
-_TABLE: dict[str, tuple[str | None, Compensability]] = {
-    "issue_refund": ("reverse_refund", Compensability.FULLY),
-    "update_entitlement": ("restore_entitlement", Compensability.PARTIALLY),
-    "send_customer_email": (None, Compensability.NOT),
-    "send_document": ("revoke_access", Compensability.PARTIALLY),
-}
 
-
-def compensation_for(tool: str) -> CompensationPlan:
-    try:
-        action, compensability = _TABLE[tool]
-    except KeyError:
+def compensation_for(manifest: dict) -> CompensationPlan:
+    c = (manifest or {}).get("compensation")
+    if not isinstance(c, dict) or "compensability" not in c:
         raise KeyError(
-            f"controlplane/compensation.py has no row for tool={tool!r} — every governed tool needs one"
-        ) from None
-    return CompensationPlan(action=action, compensability=compensability)
+            f"manifest {(manifest or {}).get('_name')!r} has no valid 'compensation' block "
+            "(needs at least compensability: fully|partially|not)"
+        )
+    return CompensationPlan(action=c.get("action"), compensability=Compensability(c["compensability"]))
 
 
 __all__ = ["compensation_for"]

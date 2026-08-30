@@ -1,0 +1,56 @@
+# Use case 3 (goodwill discount / store-credit approval).
+#
+# THE POINT OF THIS FILE: it was added with no change to any file under
+# controlplane/. Same engine, same ladder, same verdict logic, same receipt
+# — a new action, governed entirely from YAML. It reuses the `orders`
+# resolver and existing ClaimKinds; `WITHIN_REFUND_WINDOW` is the ladder's
+# name for "a date-vs-window check" and here it is the discount's expiry.
+#
+# Wall-clock time to author + get passing: see docs/architecture.md.
+manifest_id: discount_approval-v1
+schema_version: 1
+
+tool: approve_discount
+predicate_graph: graphs/discount_approval.json
+
+compensation:
+  action: revoke_credit
+  compensability: partially                        # a credit can be clawed back before it's spent
+
+risk_tier_default: 1
+window_days: 14                                    # a goodwill credit is valid within 14 days of delivery
+authority_ceiling_paise: 500000                    # INR 5,000 — an agent's discount authority
+
+latency_budget_ms: 400
+escalation_budget_pct: 3
+
+fail_posture:
+  tier_0: open
+  tier_1: closed                                   # financial approval: exhausted budget BLOCKS
+  tier_2: closed
+
+reliability_floor: corroborated
+
+verdict_handling:
+  UNVERIFIABLE: escalate
+  SOURCE_UNRELIABLE: escalate
+
+evidence_retention_days: 365
+
+predicate_payload:
+  session.customer_id: session.customer_id
+  clock.today: clock.today
+
+claim_bindings:
+  - claim_kind: ORDER_BELONGS_TO_CUSTOMER
+    resolver: orders
+    subject: action.order_id
+    predicate_key: order.customer_id
+  - claim_kind: WITHIN_REFUND_WINDOW                # reused: the discount's expiry window
+    resolver: orders
+    subject: action.order_id
+    predicate_key: delivered_at
+  - claim_kind: AMOUNT_WITHIN_AUTHORITY
+    resolver: authority
+    subject: action.order_id
+    predicate_key: authority_ceiling_paise

@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://controlplane.local/schemas/manifest.schema.json",
+  "title": "ControlPlane policy manifest — structural contract (P02 hardening)",
+  "description": "Validates the STABLE STRUCTURAL SHAPE of a manifests/*.yaml file only: field types, the closed vocabulary for claim_kind/resolver/enums, and reference syntax. It deliberately cannot see raw SQL, Python, or arbitrary imports because the schema has no field that accepts free-form code — claim_bindings.additionalProperties is false, so a binding cannot carry a 'query' or 'exec' key. Semantic validation (does this resolver/claim_kind/graph/reference actually exist and resolve) stays authoritative in controlplane/manifest.py — this file never replaces it.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "manifest_id",
+    "tool",
+    "predicate_graph",
+    "compensation",
+    "risk_tier_default",
+    "fail_posture",
+    "reliability_floor",
+    "verdict_handling",
+    "claim_bindings"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1,
+      "description": "Bumped only when the structural contract itself changes. The loader rejects any other value."
+    },
+    "manifest_id": { "type": "string", "minLength": 1 },
+    "tool": { "type": "string", "minLength": 1 },
+    "predicate_graph": {
+      "type": "string",
+      "pattern": "\\.json$",
+      "description": "Path relative to manifests/ to a Zen JDM graph."
+    },
+    "policy_id": { "type": "string", "minLength": 1 },
+    "compensation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["compensability"],
+      "properties": {
+        "action": { "type": ["string", "null"] },
+        "compensability": { "enum": ["fully", "partially", "not"] }
+      }
+    },
+    "risk_tier_default": { "enum": [0, 1, 2] },
+    "window_days": { "type": ["integer", "null"], "minimum": 0 },
+    "authority_ceiling_paise": { "type": "integer", "minimum": 0 },
+    "latency_budget_ms": { "type": "integer", "minimum": 0 },
+    "escalation_budget_pct": { "type": "number", "minimum": 0, "maximum": 100 },
+    "evidence_retention_days": { "type": "integer", "minimum": 0 },
+    "fail_posture": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tier_0", "tier_1", "tier_2"],
+      "properties": {
+        "tier_0": { "enum": ["open", "closed"] },
+        "tier_1": { "enum": ["open", "closed"] },
+        "tier_2": { "enum": ["open", "closed"] }
+      }
+    },
+    "reliability_floor": { "enum": ["corroborated", "inferred", "unverified"] },
+    "verdict_handling": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "UNVERIFIABLE": { "enum": ["escalate", "allow_with_caveat"] },
+        "SOURCE_UNRELIABLE": { "enum": ["escalate", "allow_with_caveat"] }
+      }
+    },
+    "predicate_payload": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string",
+        "pattern": "^[A-Za-z_][A-Za-z0-9_]*\\.[A-Za-z0-9_.]+$"
+      }
+    },
+    "claim_bindings": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["claim_kind", "resolver"],
+        "properties": {
+          "claim_kind": {
+            "enum": [
+              "WITHIN_REFUND_WINDOW",
+              "AMOUNT_WITHIN_AUTHORITY",
+              "ORDER_BELONGS_TO_CUSTOMER",
+              "AMOUNT_NOT_EXCEEDING_ORDER",
+              "POLICY_CLAUSE_CURRENT",
+              "CLAUSE_SEMANTICS_MATCH",
+              "ORDER_ATTRIBUTES_MATCH",
+              "ORDER_STATUS_SUPPORTS_ACTION",
+              "RECIPIENT_ENTITLED_TO_DOC",
+              "EXCERPT_CONTAINS_THIRD_PARTY_PII",
+              "DOC_CLASSIFICATION_PERMITTED",
+              "CUSTOMER_INTENT"
+            ]
+          },
+          "resolver": {
+            "enum": ["orders", "policy", "entitlements", "authority", "pii", "intent"]
+          },
+          "subject": {
+            "type": ["string", "null"],
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*\\.[A-Za-z0-9_.]+$"
+          },
+          "predicate_key": {
+            "anyOf": [
+              { "type": "null" },
+              { "type": "string" },
+              { "type": "object", "additionalProperties": { "type": "string" } }
+            ]
+          }
+        }
+      }
+    }
+  }
+}

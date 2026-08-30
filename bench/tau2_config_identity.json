@@ -1,0 +1,108 @@
+{
+  "_note": "P06 configuration identity. Ours (bench/), not third-party. Written while C1 was running, before C1 completed. Shared verbatim across C1/C2/C3 except the 'condition' field.",
+  "locked_at_utc": "2026-08-30T16:42:06Z",
+  "tau2": {
+    "repository": "https://github.com/sierra-research/tau2-bench",
+    "tag": "v1.0.1",
+    "commit_sha": "fc0055dc4e0a316c3f83133267fbd6faaa770992",
+    "checkout_location": "phase 2/external/tau2-bench",
+    "package_version": "1.0.1",
+    "python_version": "3.12.14",
+    "key_dependency_versions": {
+      "litellm": "1.81.11",
+      "openai": "2.20.0"
+    },
+    "known_worktree_deviation": {
+      "file": "uv.lock",
+      "change": "self-referential 'tau2' package version entry: 1.0.0 -> 1.0.1",
+      "cause": "uv sync auto-corrected lockfile self-metadata to match pyproject.toml's declared version=1.0.1 after `git checkout v1.0.1`; occurred during initial environment setup, before C1 started, and has not changed since",
+      "content_affected": false,
+      "verified_unaffected": [
+        "data/tau2/domains/retail/tasks.json",
+        "data/tau2/domains/retail/policy.md",
+        "data/tau2/domains/retail/db.json",
+        "data/tau2/domains/retail/split_tasks.json",
+        "src/tau2/evaluator/*.py",
+        "src/tau2/metrics/agent_metrics.py",
+        "src/tau2/domains/retail/tools.py",
+        "src/tau2/domains/retail/environment.py"
+      ]
+    }
+  },
+  "retail_domain_integrity_hashes_sha256": {
+    "data/tau2/domains/retail/tasks.json": "f44563d8f36362e2dc58282bb02cfb85010d22f27d9439808758d3e9b2bc16d2",
+    "data/tau2/domains/retail/policy.md": "4313d3fef8acf919f555fa17fbce929cc3ed1cef2dd8f0d35ff5c8c3364de176",
+    "data/tau2/domains/retail/db.json": "dbde692e380bb4ad17f9f7841172cf1e69bebad2daa405628ccdc52a42b3b9b0",
+    "data/tau2/domains/retail/split_tasks.json": "5f9949b833e6b99584b87e84ef22f9d81789ea67a52e534c6f7aa91eff08adc7",
+    "src/tau2/evaluator/evaluator.py": "10a87710931429d9abe80fe244cbe7fa0494333587a9c01522a233d64f94196a",
+    "src/tau2/evaluator/evaluator_action.py": "bf79bf821c3cf1b67199069f35f5f1f27826cebe511da6a5876fa864e6510a4a",
+    "src/tau2/evaluator/evaluator_env.py": "40751ab96a96acf878474cc460fadb3c16d189ffe493df8c130685ec0421ce60",
+    "src/tau2/evaluator/evaluator_communicate.py": "6efd259a1aee43fb55d2ae4c6024deb467064b8941383fca23550e4ae3a347c0",
+    "src/tau2/evaluator/evaluator_nl_assertions.py": "f625ede39bac7052dbfa57a175a8d177d8574e9fe464058634fe161dcff763fc",
+    "src/tau2/metrics/agent_metrics.py": "da3e95e6c1c3773305d7c02ed60cac944fac18ff6821b3a0df16d9255083c62d",
+    "src/tau2/domains/retail/tools.py": "b40ceefd87b428792e2fdce545b0156131273be6e3ad36e29093763f5dd370f4",
+    "src/tau2/domains/retail/environment.py": "3e62fee191a1d727275aaab1104afb0cebcb6cbb6175721497bd6158e74beb5b",
+    "_recorded_at_utc": "2026-08-30T16:53:41Z (while C1 was in progress, 8/40 tasks complete)",
+    "_recheck_required_after": ["C1", "C2", "C3"]
+  },
+  "model": {
+    "benchmark_agent_llm": "featherless_ai/Qwen/Qwen3-8B",
+    "user_simulator_llm": "featherless_ai/Qwen/Qwen3-8B",
+    "deviation_from_tau2_default": "tau2's own DEFAULT_LLM_AGENT/DEFAULT_LLM_USER is gpt-4.1-2025-04-14 for both roles; substituted to reuse existing project Featherless credentials (no OpenAI key available). Identical substitution held across C1/C2/C3.",
+    "provider": "Featherless AI (native LiteLLM provider 'featherless_ai', base_url https://api.featherless.ai/v1)"
+  },
+  "determinism": {
+    "agent_temperature": 0.0,
+    "user_temperature": 0.0,
+    "classification": "Nominally deterministic by requested configuration (temperature=0.0 fixed for both LLM roles, tau2's own default). NOT independently verified as bit-exact reproducible: Featherless is shared-batch GPU inference infrastructure, and temperature=0.0 is not a guaranteed-bit-exact contract on such infrastructure (floating-point/batch-composition non-determinism is a known property of GPU-batched serving generally, not something we tested here). No provider-side determinism guarantee was available to us for this check.",
+    "seed": 300,
+    "seed_set": [300],
+    "num_trials_k": 1,
+    "rationale_for_single_seed": "K=1 matches tau2's own CLI default (DEFAULT_NUM_TRIALS=1) and was locked before C1 was observed; with a single seed/trial by design, per-seed variation is not applicable and is not manufactured or implied.",
+    "seeds_added_or_removed_after_seeing_results": false
+  },
+  "decoding": {
+    "agent_llm_args": {"temperature": 0.0},
+    "user_llm_args": {"temperature": 0.0}
+  },
+  "task_set": {
+    "domain": "retail",
+    "split": "test",
+    "n_tasks": 40,
+    "task_ids": ["5","9","12","17","18","26","27","32","33","36","38","39","40","42","45","49","51","53","55","56","60","61","62","64","65","68","70","71","74","77","79","86","90","94","97","100","101","102","108","111"]
+  },
+  "run_settings": {
+    "max_steps": 200,
+    "max_errors": 10,
+    "max_concurrency": 3,
+    "max_retries": 3,
+    "retry_delay_s": 1.0,
+    "timeout_s_per_task": 300
+  },
+  "initial_state": {
+    "mechanism": "tau2.domains.retail.environment.get_environment() calls RetailDB.load(RETAIL_DB_PATH) fresh for every environment construction, reloading the same static data/tau2/domains/retail/db.json file (hash recorded above). No special reset engineering is required; this is tau2's own native behavior, used unmodified, identically for every task in every condition.",
+    "db_json_sha256": "dbde692e380bb4ad17f9f7841172cf1e69bebad2daa405628ccdc52a42b3b9b0",
+    "cross_condition_state_sharing": "none — every task in every condition (C1/C2/C3) constructs its own fresh environment from the same static db.json; no mutated state is carried between tasks or between conditions",
+    "target_db_state_identity": "PENDING — tau2's official evaluator (tau2 evaluate-trajs) derives a target DB hash per task by replaying evaluation_criteria.actions on a fresh environment; this is computed at evaluation time, not at run time. Will be recorded here per-task once C1 is evaluated, and re-verified identical for the same task_id across C2/C3."
+  },
+  "conditions": {
+    "C1": {
+      "description": "vanilla tau2 agent, no ControlPlane interception",
+      "save_to": "data/simulations/C1_vanilla_baseline/ (in the external tau2-bench checkout)",
+      "status": "IN PROGRESS as of this writing"
+    },
+    "C2": {
+      "description": "same agent + ControlPlane interception via bench/tau2_adapter.py + manifests/tau2_retail.yaml, current/fresh policy",
+      "status": "NOT STARTED — adapter and manifest not yet built"
+    },
+    "C3": {
+      "description": "same as C2, plus a deliberately stale policy snapshot injected into agent context; authoritative policy/DB remain current",
+      "stale_snapshot_candidate": "sierra-research/tau-bench commit c86a7604176864bc590703523e3b3e780cc0169f (2024-07-25), file tau_bench/envs/retail/wiki.md",
+      "status": "NOT STARTED"
+    },
+    "intended_differences": {
+      "C1_to_C2": "ControlPlane interception/governance only",
+      "C2_to_C3": "stale-policy-context injection only"
+    }
+  }
+}

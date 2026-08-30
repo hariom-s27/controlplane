@@ -1,0 +1,10 @@
+{
+  "case_id": "gs-094",
+  "model": "Qwen/Qwen3-8B",
+  "temperature": 0.0,
+  "max_tokens": 2048,
+  "seed": "n/a (greedy decoding, temperature 0)",
+  "raw_content": "{\"decision\": \"BLOCK\", \"reason\": \"The refund amount exceeds the INR 25,000 limit set by the policy for servicing agents to approve refunds without supervisor intervention.\"}",
+  "latency_ms": 2461.1,
+  "prompt_sha_key": "18f6fedc05256675a45e"
+}

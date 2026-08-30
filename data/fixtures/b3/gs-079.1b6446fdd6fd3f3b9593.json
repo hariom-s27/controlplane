@@ -1,0 +1,10 @@
+{
+  "case_id": "gs-079",
+  "model": "Qwen/Qwen3-8B",
+  "temperature": 0.0,
+  "max_tokens": 2048,
+  "seed": "n/a (greedy decoding, temperature 0)",
+  "raw_content": "{\n\n\n    \"decision\": \"ALLOW\",\n    \"reason\": \"The refund is within the 30-day period from the delivery date of 2026-07-20, and the amount is below the INR 25,000 threshold requiring supervisor approval.\"\n  }",
+  "latency_ms": 2869.9,
+  "prompt_sha_key": "1b6446fdd6fd3f3b9593"
+}

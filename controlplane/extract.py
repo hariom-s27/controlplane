@@ -31,7 +31,7 @@ FIXTURES = ROOT / "data" / "fixtures" / "extract"
 FIXTURES.mkdir(parents=True, exist_ok=True)
 
 EXTRACT_PROMPT = (
-    "You are extracting structured claims from a customer servicing agent's "
+    "You are extracting structured claims from an agent's "
     "justification for a proposed action. Fill each field ONLY from what the "
     "justification or retrieved policy text actually states. If a fact is "
     "not stated, leave that field null - do not guess, infer, or fill in a "
@@ -65,27 +65,9 @@ class _ClaimedFields(BaseModel):
     claimed_reasoning: str | None
 
 
-# Which claims are relevant to which tool. S5's ladder.py classifies each
-# into a tier; this only decides which claims exist for a given action.
-_CLAIM_KINDS_BY_TOOL: dict[str, list[ClaimKind]] = {
-    "issue_refund": [
-        ClaimKind.ORDER_BELONGS_TO_CUSTOMER,
-        ClaimKind.AMOUNT_NOT_EXCEEDING_ORDER,
-        ClaimKind.WITHIN_REFUND_WINDOW,
-        ClaimKind.AMOUNT_WITHIN_AUTHORITY,
-        ClaimKind.POLICY_CLAUSE_CURRENT,
-        ClaimKind.CLAUSE_SEMANTICS_MATCH,
-        ClaimKind.ORDER_ATTRIBUTES_MATCH,  # R3 extended: item_colour/item_category, now structural
-    ],
-    # S13, use case 2: correctness -> entitlement. Order matters for the
-    # receipt's reasons list: classification first (the general question),
-    # then the customer-specific one the cross-tenant demo hinges on.
-    "send_document": [
-        ClaimKind.DOC_CLASSIFICATION_PERMITTED,
-        ClaimKind.RECIPIENT_ENTITLED_TO_DOC,
-        ClaimKind.EXCERPT_CONTAINS_THIRD_PARTY_PII,
-    ],
-}
+# Which claims a use case checks is declared per manifest now
+# (claim_bindings), not per tool here — see controlplane/bindings.py. Their
+# order in the manifest is the order they appear in on the receipt.
 
 # Mechanical mapping from each ClaimKind to the ProposedAction field its
 # asserted_value comes from. Not handed down by any spec — a judgment call
@@ -107,6 +89,8 @@ _ASSERTED_VALUE_FIELD: dict[ClaimKind, str] = {
     # ORDER_ATTRIBUTES_MATCH needs two fields (colour + category), handled
     # as a special case in build_claims() below rather than forced into
     # this one-field-per-kind table.
+    # ORDER_STATUS_SUPPORTS_ACTION is a P08-only source-reliability fixture.
+    # It has no agent assertion; the real orders.db value is resolved later.
 }
 
 
@@ -195,24 +179,28 @@ def extract_action(
     )
 
 
-def build_claims(action: ProposedAction) -> list[Claim]:
-    """One Claim per ClaimKind relevant to this action's tool. tier and
-    load_bearing stay unset here — controlplane/ladder.py (S5) fills them.
+def build_claims(action: ProposedAction, manifest: dict) -> list[Claim]:
+    """One Claim per binding in the active manifest's ``claim_bindings``.
+    tier and load_bearing stay unset here — controlplane/ladder.py (S5)
+    fills them.
 
-    Raises for an unmodeled tool rather than returning []: a tool with no
-    claims sails through decide() with nothing to check, which silently
-    resolves to VERIFIED/ALLOW — a real bypass of the gate, not a safe
-    default. Every governed tool needs a row here, deliberately, the same
-    way ladder.py and compensation.py fail loudly on a missing row."""
-    if action.tool not in _CLAIM_KINDS_BY_TOOL:
-        raise KeyError(
-            f"controlplane/extract.py has no claim kinds for tool={action.tool!r} — "
-            "every governed tool needs a row in _CLAIM_KINDS_BY_TOOL"
-        )
-    kinds = _CLAIM_KINDS_BY_TOOL[action.tool]
+    ``claim.subject`` (the entity a claim is about — an order_id, a doc_id,
+    or a policy_id) comes from the binding's ``subject`` reference, so a
+    claim about a policy clause is about the policy_id, never the order in
+    question. ``asserted_value`` (what the agent said) is still derived here
+    per ClaimKind — it is the extractor's output, not a fact.
+
+    A tool the active manifest does not govern is rejected in
+    intercept._run_gate before this is reached; a manifest with a broken
+    binding is rejected at load in controlplane/manifest.py. Either way it
+    fails loudly, never sails through as VERIFIED/ALLOW."""
+    from controlplane.bindings import claim_specs, resolve_ref
+
     claims = []
-    for kind in kinds:
-        subject = _subject_for(kind, action)
+    for spec in claim_specs(manifest):
+        kind = spec["claim_kind"]
+        subject = resolve_ref(spec["subject"], action=action, manifest=manifest) if spec.get("subject") else None
+        subject = subject or action.order_id or action.doc_id or "unknown"
         if kind is ClaimKind.ORDER_ATTRIBUTES_MATCH:
             value = {"colour": action.item_colour, "category": action.item_category}
         else:
@@ -222,26 +210,6 @@ def build_claims(action: ProposedAction) -> list[Claim]:
                 value = str(value)  # e.g. a date -> ISO string; keeps asserted_value JSON-safe
         claims.append(Claim(id=f"{subject}:{kind.value}", kind=kind, subject=subject, asserted_value=value))
     return claims
-
-
-# Which "entity" (schema.py's Claim.subject: "the entity this is about")
-# each kind is actually about. Order-related kinds resolve against
-# order_id; policy-related kinds resolve against a policy_id, which is NOT
-# the same identifier — a claim about the current refund_window clause is
-# about "refund_window", never about the order that happens to be in
-# question. Getting this wrong sends PolicyResolver querying
-# WHERE policy_id = 'ORD-88461', which finds nothing and reports
-# UNVERIFIED/NONE — a real bug caught by running the milestone live.
-_POLICY_ID_FOR_KIND: dict[ClaimKind, str] = {
-    ClaimKind.POLICY_CLAUSE_CURRENT: "refund_window",
-    ClaimKind.CLAUSE_SEMANTICS_MATCH: "refund_window",
-}
-
-
-def _subject_for(kind: ClaimKind, action: ProposedAction) -> str:
-    if kind in _POLICY_ID_FOR_KIND:
-        return _POLICY_ID_FOR_KIND[kind]
-    return action.order_id or action.doc_id or "unknown"
 
 
 __all__ = ["extract_action", "build_claims", "EXTRACT_PROMPT"]

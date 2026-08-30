@@ -5,19 +5,17 @@ the measurement"). Chosen here to spend the time budget on the pipeline
 this console MEASURES rather than on a web UI for it.
 
 D12, a cognitive forcing function: the reviewer sees the receipt with the
-verdict, reasons, and root_cause stripped out, commits APPROVE / BLOCK /
-ESCALATE FIRST, and only then sees what the gate actually decided.
+verdict, reasons, and root_cause stripped out, commits APPROVE or BLOCK,
+and only then sees what the gate actually decided.
 Revealing the verdict first would measure compliance with an explanation,
 not independent judgement — explanations increase acceptance regardless of
 correctness.
 
     python bench/reviewer_console.py                  # interactive
-    python bench/reviewer_console.py --auto-approve    # non-interactive smoke test only
 
-Writes reports/reviewer_agreement.json: the human-gate agreement rate.
-That file needs a REAL human running this interactively — --auto-approve
-exists only to prove the mechanics don't crash, and is labelled as such in
-its own output, never presented as a measurement.
+Consumes pending_actions.jsonl and writes the review decision and agreement
+back to that queue. It also writes reports/reviewer_agreement.json.
+That file needs a real human running this interactively.
 """
 
 from __future__ import annotations
@@ -30,21 +28,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-DECISIONS = ROOT / "decisions.jsonl"
 OUT = ROOT / "reports" / "reviewer_agreement.json"
-
-_GATE_TO_HUMAN = {"ALLOW": "APPROVE", "BLOCK": "BLOCK", "ESCALATE": "ESCALATE", "MODIFY": "ESCALATE", "OBSERVE_ONLY": "APPROVE"}
-
-
-def _load_decisions() -> list[dict]:
-    if not DECISIONS.exists():
-        return []
-    lines = DECISIONS.read_text(encoding="utf-8").splitlines()
-    out = []
-    for raw in lines:
-        entry = json.loads(raw)
-        out.append(entry["receipt"] if "receipt" in entry else entry)
-    return out
+from controlplane.escalation import PENDING_QUEUE, pending_items, record_review
 
 
 def _present_case(receipt: dict) -> None:
@@ -72,37 +57,35 @@ def _reveal(receipt: dict) -> None:
     print()
 
 
-def run(auto_approve: bool = False) -> dict:
-    receipts = _load_decisions()
-    if not receipts:
-        print(f"No decisions found at {DECISIONS}. Run `make demo` (or the knowledge assistant) first.")
+def run() -> dict:
+    items = pending_items()
+    if not items:
+        print(f"No pending actions found at {PENDING_QUEUE}.")
         return {"n": 0, "agreement_rate": None}
 
     agreements = 0
     rows = []
-    for receipt in receipts:
+    for item in items:
+        receipt = item["receipt"]
+        print(f"queue_id: {item['queue_id']}")
         _present_case(receipt)
-        if auto_approve:
-            human_call = "APPROVE"
-            print("[--auto-approve] mechanical smoke test only, not a real reviewer call\n")
-        else:
-            human_call = ""
-            while human_call not in ("A", "B", "E"):
-                human_call = input("Your call?  [A]PPROVE / [B]LOCK / [E]SCALATE  ").strip().upper()
-            human_call = {"A": "APPROVE", "B": "BLOCK", "E": "ESCALATE"}[human_call]
+        human_call = ""
+        while human_call not in ("A", "B"):
+            human_call = input("Your call?  [A]PPROVE / [B]LOCK  ").strip().upper()
+        human_call = {"A": "APPROVE", "B": "BLOCK"}[human_call]
 
         _reveal(receipt)
-        gate_call = _GATE_TO_HUMAN.get(receipt["intervention"], receipt["intervention"])
-        agree = human_call == gate_call
+        reviewed = record_review(item["queue_id"], human_call)
+        gate_call = reviewed["review"]["gate_decision"]
+        agree = reviewed["review"]["agreement"]
         agreements += int(agree)
-        rows.append({"trace_id": receipt["trace_id"], "human_call": human_call, "gate_call": gate_call, "agree": agree})
+        rows.append({"queue_id": item["queue_id"], "trace_id": receipt["trace_id"], "human_call": human_call, "gate_call": gate_call, "agree": agree})
         print(f"{'AGREE' if agree else 'DISAGREE'} — human said {human_call}, gate said {gate_call}\n")
 
     result = {
-        "n": len(receipts),
+        "n": len(items),
         "agreements": agreements,
-        "agreement_rate": agreements / len(receipts),
-        "auto_approve_smoke_test": auto_approve,
+        "agreement_rate": agreements / len(items),
         "rows": rows,
     }
     OUT.parent.mkdir(parents=True, exist_ok=True)
@@ -112,15 +95,10 @@ def run(auto_approve: bool = False) -> dict:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--auto-approve", action="store_true",
-                         help="Non-interactive smoke test only — proves the console runs, is NOT a measurement.")
-    args = parser.parse_args()
-    result = run(auto_approve=args.auto_approve)
+    argparse.ArgumentParser(description="Review pending actions").parse_args()
+    result = run()
     if result["agreement_rate"] is not None:
         print(f"\nhuman-gate agreement rate: {result['agreement_rate']:.1%} (n={result['n']})")
-        if args.auto_approve:
-            print("(--auto-approve was used: this number is a smoke test artifact, not a real measurement.)")
     return 0
 
 

@@ -43,9 +43,11 @@ loudly rather than defaulting to a guess about how reversible it is.
    require a better model than the one being checked (D8).
 
 Escalation rate-limiting against the manifest's `escalation_budget_pct` is
-explicitly **not** implemented inside `decide()` — that requires state
+implemented at `dispatch_tool`, not inside `decide()` — that requires state
 (how many decisions has this session escalated already?), and `decide()`
 must stay pure (hard constraint #4: no I/O, no clock, no logging) so S15's
-metamorphic invariants and bias probe can hammer it thousands of times.
-Rate-limiting belongs at the caller (`dispatch_tool`), which already has
-the I/O boundary; it isn't wired up yet.
+metamorphic invariants and the mutation harness can hammer it thousands of
+times. The caller owns the rolling window, persistent pending queue, and
+fail-posture fallback. The pure `decide()` mutation harness still cannot
+observe that caller-level state; its `escalation_budget_exceeded` operator
+documents the harness boundary, not a missing runtime control.

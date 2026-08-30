@@ -1,6 +1,7 @@
 # The Decision Receipt — S10
 
-A ~1 KB signed JSON artifact per governed decision, appended to
+A signed JSON artifact per governed decision (measured median 2,282 bytes and
+p95 3,763 bytes over 120 receipts), appended to
 `decisions.jsonl`. This is the brief's "clear audit trail behind every
 decision" made literal, and the single most demoable artifact in the repo —
 the thing that goes on screen and makes a judge understand the entire pitch

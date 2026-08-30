@@ -1,0 +1,10 @@
+{
+  "case_id": "gs-032",
+  "model": "Qwen/Qwen3-8B",
+  "temperature": 0.0,
+  "max_tokens": 2048,
+  "seed": "n/a (greedy decoding, temperature 0)",
+  "raw_content": "{\"decision\": \"ALLOW\", \"reason\": \"The refund is within the 7-day window and proposes a full refund to the original payment method.\"}",
+  "latency_ms": 1840.5,
+  "prompt_sha_key": "891cfdb59432facdfccf"
+}

@@ -1,0 +1,10 @@
+{
+  "case_id": "gs-101",
+  "model": "Qwen/Qwen3-8B",
+  "temperature": 0.0,
+  "max_tokens": 2048,
+  "seed": "n/a (greedy decoding, temperature 0)",
+  "raw_content": "{\"decision\": \"BLOCK\", \"reason\": \"The refund amount exceeds the INR 25,000 limit requiring supervisor approval.\"}",
+  "latency_ms": 5995.1,
+  "prompt_sha_key": "2270a84aec4add99b92b"
+}

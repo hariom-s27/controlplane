@@ -27,7 +27,8 @@ hardcoded case split.
 
 Implemented in `tests/test_invariants.py` with `hypothesis`, generating
 randomized (but load-bearing-fact-only) scenarios — never protected
-attributes, see `controlplane/bias_probe.py` for that separate concern.
+attributes, see `tests/test_no_protected_attributes.py` for that separate
+concern (`decide()` has no protected-attribute input to vary).
 
 ## Why these five and not others
 
@@ -56,36 +57,60 @@ violation would mean something specific and actionable:
 
 Deliberately break a rule — flip R1's `<=` to `>=` in
 `controlplane/predicates/graphs/servicing.json` — and confirm at least one
-invariant fails and the mutation score (below) drops. An invariant suite
-that never fails on a real regression isn't testing anything; this is the
-five-minute check that it does.
+invariant fails and at least one `catchable` mutation operator drops. An
+invariant suite that never fails on a real regression isn't testing
+anything; this is the five-minute check that it does.
 
 ---
 
-# Mutation testing
+# Mutation testing (spec-derived)
 
-Mutating the **inputs**, not the code: each operator below takes a genuine
-ALLOW-worthy scenario and corrupts exactly one fact, then asserts the gate
-now catches it (BLOCK, ESCALATE, or SOURCE_UNRELIABLE — anything other than
-the original ALLOW counts as "caught").
+Mutating the **inputs**, not the code: each operator takes a genuine
+ALLOW-worthy scenario and corrupts exactly one spec element, then checks
+whether the gate still says ALLOW.
 
-| Operator | What it does |
-|---|---|
-| `order_id_nonexistent` | Points the claim at an order_id no resolver can find |
-| `amount_above_ceiling` | Raises amount_paise past the manifest's authority ceiling |
-| `delivered_at_outside_window` | Pushes delivered_at past the window_days boundary |
-| `clause_version_superseded` | Sets the claimed policy version to a version the registry doesn't currently return |
-| `customer_id_mismatched` | Makes the order's customer_id disagree with the session's |
-| `order_status_inconsistent` | Sets an inferred-reliability field on a load-bearing claim, forcing SOURCE_UNRELIABLE |
+**The operators come from the specification, not from the checks `decide()`
+implements.** The two sources are the `issue_refund` tool JSON schema
+(`agents/servicing_agent.py`) and `manifests/servicing.yaml`. An earlier
+version derived its six operators from the six existing checks, so every
+mutant corrupted a fact some check was already watching, so the score was
+1.000 by construction — a restatement of the unit tests, not a measurement.
+See `docs/experiment-audit.md`.
 
-`tests/test_mutation.py` generates ~200 mutants (operators applied to
-randomly varied base scenarios, seeded for reproducibility) and reports
-**mutation score = fraction caught**.
+The spec-derived set deliberately includes elements the gate has **no
+mechanism to enforce**. Those produce misses, and that is the point — the
+score names, per operator, exactly what pure `decide()` does not catch;
+caller-level controls such as the escalation budget are labelled separately.
 
-**The caveat the literature itself states** (Just & Ernst, FSE'14):
-mutants correlate with but do not perfectly represent real faults. The
-score below is reported as a rigorous lower bound and a regression signal
-— proof the gate reacts to a `git diff`-sized corruption of the input it's
-supposed to catch — not as a real-world catch rate, and not as a substitute
-for the golden-scenario and negative-control evidence elsewhere in `docs/`.
-Saying that plainly is worth more than the number is.
+| Operator | Spec source | Expected | Why |
+|---|---|---|---|
+| `order_id_unresolvable` | tool schema: order_id | catchable | resolver returns nothing → UNVERIFIABLE |
+| `order_id_other_customer` | tool schema: order_id | catchable | `entity_match` fails |
+| `amount_paise_above_ceiling` | tool schema / manifest: authority | catchable | `within_authority` fails |
+| `amount_paise_exceeds_order_total` | tool schema: amount_paise | catchable | `amount_sane` fails |
+| `amount_paise_negative` | tool schema: amount_paise | **uncatchable** | no positivity check anywhere |
+| `currency_not_in_enum` | tool schema: currency enum | **uncatchable** | no predicate reads `currency` |
+| `item_colour_wrong` | tool schema: item_colour | catchable | `attributes_match` fails |
+| `item_category_wrong` | tool schema: item_category | catchable | `attributes_match` fails |
+| `delivered_at_outside_window` | manifest: window_days | catchable | `within_window` fails |
+| `clause_version_superseded` | manifest: clause version | catchable | `clause_match` false |
+| `source_below_reliability_floor` | manifest: reliability_floor | catchable | SOURCE_UNRELIABLE |
+| `latency_budget_exceeded` | manifest: latency_budget_ms | **uncatchable** | `decide()` is pure, has no latency input |
+| `escalation_budget_exceeded` | manifest: escalation_budget_pct | **dispatch boundary** | enforced statefully by `dispatch_tool`; intentionally outside pure `decide()` mutation tests |
+| `evidence_retention_violated` | manifest: evidence_retention_days | **uncatchable** | a storage policy, not a decision-time one |
+| `risk_tier_bumped` | manifest: risk_tier_default | outside this decide-only harness | `dispatch_tool()` uses risk tier to select fail posture when the escalation budget is exhausted |
+
+`tests/test_mutation.py` runs every operator the same number of times
+against independently varied base scenarios (seeded), so the score is a
+stable property of the operator set. Current score: **0.60** (9 of 15
+operators catchable). `test_mutation.py` asserts the score is `< 1.0` — a
+1.0 would mean the operator set had drifted back to mirroring the
+implementation.
+
+**The caveat the literature itself states** (Just, Jalali, Inozemtseva,
+Ernst, Holmes & Fraser, "Are Mutants a Valid Substitute for Real Faults in
+Software Testing?", FSE'14): mutants correlate with but do not represent
+real faults. The score is a lower bound and a regression signal — proof the
+gate reacts to a `git diff`-sized corruption of the input it is supposed to
+catch — not a real-world catch rate, and not a substitute for the
+golden-scenario and negative-control evidence elsewhere in `docs/`.

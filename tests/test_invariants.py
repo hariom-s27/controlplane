@@ -25,7 +25,11 @@ from controlplane.schema import (
 
 TODAY = date(2026, 8, 14)
 NOW = datetime.now(timezone.utc)
-MANIFEST = {"reliability_floor": "corroborated", "verdict_handling": {}, "manifest_id": "servicing-v1", "_name": "servicing"}
+MANIFEST = {
+    "reliability_floor": "corroborated", "verdict_handling": {},
+    "manifest_id": "servicing-v1", "_name": "servicing",
+    "compensation": {"action": "reverse_refund", "compensability": "fully"},
+}
 
 
 def _decide(

@@ -12,7 +12,7 @@ import pytest
 from controlplane.predicates import clause_matches_claim, evaluate
 from controlplane.schema import Claim, ClaimKind, ProposedAction
 
-MANIFEST = {"window_days": 7}
+MANIFEST = {"window_days": 7, "predicate_graph": "graphs/servicing.json"}
 
 
 def _evidence(delivered_at="2026-07-19", today="2026-08-14", customer_id="CUST-2291",

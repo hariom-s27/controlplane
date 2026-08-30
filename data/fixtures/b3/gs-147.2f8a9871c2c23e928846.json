@@ -1,0 +1,10 @@
+{
+  "case_id": "gs-147",
+  "model": "Qwen/Qwen3-8B",
+  "temperature": 0.0,
+  "max_tokens": 2048,
+  "seed": "n/a (greedy decoding, temperature 0)",
+  "raw_content": "{\n\n\n    \"decision\": \"BLOCK\",\n    \"reason\": \"The return is outside the 7-day refund window and the policy only allows store credit at the supervisor's discretion, not a full refund.\"\n  }",
+  "latency_ms": 2913.7,
+  "prompt_sha_key": "2f8a9871c2c23e928846"
+}

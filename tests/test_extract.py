@@ -11,19 +11,24 @@ need to change (e.g. EXTRACT_PROMPT wording changes materially).
 from __future__ import annotations
 
 from controlplane.extract import build_claims, extract_action
-from controlplane.schema import ProposedAction
+from controlplane.manifest import load_manifest
+from controlplane.schema import ClaimKind, ProposedAction
 
 _TOOL_CALL_ARGS = {"order_id": "ORD-88461", "amount_paise": 4299900, "currency": "INR"}
 
 
-def test_build_claims_raises_for_unmodeled_tool():
-    """A tool with no row in _CLAIM_KINDS_BY_TOOL must fail loudly, not
-    return [] — an empty claim list would let decide() sail straight to
-    VERIFIED/ALLOW with nothing actually checked."""
-    import pytest
-
-    with pytest.raises(KeyError):
-        build_claims(ProposedAction(tool="some_unmodeled_tool"))
+def test_build_claims_follows_the_active_manifests_bindings():
+    """Which claims exist is declared per manifest (claim_bindings), in
+    order. A tool a manifest does not govern is rejected earlier, in
+    intercept._run_gate (see tests/test_intercept.py)."""
+    action = ProposedAction(tool="issue_refund", **_TOOL_CALL_ARGS, item_colour="blue", item_category="shoes")
+    kinds = [c.kind for c in build_claims(action, load_manifest("servicing"))]
+    assert kinds[0] == ClaimKind.ORDER_BELONGS_TO_CUSTOMER
+    assert ClaimKind.POLICY_CLAUSE_CURRENT in kinds
+    # subject of a policy claim is the policy_id, not the order_id
+    clause = next(c for c in build_claims(action, load_manifest("servicing"))
+                  if c.kind == ClaimKind.POLICY_CLAUSE_CURRENT)
+    assert clause.subject == "refund_window"
 
 
 def test_full_justification_with_a_date_extracts_it():

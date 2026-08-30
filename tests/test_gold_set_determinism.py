@@ -5,6 +5,16 @@ who reruns the build must get the published numbers), every case must trace to
 a real orders.db row, the slice counts must match the P03 distribution, and
 bench/label.py's independent verdict must match the slice each case was built
 for.
+
+Determinism is proved by building into a TEMP directory (``build(out_dir=...)``)
+so the committed ``bench/`` artifacts are never rewritten by the test run.
+
+Two DIFFERENT artifacts, kept separate (M4 instrument repair):
+  * the generated *blank* reviewer template — deterministic, pinned here by
+    ``PINNED_BLANK_HUMAN_SAMPLE_SHA256``;
+  * the later *human-edited* annotation sheet on disk — NOT a generator output
+    (``_write_human_sample`` refuses to overwrite it), validated structurally
+    in tests/test_human_label_sample_blind.py, never pinned by content here.
 """
 
 from __future__ import annotations
@@ -29,11 +39,16 @@ sys.path.insert(0, str(BENCH))
 PINNED_SHA256 = {
     "gold_set.jsonl": "09deaecb374eb6b60bd03b95c90bbe1c8e3a75562eb9c59edc6c89970cd48c8e",
     "ground_truth_holdout.jsonl": "204e4a8e2af61d0aec109e0226018f4486451044f6de73e282f04aff7a24e3cb",
-    # M4: human sheet re-emitted without the `slice` column (a construction-intent
-    # leak). Same 30 cases, same SEED sampling — only the visible schema changed.
-    # gold_set.jsonl / ground_truth_holdout.jsonl bytes are unaffected.
-    "human_label_sample.csv": "48f069133e63ef87fb7f6027e1b259ab5ae534016f41ca1640a375d74130d3c9",
 }
+
+# The generated BLANK reviewer template (M4 instrument repair added the
+# `record_lookup_status` column and blanked the order-record columns for
+# NO_MATCH rows). This is a pure generator output; the human-edited sheet that
+# later sits at bench/human_label_sample.csv is a SEPARATE artifact and is not
+# pinned by content — see the module docstring.
+PINNED_BLANK_HUMAN_SAMPLE_SHA256 = (
+    "7a41fc7b0c462ee4f66216551aa9fdb4da11484c45add7bdbc7f1139d7f52da6"
+)
 
 EXPECTED_SLICE_COUNTS = {
     "allow_in_window": 50,
@@ -64,17 +79,20 @@ def _sha(p: Path) -> str:
 
 
 @pytest.fixture(scope="module")
-def summary(_built):
+def summary(_built, tmp_path_factory):
     import gold_set_build
 
-    # first build (also refreshes any partly-stale committed copy)
-    s1 = gold_set_build.build()
-    shas1 = {name: _sha(BENCH / name) for name in PINNED_SHA256}
-    # second build — must be byte-identical
-    s2 = gold_set_build.build()
-    shas2 = {name: _sha(BENCH / name) for name in PINNED_SHA256}
+    # Build into a temp dir TWICE — never touches the committed bench/ files.
+    out = tmp_path_factory.mktemp("goldset_regen")
+    s1 = gold_set_build.build(out_dir=out)
+    shas1 = {name: _sha(out / name) for name in PINNED_SHA256}
+    blank1 = _sha(out / "human_label_sample.csv")
+    s2 = gold_set_build.build(out_dir=out)
+    shas2 = {name: _sha(out / name) for name in PINNED_SHA256}
+    blank2 = _sha(out / "human_label_sample.csv")
     assert shas1 == shas2, "regenerating the gold set changed its bytes"
-    return {"summary": s1, "sha256": shas1}
+    assert blank1 == blank2, "regenerating the blank reviewer template changed its bytes"
+    return {"summary": s1, "sha256": shas1, "blank_human_sample_sha256": blank1}
 
 
 def test_regeneration_matches_the_pinned_hashes(summary):
@@ -84,6 +102,22 @@ def test_regeneration_matches_the_pinned_hashes(summary):
         "`python bench/gold_set_build.py` and update PINNED_SHA256 — and every "
         "downstream figure."
     )
+
+
+def test_blank_reviewer_template_regenerates_deterministically(summary):
+    """The GENERATED blank sheet is deterministic and pinned. (The later
+    human-edited sheet on disk is a different artifact — see
+    tests/test_human_label_sample_blind.py, which validates it structurally,
+    not by content hash.)"""
+    assert summary["blank_human_sample_sha256"] == PINNED_BLANK_HUMAN_SAMPLE_SHA256
+
+
+def test_the_committed_bench_files_were_not_rewritten_by_this_run():
+    """Determinism is proved in a temp dir; the committed artifacts must be
+    exactly what they were before pytest started."""
+    assert _sha(BENCH / "gold_set.jsonl") == PINNED_SHA256["gold_set.jsonl"]
+    assert _sha(BENCH / "ground_truth_holdout.jsonl") == \
+        PINNED_SHA256["ground_truth_holdout.jsonl"]
 
 
 def test_slice_distribution_is_exactly_p03(summary):

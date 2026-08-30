@@ -1,0 +1,10 @@
+{
+  "case_id": "gs-085",
+  "model": "Qwen/Qwen3-8B",
+  "temperature": 0.0,
+  "max_tokens": 2048,
+  "seed": "n/a (greedy decoding, temperature 0)",
+  "raw_content": "{\n\n\n  \"decision\": \"ALLOW\",\n  \"reason\": \"The refund amount of INR 6,500 is within the agent's approval limit of INR 25,000, and the order was delivered within 30 days of the request date.\"\n}",
+  "latency_ms": 2957.2,
+  "prompt_sha_key": "a51741595ebcc0bbebcf"
+}

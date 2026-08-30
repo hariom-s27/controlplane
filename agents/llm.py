@@ -30,6 +30,11 @@ load_dotenv(ROOT / ".env")
 FIXTURES = ROOT / "data" / "fixtures"
 FIXTURES.mkdir(parents=True, exist_ok=True)
 
+# Qwen-family models can spend a substantial part of the completion budget on
+# hidden reasoning.  Keep the budget explicit so an exhausted implicit default
+# cannot surface as an empty, apparently valid response.
+MAX_TOKENS = int(os.environ.get("CP_MAX_TOKENS", "24576"))
+
 _client: OpenAI | None = None
 
 
@@ -73,7 +78,9 @@ def _default_is_retryable(exc: Exception) -> bool:
     propagates immediately — switching keys wouldn't fix it, and silently
     burning through every configured account on an unrelated error would
     hide what actually broke."""
-    return getattr(exc, "status_code", None) in (401, 402, 403, 429)
+    status = getattr(exc, "status_code", None)
+    provider_busy = status == 400 and "model is busy" in str(exc).lower()
+    return status in (401, 402, 403, 429) or provider_busy
 
 
 def call_with_key_fallback(env_var: str, call, is_retryable=_default_is_retryable):
@@ -108,6 +115,43 @@ def cache_key(payload: dict) -> str:
     return hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()[:20]
 
 
+def _validated_completion(response: dict) -> dict:
+    """Reject provider/cache responses that contain no usable completion."""
+    choices = response.get("choices") or []
+    if not choices:
+        raise RuntimeError("LLM returned an empty completion: no choices")
+    message = choices[0].get("message") or {}
+    content = message.get("content")
+    has_content = isinstance(content, str) and bool(content.strip())
+    tool_calls = message.get("tool_calls")
+    structurally_valid_tool_calls = (
+        isinstance(tool_calls, list)
+        and bool(tool_calls)
+        and all(
+            isinstance(call, dict)
+            and isinstance(call.get("function"), dict)
+            and isinstance(call["function"].get("name"), str)
+            and bool(call["function"]["name"].strip())
+            and isinstance(call["function"].get("arguments"), str)
+            for call in tool_calls
+        )
+    )
+    has_tool_call = structurally_valid_tool_calls
+    if has_tool_call:
+        try:
+            has_tool_call = all(
+                isinstance(json.loads(call["function"]["arguments"]), dict)
+                for call in tool_calls
+            )
+        except (TypeError, ValueError, json.JSONDecodeError):
+            has_tool_call = False
+    if tool_calls and not has_tool_call:
+        raise RuntimeError("LLM returned an unusable completion: malformed tool_calls")
+    if not has_content and not has_tool_call:
+        raise RuntimeError("LLM returned an empty completion: no content or tool call")
+    return response
+
+
 def chat(messages, tools=None, json_mode=False, temperature=0.0, force_live=False):
     """R6: every call is cached. CP_MODE=fixture (default) never touches the network.
 
@@ -120,6 +164,7 @@ def chat(messages, tools=None, json_mode=False, temperature=0.0, force_live=Fals
         "model": os.environ["CP_MODEL"],
         "messages": messages,
         "temperature": temperature,
+        "max_tokens": MAX_TOKENS,
     }
     if tools:
         payload["tools"] = tools
@@ -128,7 +173,7 @@ def chat(messages, tools=None, json_mode=False, temperature=0.0, force_live=Fals
 
     f = FIXTURES / f"{cache_key(payload)}.json"
     if not force_live and f.exists():
-        return json.loads(f.read_text())
+        return _validated_completion(json.loads(f.read_text()))
 
     if os.environ.get("CP_MODE", "fixture") != "live":
         raise RuntimeError(
@@ -143,6 +188,6 @@ def chat(messages, tools=None, json_mode=False, temperature=0.0, force_live=Fals
         out["_latency_ms"] = round((time.perf_counter() - t0) * 1000, 1)
         return out
 
-    out = call_with_key_fallback("FEATHERLESS_API_KEY", _call)
+    out = _validated_completion(call_with_key_fallback("FEATHERLESS_API_KEY", _call))
     f.write_text(json.dumps(out, indent=2, default=str))
     return out

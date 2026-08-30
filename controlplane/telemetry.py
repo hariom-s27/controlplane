@@ -25,14 +25,21 @@ _TIER_KEYS = ("C1", "C2", "C3", "C4", "C5")
 
 
 def _coverage_block(decision: Decision) -> dict:
+    # Per-tier counts only. No coverage_ratio: it was deterministically 1.0
+    # for every decision the system can produce (see schema.Decision.coverage
+    # and docs/experiment-audit.md).
     cov = decision.coverage
     by_tier = {t: cov["by_tier"].get(t, 0) for t in _TIER_KEYS}
-    return {
+    block = {
         "claims_total": cov["claims_total"],
         **{f"{t.lower()}_n": n for t, n in by_tier.items()},
         "unverifiable_n": by_tier["C4"] + by_tier["C5"],
-        "coverage_ratio": cov["coverage_ratio"],
     }
+    c3 = decision.component_status.get("C3", {})
+    if isinstance(c3, dict) and c3.get("status") == "unavailable":
+        block["c3_available_n"] = 0
+        block["c3_unavailable_n"] = by_tier["C3"]
+    return block
 
 
 def _extraction_accuracy_block() -> dict:
@@ -58,14 +65,19 @@ def _promotion_cost_block(latency_ms: dict[str, float]) -> dict:
 
 def record(decision: Decision, action_dict: dict[str, Any], latency_ms: dict[str, float]) -> dict:
     receipt = build_receipt(decision, action_dict, latency_ms)
+    telemetry = {
+        "coverage": _coverage_block(decision),
+        "extraction_accuracy": _extraction_accuracy_block(),
+        "latency": _latency_block(latency_ms),
+        "rule_promotion_cost": _promotion_cost_block(latency_ms),
+    }
+    data_quality = decision.component_status.get("data_quality")
+    if isinstance(data_quality, dict):
+        telemetry["data_quality"] = data_quality
+
     line = {
         "receipt": receipt,
-        "telemetry": {
-            "coverage": _coverage_block(decision),
-            "extraction_accuracy": _extraction_accuracy_block(),
-            "latency": _latency_block(latency_ms),
-            "rule_promotion_cost": _promotion_cost_block(latency_ms),
-        },
+        "telemetry": telemetry,
     }
     persist(line)
     return line

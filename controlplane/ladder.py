@@ -23,7 +23,7 @@ from controlplane.schema import ClaimKind, Tier
 # delivered_at, is exactly that: two C1 reads plus a subtraction and a
 # threshold compare.
 _TIER: dict[ClaimKind, Tier] = {
-    # --- use case 1: customer servicing (correctness) ---
+    # --- order / amount / policy shaped claims ---
     ClaimKind.ORDER_BELONGS_TO_CUSTOMER: Tier.C1,   # one query: order_id's customer_id == session's
     ClaimKind.AMOUNT_NOT_EXCEEDING_ORDER: Tier.C1,  # one query: claimed amount vs that order's own amount_paise
     ClaimKind.WITHIN_REFUND_WINDOW: Tier.C2,        # days_elapsed derived from two C1 facts, then compared
@@ -31,7 +31,8 @@ _TIER: dict[ClaimKind, Tier] = {
     ClaimKind.POLICY_CLAUSE_CURRENT: Tier.C1,       # one query: WHERE effective_to IS NULL
     ClaimKind.CLAUSE_SEMANTICS_MATCH: Tier.C3,      # the roadmap's own C3 example, verbatim
     ClaimKind.ORDER_ATTRIBUTES_MATCH: Tier.C2,      # D52: resolved order's attributes vs the distractor's, compared
-    # --- use case 2: internal knowledge assistant (entitlement) ---
+    ClaimKind.ORDER_STATUS_SUPPORTS_ACTION: Tier.C1,  # P08: one inferred source field, deliberately load-bearing
+    # --- entitlement shaped claims ---
     ClaimKind.RECIPIENT_ENTITLED_TO_DOC: Tier.C1,       # one query: recipient_id in the doc's entitled list
     ClaimKind.EXCERPT_CONTAINS_THIRD_PARTY_PII: Tier.C2,  # a deterministic rule (regex/presidio) applied to text
     ClaimKind.DOC_CLASSIFICATION_PERMITTED: Tier.C1,    # one query: doc.classification in subject's entitled list
@@ -53,6 +54,7 @@ _LOAD_BEARING: dict[ClaimKind, bool] = {
     ClaimKind.POLICY_CLAUSE_CURRENT: True,
     ClaimKind.CLAUSE_SEMANTICS_MATCH: True,
     ClaimKind.ORDER_ATTRIBUTES_MATCH: True,
+    ClaimKind.ORDER_STATUS_SUPPORTS_ACTION: True,
     ClaimKind.RECIPIENT_ENTITLED_TO_DOC: True,
     # NOT load-bearing, deliberately — this is S13's entire thesis. PII
     # being present in an excerpt does not by itself make sending it wrong:

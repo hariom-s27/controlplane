@@ -2,25 +2,46 @@
 # different behaviour on every field that matters — this file IS the
 # "configurable policy layer" demonstration, not just a second config.
 manifest_id: knowledge_assistant-v1
+schema_version: 1
+
+tool: send_document
+predicate_graph: graphs/knowledge_assistant.json
+
+compensation:
+  action: revoke_access
+  compensability: partially                        # it was already read
 
 risk_tier_default: 0                               # informational retrieval, not a mutating action
 window_days: null                                  # no refund-style window applies to this use case
+authority_ceiling_paise: 0                         # this use case never moves money
 
-authority:
-  knowledge_assistant:
-    ceiling_paise: 0                                # this use case never moves money
-
-latency_budget_ms: 200                              # a chat answer, not a financial transaction
+latency_budget_ms: 200                             # a chat answer, not a financial transaction
 escalation_budget_pct: 5
 
 fail_posture:
-  non_compensable: open                             # a wrong answer is bad, not irreversible — fail-open
-  compensable: open
+  tier_0: open                                     # informational retrieval may fail open
+  tier_1: closed
+  tier_2: closed
 
-reliability_floor: unverified                       # tolerates weaker sources than servicing does
+reliability_floor: unverified                      # tolerates weaker sources than servicing does
 
 verdict_handling:
-  UNVERIFIABLE: allow_with_caveat                   # contrast: servicing.yaml escalates the same verdict
+  UNVERIFIABLE: allow_with_caveat                  # contrast: servicing.yaml escalates the same verdict
   SOURCE_UNRELIABLE: escalate
 
 evidence_retention_days: 90
+
+# No static scaffolding — both predicate inputs are resolved booleans.
+claim_bindings:
+  - claim_kind: DOC_CLASSIFICATION_PERMITTED       # classification first: the general question
+    resolver: entitlements
+    subject: action.doc_id
+    predicate_key: classification_permitted
+  - claim_kind: RECIPIENT_ENTITLED_TO_DOC          # then the customer-specific one the demo hinges on
+    resolver: entitlements
+    subject: action.doc_id
+    predicate_key: recipient_entitled
+  - claim_kind: EXCERPT_CONTAINS_THIRD_PARTY_PII
+    resolver: pii
+    subject: action.doc_id
+    predicate_key: null                            # detection is not load-bearing (S14 thesis)

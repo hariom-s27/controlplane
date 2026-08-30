@@ -1,0 +1,10 @@
+{
+  "case_id": "gs-127",
+  "model": "Qwen/Qwen3-8B",
+  "temperature": 0.0,
+  "max_tokens": 2048,
+  "seed": "n/a (greedy decoding, temperature 0)",
+  "raw_content": "{\"decision\": \"BLOCK\", \"reason\": \"The refund request for order ORD-0194 is outside the 7-day return period, and the policy states that requests after 7 days may only be eligible for store credit at the supervisor's discretion.\"}",
+  "latency_ms": 20875.2,
+  "prompt_sha_key": "06a971a4606d300e7837"
+}

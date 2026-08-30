@@ -3,9 +3,8 @@ rule (regex, or presidio's NER model) applied to text — not a raw field
 read, not a semantic judgment. Detection only: this module answers "does
 this text look like it contains personal data," never "is the recipient
 allowed to see it." That second question is entitlement's job
-(controlplane/registry/entitlements.py), not this module's — see the
-cross-tenant demo in agents/knowledge_assistant.py for why conflating the
-two would hide the actual failure mode.
+(controlplane/registry/entitlements.py), not this module's — conflating the
+two hides the failure mode where legitimate PII goes to the wrong recipient.
 
 CP_PII=regex (default) needs no download and works offline — this is the
 fallback presidio's model downloads sometimes fail behind on a fresh clone.

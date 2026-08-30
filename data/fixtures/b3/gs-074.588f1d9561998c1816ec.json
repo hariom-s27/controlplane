@@ -1,0 +1,10 @@
+{
+  "case_id": "gs-074",
+  "model": "Qwen/Qwen3-8B",
+  "temperature": 0.0,
+  "max_tokens": 2048,
+  "seed": "n/a (greedy decoding, temperature 0)",
+  "raw_content": "{\"decision\": \"ALLOW\", \"reason\": \"The return is within the 30-day window from delivery date 2026-07-28 to 2026-08-14.\"}",
+  "latency_ms": 2944.6,
+  "prompt_sha_key": "588f1d9561998c1816ec"
+}

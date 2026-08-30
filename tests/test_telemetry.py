@@ -13,6 +13,8 @@ from controlplane.registry.clock import now
 from controlplane.schema import Claim, ClaimKind, Confidence, Decision, Evidence, Intervention, Reliability, Tier, Verdict
 from controlplane.telemetry import record
 
+_COMPENSABLE = {"compensation": {"action": "reverse_refund", "compensability": "fully"}}
+
 os.environ.setdefault("CP_RECEIPT_SECRET", "test-secret-not-for-production")
 
 
@@ -25,7 +27,7 @@ def _decision() -> Decision:
     return Decision(
         trace_id="t1", manifest_id="servicing-v1", verdict=Verdict.VERIFIED, intervention=Intervention.ALLOW,
         claims=[claim], evidence=ev, predicate_trace={"within_window": True},
-        compensation=compensation_for("issue_refund"), idempotency_key="k1",
+        compensation=compensation_for(_COMPENSABLE), idempotency_key="k1",
     )
 
 

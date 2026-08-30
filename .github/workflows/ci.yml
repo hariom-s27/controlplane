@@ -1,0 +1,26 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      CP_DEMO_DATE: "2026-08-14"
+      CP_SEED: "20260814"
+      CP_MODE: fixture
+      CP_MANIFEST: servicing
+      CP_RECEIPT_SECRET: ci-secret-not-for-production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - run: python data/build_db.py
+      - name: full test suite
+        run: python -m pytest tests -q
+      - name: engine must not name a use case (P02)
+        run: python -m pytest tests/test_engine_is_use_case_agnostic.py -q

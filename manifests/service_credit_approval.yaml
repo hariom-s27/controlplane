@@ -1,0 +1,56 @@
+# Use case 4 (onboarding measurement): service credit approval.
+#
+# A customer files a service complaint (late delivery, damaged packaging,
+# poor experience) NOT tied to returning the item. The agent proposes a
+# goodwill service credit against the order. Unlike servicing.yaml and
+# discount_approval.yaml, there is NO delivery-window check here — a service
+# complaint is not gated by how long ago the order arrived. Ownership and
+# authority are still checked, and the credit may never exceed the order's
+# own total.
+manifest_id: service_credit_approval-v1
+schema_version: 1
+
+tool: approve_service_credit
+predicate_graph: graphs/service_credit_approval.json
+
+compensation:
+  action: revoke_service_credit
+  compensability: partially                         # a credit can be clawed back before it's spent
+
+risk_tier_default: 1
+window_days: null                                   # no delivery-window applies to a service complaint
+authority_ceiling_paise: 300000                      # INR 3,000 — a lower goodwill-credit authority
+
+latency_budget_ms: 400
+escalation_budget_pct: 3
+
+fail_posture:
+  tier_0: open
+  tier_1: closed                                    # financial approval: exhausted budget BLOCKS
+  tier_2: closed
+
+reliability_floor: corroborated
+
+verdict_handling:
+  UNVERIFIABLE: escalate
+  SOURCE_UNRELIABLE: escalate
+
+evidence_retention_days: 365
+
+predicate_payload:
+  session.customer_id: session.customer_id
+  clock.today: clock.today
+
+claim_bindings:
+  - claim_kind: ORDER_BELONGS_TO_CUSTOMER
+    resolver: orders
+    subject: action.order_id
+    predicate_key: order.customer_id
+  - claim_kind: AMOUNT_NOT_EXCEEDING_ORDER
+    resolver: orders
+    subject: action.order_id
+    predicate_key: order.amount_paise
+  - claim_kind: AMOUNT_WITHIN_AUTHORITY
+    resolver: authority
+    subject: action.order_id
+    predicate_key: authority_ceiling_paise

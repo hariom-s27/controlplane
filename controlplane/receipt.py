@@ -1,4 +1,4 @@
-"""S10 — the Decision Receipt. A ~1 KB signed JSON artifact per governed
+"""S10 — the Decision Receipt. A signed JSON artifact per governed
 decision. Shaped with W3C PROV vocabulary in spirit (Entity/Activity/Agent,
 wasDerivedFrom, wasAttributedTo) — the action is the Activity, the claims
 and evidence are what it wasDerivedFrom, the session is who it
@@ -15,6 +15,7 @@ import hashlib
 import hmac
 import json
 import os
+import threading
 import uuid
 from pathlib import Path
 from typing import Any
@@ -25,6 +26,11 @@ from controlplane.schema import Decision
 ROOT = Path(__file__).resolve().parent.parent
 OPERATIONAL_TRAIL = ROOT / "decisions.jsonl"
 PRIVILEGED_TRAIL = ROOT / "decisions_privileged.jsonl"
+
+# One append-only writer, serialized: P09 runs the gate from a thread pool, and
+# two interleaved line writes would corrupt the trail. Signing/building the
+# receipt stays parallel; only the write is under the lock.
+_TRAIL_LOCK = threading.Lock()
 
 
 def _secret() -> bytes:
@@ -44,17 +50,19 @@ def _root_cause(decision: Decision) -> str | None:
     """Best-effort, human-and-machine-readable label for the first failing
     reason. Not exhaustive — picks the single most useful line for a
     receipt, not a full trace (that's predicate_trace's job)."""
+    if decision.root_cause:
+        return decision.root_cause
     for r in decision.reasons:
         if r.passed is False and r.rule == "clause_current":
             return f"stale_clause_{r.expected}"
         if r.passed is False and r.rule == "within_window":
-            return "outside_refund_window"
+            return "outside_window"
         if r.passed is False and r.rule == "within_authority":
             return "exceeds_authority_ceiling"
         if r.passed is False and r.rule == "entity_match":
-            return "order_customer_mismatch"
+            return "entity_mismatch"
         if r.passed is False and r.rule == "amount_sane":
-            return "amount_exceeds_order"
+            return "amount_exceeds_source_record"
         if r.passed is False and r.rule == "reliability_floor":
             return "evidence_below_reliability_floor"
         if r.passed is False:
@@ -80,9 +88,18 @@ def build_receipt(decision: Decision, action_dict: dict[str, Any], latency_ms: d
             for c in decision.claims
         ],
         "evidence": [
-            {"claim_id": e.claim_id, "value": e.value, "source": e.source, "query": e.query,
-             "fetched_at": e.fetched_at.isoformat(), "freshness_ms": e.freshness_ms,
-             "reliability_class": e.reliability_class.value, "confidence": e.confidence.value}
+            {
+                "claim_id": e.claim_id,
+                "value": e.value,
+                "source": e.source,
+                "query": e.query,
+                "fetched_at": e.fetched_at.isoformat(),
+                "freshness_ms": e.freshness_ms,
+                "reliability_class": e.reliability_class.value,
+                "confidence": e.confidence.value,
+                **({"version": e.version} if e.version is not None else {}),
+                **({"note": e.note} if e.note is not None else {}),
+            }
             for e in decision.evidence
         ],
         "predicate_trace": decision.predicate_trace,
@@ -93,6 +110,12 @@ def build_receipt(decision: Decision, action_dict: dict[str, Any], latency_ms: d
             for r in decision.reasons
         ],
         "root_cause": _root_cause(decision),
+        "verification_state": decision.verification_state,
+        "failure_context": (
+            decision.failure_context.model_dump(exclude_none=True)
+            if decision.failure_context is not None else None
+        ),
+        "component_status": decision.component_status,
         "latency_ms": latency_ms,
         "compensation": (
             {"action": decision.compensation.action, "class": decision.compensation.compensability.value}
@@ -118,11 +141,14 @@ def persist(entry: dict, privileged: dict | None = None) -> None:
     a separate file, only written when there's something privileged to
     say — kept apart per D11 so the operational trail stays freely
     discoverable."""
-    with OPERATIONAL_TRAIL.open("a", encoding="utf-8") as f:
-        f.write(json.dumps(entry, sort_keys=True) + "\n")
-    if privileged is not None:
-        with PRIVILEGED_TRAIL.open("a", encoding="utf-8") as f:
-            f.write(json.dumps(privileged, sort_keys=True) + "\n")
+    op_line = json.dumps(entry, sort_keys=True) + "\n"
+    priv_line = json.dumps(privileged, sort_keys=True) + "\n" if privileged is not None else None
+    with _TRAIL_LOCK:
+        with OPERATIONAL_TRAIL.open("a", encoding="utf-8") as f:
+            f.write(op_line)
+        if priv_line is not None:
+            with PRIVILEGED_TRAIL.open("a", encoding="utf-8") as f:
+                f.write(priv_line)
 
 
 __all__ = ["build_receipt", "verify", "persist"]
