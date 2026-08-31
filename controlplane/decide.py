@@ -59,6 +59,7 @@ _PREDICATE_FOR_KIND: dict[ClaimKind, str] = {
     ClaimKind.ORDER_BELONGS_TO_CUSTOMER: "entity_match",
     ClaimKind.AMOUNT_NOT_EXCEEDING_ORDER: "amount_sane",
     ClaimKind.ORDER_ATTRIBUTES_MATCH: "attributes_match",  # R3 extended, D52
+    ClaimKind.ORDER_STATUS_SUPPORTS_ACTION: "status_supports_action",
     ClaimKind.DOC_CLASSIFICATION_PERMITTED: "classification_permitted",  # S13, use case 2
     ClaimKind.RECIPIENT_ENTITLED_TO_DOC: "recipient_entitled",  # the cross-tenant check
 }

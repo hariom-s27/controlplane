@@ -1,0 +1,124 @@
+{
+  "_note": "P06 C2 frozen configuration. Prepared, NOT executed -- see reports/p06-c2-report.md. Every value below except 'controlplane_condition' is byte-identical to reports/p06-c1-freeze.json's C1 configuration, verified by direct comparison, not by re-typing from memory.",
+  "prepared_at_utc": "2026-08-31T03:20:00Z",
+  "c2_execution_status": "NOT RUN. This file locks the configuration for a manual run; it is not a results record.",
+
+  "tau2": {
+    "repository": "https://github.com/sierra-research/tau2-bench",
+    "tag": "v1.0.1",
+    "commit_sha": "fc0055dc4e0a316c3f83133267fbd6faaa770992",
+    "checkout_location": "phase 2/external/tau2-bench",
+    "head_verified_at_prep": "fc0055dc4e0a316c3f83133267fbd6faaa770992 (git rev-parse HEAD, matches C1 exactly)",
+    "worktree_deviation": "uv.lock self-version line only (1.0.0 -> 1.0.1), pre-existing since before C1, unchanged -- identical to reports/p06-c1-freeze.json's recorded deviation"
+  },
+
+  "model": {
+    "benchmark_agent": "featherless_ai/moonshotai/Kimi-K2-Instruct",
+    "user_simulator": "featherless_ai/moonshotai/Kimi-K2-Instruct",
+    "provider": "Featherless AI",
+    "provider_base_url": "https://api.featherless.ai/v1",
+    "identical_to_c1": true
+  },
+
+  "decoding": {
+    "agent_temperature": 0.0,
+    "user_temperature": 0.0,
+    "agent_llm_args": {"temperature": 0.0, "max_tokens": 24576, "timeout": 90, "num_retries": 0},
+    "user_llm_args": {"temperature": 0.0, "max_tokens": 24576, "timeout": 90, "num_retries": 0},
+    "identical_to_c1": true
+  },
+
+  "seed": 300,
+  "k_num_trials": 1,
+
+  "evaluation": {
+    "type": "ALL_WITH_NL_ASSERTIONS",
+    "tau2_enum_value": "all_with_nl_assertions",
+    "c1_source": "reports/tau2-bench.md final locked protocol, Evaluation type (CLI)",
+    "identical_to_c1": true
+  },
+
+  "task_selection": {
+    "domain": "retail",
+    "split": "test",
+    "n_pre_registered": 40,
+    "task_ids": ["5","9","12","17","18","26","27","32","33","36","38","39","40","42","45","49","51","53","55","56","60","61","62","64","65","68","70","71","74","77","79","86","90","94","97","100","101","102","108","111"],
+    "loader": "tau2.domains.retail.environment.get_tasks(task_split_name='test'), called directly by bench/tau2_adapter.py::load_c2_tasks -- NOT via a re-registered task-set alias, so there is exactly one task-loading code path shared with C1's own 'retail' task set",
+    "identity_gate": "bench/tau2_adapter.py::load_c2_tasks() asserts exact set-equality (no missing, no extra, count==40) against this list before any model/provider call; verified empirically against the real tau2 v1.0.1 checkout in bench/verify_tau2_public_route.py section 9 (37/37 checks passed)"
+  },
+
+  "run_settings": {
+    "max_steps": 200,
+    "max_errors": 10,
+    "max_retries": 3,
+    "retry_delay_s": 1.0,
+    "timeout_s_per_task": 300,
+    "concurrency": 1,
+    "identical_to_c1": true,
+    "c1_note": "reports/p06-c1-freeze.json deviations: max-concurrency=1 (tau2 default 3) required by the Featherless account's actual concurrent-unit plan cap -- carried forward unchanged for C2"
+  },
+
+  "controlplane_condition": {
+    "condition": "C2",
+    "description": "Same tau2 tool execution as C1, with ControlPlane governance inserted before the six governed retail WRITE tools' underlying mutation. Non-governed tool calls (all READ/THINK/GENERIC tools, plus the one excluded WRITE tool modify_user_address) are unchanged from C1.",
+    "adapter": "bench/tau2_adapter.py",
+    "governed_tools": ["cancel_pending_order", "exchange_delivered_order_items", "modify_pending_order_address", "modify_pending_order_items", "modify_pending_order_payment", "return_delivered_order_items"],
+    "excluded_write_tool": "modify_user_address -- documented representational scope boundary (section 6), not a gap",
+    "manifests": ["manifests/tau2_cancel_pending_order.yaml", "manifests/tau2_exchange_delivered_order_items.yaml", "manifests/tau2_modify_pending_order_address.yaml", "manifests/tau2_modify_pending_order_items.yaml", "manifests/tau2_modify_pending_order_payment.yaml", "manifests/tau2_return_delivered_order_items.yaml"],
+    "bound_claim": "ORDER_STATUS_SUPPORTS_ACTION only",
+    "claim_not_bound": "ORDER_BELONGS_TO_CUSTOMER -- tau2 retail has no structural, DB-level authenticated-identity channel independent of agent conversation (tau2's own task files document this as an open issue); binding it would require forbidden evidence (previous tool output) or a circular one (the evaluator's hidden ground truth). See bench/tau2_adapter.py's resolver docstring.",
+    "p02_minimal_repair": {
+      "decision_mapping": "ORDER_STATUS_SUPPORTS_ACTION -> status_supports_action is present in the generic decision mapping",
+      "resolver_schema": "tau2_retail is permitted by the generic resolver-name enum; runtime registration remains separately mandatory",
+      "use_case_specific_python_in_controlplane_lines": 0
+    }
+  },
+
+  "latency_provenance": {
+    "status": "UNAVAILABLE",
+    "scope": "ControlPlane gate only",
+    "available": ["condition (from the C2-only manifest/use-case scope)", "tool/action", "trace_id", "receipt completion timestamp", "per-stage gate durations"],
+    "missing": ["task_id at gate entry", "entry timestamp", "exit timestamp", "persisted end_to_end duration"],
+    "reason": "tau2's public retail environment factory is constructed before the adapter is given no Task object or task_id; ControlPlane receipts persist one completion timestamp and stage timings, while the post-receipt end_to_end value is not persisted. Correlating later result intervals would be inference rather than direct provenance.",
+    "p50_p95_ready": false
+  },
+
+  "current_policy_identity": {
+    "path": "data/tau2/domains/retail/policy.md",
+    "sha256": "4313d3fef8acf919f555fa17fbce929cc3ed1cef2dd8f0d35ff5c8c3364de176",
+    "matches_c1_recorded_hash": true,
+    "note": "Recomputed fresh at C2 preparation time and compared byte-for-byte against bench/tau2_config_identity.json's pre-C1 recording -- identical. C2 uses this current policy unmodified; no stale-context injection (that is C3's treatment, out of scope here)."
+  },
+
+  "db_source_identity": {
+    "path": "data/tau2/domains/retail/db.json",
+    "sha256": "dbde692e380bb4ad17f9f7841172cf1e69bebad2daa405628ccdc52a42b3b9b0",
+    "matches_c1_recorded_hash": true,
+    "mechanism": "tau2.domains.retail.environment.get_environment()/bench/tau2_adapter.py::get_environment_controlplane() both call RetailDB.load(RETAIL_DB_PATH) fresh per environment construction from this same static file -- unmodified tau2 code, unmodified data file."
+  },
+
+  "evaluator_scorer_identity": {
+    "sha256": {
+      "src/tau2/evaluator/evaluator.py": "10a87710931429d9abe80fe244cbe7fa0494333587a9c01522a233d64f94196a",
+      "src/tau2/evaluator/evaluator_action.py": "bf79bf821c3cf1b67199069f35f5f1f27826cebe511da6a5876fa864e6510a4a",
+      "src/tau2/evaluator/evaluator_env.py": "40751ab96a96acf878474cc460fadb3c16d189ffe493df8c130685ec0421ce60",
+      "src/tau2/evaluator/evaluator_communicate.py": "6efd259a1aee43fb55d2ae4c6024deb467064b8941383fca23550e4ae3a347c0",
+      "src/tau2/evaluator/evaluator_nl_assertions.py": "f625ede39bac7052dbfa57a175a8d177d8574e9fe464058634fe161dcff763fc",
+      "src/tau2/metrics/agent_metrics.py": "da3e95e6c1c3773305d7c02ed60cac944fac18ff6821b3a0df16d9255083c62d",
+      "src/tau2/domains/retail/tools.py": "b40ceefd87b428792e2fdce545b0156131273be6e3ad36e29093763f5dd370f4",
+      "src/tau2/domains/retail/environment.py": "3e62fee191a1d727275aaab1104afb0cebcb6cbb6175721497bd6158e74beb5b"
+    },
+    "recomputed_at_utc": "2026-08-31T03:15:00Z",
+    "matches_c1_recorded_hashes": true,
+    "all_8_identical": true,
+    "note": "All 8 hashes recomputed fresh during C2 preparation and compared byte-for-byte against bench/tau2_config_identity.json's pre-C1 recording (also reproduced in reports/p06-c1-freeze.json's protected_artifacts_verification). Zero drift. evaluator_env.py is the file whose EnvironmentEvaluator.calculate_reward reconstructs the reference/gold environment via registry.get_env_constructor(domain) -- unmodified, and (per bench/tau2_adapter.py's design) always resolves to tau2's own vanilla 'retail' factory even for C2's live-governed runs, because the live Environment instance stamps domain_name='retail' regardless of which registry key built it. This is the mechanism, not an assumption -- verified for real in bench/verify_tau2_public_route.py section 6."
+  },
+
+  "output": {
+    "path": "phase 2/external/tau2-bench/data/simulations/C2_kimi_k2/results.json",
+    "distinct_from_c1": true,
+    "c1_path_for_reference": "phase 2/external/tau2-bench/data/simulations/C1_kimi_k2/results.json"
+  },
+
+  "no_secrets": "This file contains no API keys, tokens, or credentials. FEATHERLESS_API_KEY must be supplied via the shell environment at run time, not written here."
+}

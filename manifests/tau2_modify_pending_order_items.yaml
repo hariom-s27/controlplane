@@ -1,0 +1,39 @@
+# P06 C2 — tau2-bench retail domain, tool: modify_pending_order_items.
+# Shared rationale (ORDER_BELONGS_TO_CUSTOMER exclusion, the decide.py
+# _PREDICATE_FOR_KIND gap, the flat predicate_key choice): see
+# manifests/tau2_cancel_pending_order.yaml's header comment in full.
+#
+# tau2 business rule mirrored (tools.py, modify_pending_order_items):
+# "if order.status != 'pending': raise ValueError('...order is not
+# pending...')" — a STRICT pending check (unlike address/payment's looser
+# `"pending" in order.status`; a "pending (item modified)" order cannot be
+# item-modified again). The predicate graph mirrors the strict form.
+manifest_id: tau2-retail-modify_pending_order_items-v1
+schema_version: 1
+
+tool: modify_pending_order_items
+predicate_graph: graphs/tau2_modify_pending_order_items.json
+
+compensation:
+  action: null                    # tau2 exposes no dedicated "revert item change" tool
+  compensability: partially        # price difference charged via gift card balance
+
+risk_tier_default: 1               # order not yet fulfilled/shipped
+fail_posture:
+  tier_0: open
+  tier_1: closed
+  tier_2: closed
+
+reliability_floor: corroborated
+
+verdict_handling:
+  UNVERIFIABLE: escalate
+  SOURCE_UNRELIABLE: escalate
+
+evidence_retention_days: 2555
+
+claim_bindings:
+  - claim_kind: ORDER_STATUS_SUPPORTS_ACTION
+    resolver: tau2_retail
+    subject: action.order_id
+    predicate_key: order_status

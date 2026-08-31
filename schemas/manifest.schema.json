@@ -96,7 +96,7 @@
             ]
           },
           "resolver": {
-            "enum": ["orders", "policy", "entitlements", "authority", "pii", "intent"]
+            "enum": ["orders", "policy", "entitlements", "authority", "pii", "intent", "tau2_retail"]
           },
           "subject": {
             "type": ["string", "null"],

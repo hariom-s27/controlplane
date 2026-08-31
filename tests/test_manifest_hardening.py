@@ -50,14 +50,16 @@ def test_every_shipped_manifest_loads_without_error(name):
     assert cm.load_manifest(name)["_name"] == name
 
 
-def test_schema_enums_do_not_drift_from_the_live_engine_vocabulary():
+def test_schema_enums_cover_builtins_and_declared_external_extensions():
     """The JSON Schema's claim_kind/resolver enums are a structural
-    convenience (Section 5); this pins them to the live ClaimKind enum and
-    RESOLVER_BY_NAME so a future addition to either fails loudly here rather
-    than silently under-validating."""
+    convenience (Section 5). Built-in resolvers must remain accepted, while
+    an explicitly permitted external resolver name still has to pass the
+    independent RESOLVER_BY_NAME check in manifest._validate."""
     props = cm._json_schema()["properties"]["claim_bindings"]["items"]["properties"]
     assert set(props["claim_kind"]["enum"]) == {k.name for k in ClaimKind}
-    assert set(props["resolver"]["enum"]) == set(RESOLVER_BY_NAME)
+    resolver_names = set(props["resolver"]["enum"])
+    assert set(RESOLVER_BY_NAME) <= resolver_names
+    assert resolver_names - set(RESOLVER_BY_NAME) == {"tau2_retail"}
 
 
 def test_schema_forbids_raw_query_or_arbitrary_keys_on_a_binding():

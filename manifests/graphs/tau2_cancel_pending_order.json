@@ -1,0 +1,22 @@
+{
+  "contentType": "application/vnd.gorules.decision",
+  "nodes": [
+    { "id": "in1", "type": "inputNode", "name": "request", "position": { "x": 0, "y": 0 } },
+    {
+      "id": "ex1",
+      "type": "expressionNode",
+      "name": "rules",
+      "position": { "x": 200, "y": 0 },
+      "content": {
+        "expressions": [
+          { "id": "x0", "key": "status_supports_action", "value": "evidence.order_status == \"pending\"" }
+        ]
+      }
+    },
+    { "id": "out1", "type": "outputNode", "name": "response", "position": { "x": 400, "y": 0 } }
+  ],
+  "edges": [
+    { "id": "e1", "sourceId": "in1", "targetId": "ex1", "type": "edge" },
+    { "id": "e2", "sourceId": "ex1", "targetId": "out1", "type": "edge" }
+  ]
+}

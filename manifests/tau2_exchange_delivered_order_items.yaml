@@ -1,0 +1,37 @@
+# P06 C2 — tau2-bench retail domain, tool: exchange_delivered_order_items.
+# Shared rationale (ORDER_BELONGS_TO_CUSTOMER exclusion, the decide.py
+# _PREDICATE_FOR_KIND gap, the flat predicate_key choice): see
+# manifests/tau2_cancel_pending_order.yaml's header comment in full.
+#
+# tau2 business rule mirrored (tools.py, exchange_delivered_order_items):
+# "if order.status != 'delivered': raise ValueError('...order is not
+# delivered...')" — a strict "delivered" check.
+manifest_id: tau2-retail-exchange_delivered_order_items-v1
+schema_version: 1
+
+tool: exchange_delivered_order_items
+predicate_graph: graphs/tau2_exchange_delivered_order_items.json
+
+compensation:
+  action: null                    # tau2 exposes no "reverse exchange" tool
+  compensability: partially        # price difference charged/refunded + physical item swap
+
+risk_tier_default: 2               # delivered order + moves money + ships new items
+fail_posture:
+  tier_0: open
+  tier_1: closed
+  tier_2: closed
+
+reliability_floor: corroborated
+
+verdict_handling:
+  UNVERIFIABLE: escalate
+  SOURCE_UNRELIABLE: escalate
+
+evidence_retention_days: 2555
+
+claim_bindings:
+  - claim_kind: ORDER_STATUS_SUPPORTS_ACTION
+    resolver: tau2_retail
+    subject: action.order_id
+    predicate_key: order_status

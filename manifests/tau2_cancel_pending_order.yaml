@@ -1,0 +1,62 @@
+# P06 C2 — tau2-bench retail domain, tool: cancel_pending_order.
+#
+# Governed via bench/tau2_adapter.py (ControlPlaneRetailTools.use_tool),
+# NOT via any change under controlplane/. See that file's module docstring
+# for the full public-route trace.
+#
+# Only ORDER_STATUS_SUPPORTS_ACTION is bound. ORDER_BELONGS_TO_CUSTOMER is
+# deliberately NOT bound for any tau2_* manifest — tau2's retail domain has
+# no structural, DB-level authenticated-identity channel independent of
+# agent conversation (tau2 task data/tau2/domains/retail/tasks.json itself
+# documents this as an open issue: "Agent is allowed to do user level
+# actions ... without authenticating the user"). Binding it would require
+# either previous-tool-output as evidence (disallowed) or the evaluator's
+# hidden ground truth (circular). See bench/tau2_adapter.py's resolver
+# docstring and the P06 C2 report.
+#
+# KNOWN LIMITATION, disclosed not hidden: controlplane/decide.py's
+# _PREDICATE_FOR_KIND table (protected P02 file) has no entry for
+# ORDER_STATUS_SUPPORTS_ACTION today, so this claim resolves real evidence
+# and appears on every receipt but cannot yet by itself drive a
+# BLOCK/CONTRADICTED verdict. See tests/test_tau2_adapter.py.
+#
+# tau2 business rule mirrored here (src/tau2/domains/retail/tools.py,
+# cancel_pending_order): "if order.status != 'pending': raise ValueError
+# ('Non-pending order cannot be cancelled')" — a STRICT pending check
+# (unlike modify_pending_order_address/payment's looser
+# `"pending" in order.status`, which also accepts "pending (item
+# modified)"). The predicate graph mirrors the strict form.
+manifest_id: tau2-retail-cancel_pending_order-v1
+schema_version: 1
+
+tool: cancel_pending_order
+predicate_graph: graphs/tau2_cancel_pending_order.json
+
+compensation:
+  action: null                    # tau2 exposes no "uncancel" tool
+  compensability: partially        # refund issued (gift card: instant; else 5-7 business days)
+
+risk_tier_default: 2               # cancels a live order + moves money
+fail_posture:
+  tier_0: open
+  tier_1: closed
+  tier_2: closed                   # exhausted escalation budget BLOCKS, matches manifests/servicing.yaml
+
+reliability_floor: corroborated
+
+verdict_handling:
+  UNVERIFIABLE: escalate
+  SOURCE_UNRELIABLE: escalate
+
+evidence_retention_days: 2555       # EU AI Act Art. 26(6) minimum is 6 months, matches servicing.yaml
+
+claim_bindings:
+  - claim_kind: ORDER_STATUS_SUPPORTS_ACTION
+    resolver: tau2_retail
+    subject: action.order_id
+    predicate_key: order_status     # flat key: see bench/tau2_adapter.py — avoids
+                                     # controlplane/predicates/__init__.py's evaluate()
+                                     # servicing-specific null-substitution block, which
+                                     # keys off a NESTED "order" dict (order.customer_id /
+                                     # order.amount_paise / order.item_colour /
+                                     # order.item_category) this manifest never produces
