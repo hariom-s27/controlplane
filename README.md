@@ -19,11 +19,15 @@ in [the experiment audit](docs/experiment-audit.md), and the affected figures
 and reasons for retirement are recorded in
 [the retraction record](docs/retired-figures.md).
 
-Those two documents are unchanged historical artifacts from commit
-`b4ef009ab309372d1cd683145684a313696fa06a`. They describe audit findings and
-repairs prepared in that source commit. This publication commit merges the
-disclosures and retires the public claims; it does not merge those repair
-implementations, and it did not generate replacement results.
+Those findings originate from work also present in an off-release development
+commit, `b4ef009ab309372d1cd683145684a313696fa06a` — **not an ancestor of this
+public release** (their common ancestor is `42143cf`). The text of the two
+linked documents has since been edited in this repository, independently of
+that commit, to state plainly which parts of the original findings are
+public-release fact (this repository's committed code, unchanged since the
+audit) and which parts describe corrective implementations and replacement
+results that exist only in that off-release development history and are not
+part of this public release.
 
 ---
 
@@ -218,8 +222,10 @@ thing in the repo.)*
   precedence ("SOURCE_UNRELIABLE > CONTRADICTED") *globally*: degrading ONE
   claim's evidence reliability could suppress a completely unrelated, still-
   fully-reliable claim's hard contradiction, turning what should stay BLOCK
-  into the strictly more permissive ESCALATE — exploitable by an agent (or a
-  bug) that simply degrades its own evidence quality. Fixed by scoping the
+  into the strictly more permissive ESCALATE — a defect class an agent (or a
+  bug) could trigger simply by degrading its own evidence quality, identified
+  through Hypothesis property-based testing, not an observed or demonstrated
+  agent exploit. Fixed by scoping the
   precedence per-claim and, for the case where the SAME claim is both
   unreliable and would itself fail, decoupling the verdict label (still
   honestly `SOURCE_UNRELIABLE`) from the intervention floor (never weaker

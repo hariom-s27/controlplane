@@ -77,8 +77,8 @@ ours to fabricate.
 | Figure | Status |
 |---|---|
 | Grounding scores 0.921 (accurate paraphrase) / 0.023 (fluent-but-wrong) | Real — measured against the downloaded HHEM-2.1-Open model, `tests/test_ground.py` |
-| Grounding model load (cold start) + HHEM scored-call latency | Real — **P09 measures both** (`reports/latency.md` §E cold start ≈ 9 s one-time, I/O-bound and variable; §C/§G HHEM `ground` stage p50 161 ms over 1,050 scored calls) |
-| Per-stage latency p50/p95/p99/max in `reports/latency.md` | Real — **P09**: 4 configurations × 1,050 gated calls each; unrounded percentiles in `summary.json['p09_latency']`. The old n=15/n=24 interim is superseded. |
-| Decision receipt size: median 2,282 B, p95 3,763 B (n=120) | Real — generated through all three manifest pipelines; see `reports/summary.json` |
+| Grounding model load (cold start) + HHEM scored-call latency | **OFF-RELEASE DEVELOPMENT RESULT.** Measured in later off-release development (source provenance: `reports/latency.md` §E/§C/§G at commit `b4ef009`, not an ancestor of this public release) — cold start ≈ 9 s one-time, I/O-bound and variable; HHEM `ground` stage p50 161 ms over 1,050 scored calls. `reports/latency.md` does not exist in this public release; not publicly reproducible from `6ec4261`. |
+| Per-stage latency p50/p95/p99/max in `reports/latency.md` | **OFF-RELEASE DEVELOPMENT RESULT.** Same provenance as above — 4 configurations × 1,050 gated calls each, unrounded percentiles in `summary.json['p09_latency']` at `b4ef009`. `reports/` (including `reports/latency.md` and `reports/summary.json`) is not part of this public release. |
+| Decision receipt size: median 2,282 B, p95 3,763 B (n=120) | **OFF-RELEASE DEVELOPMENT RESULT.** Same provenance — generated through all three manifest pipelines, recorded in `reports/summary.json` at `b4ef009`. That artifact does not exist in this public release; the aggregate n=120 statistic is not publicly reproducible from `6ec4261`. |
 | Logger 2 (extraction accuracy under noise) | Honest `not_measured` stub — unchanged |
 | `reports/noise_sweep.png` | Not a noise sweep; titled honestly as Exp 3's comparison — unchanged |
