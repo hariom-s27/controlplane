@@ -18,10 +18,28 @@ File-name note: `docs/ROADMAP.md` planned these as `bench/exp3_orderid.py`,
 `bench/seb1_exp3_cross_validation.py`, `bench/seb1_exp5_confusion_matrix.py`,
 `controlplane/mutation.py`, `controlplane/bias_probe.py`.
 
-Line numbers below are against the **pre-fix** versions of those files (the
-state that produced the retired numbers), recoverable from git history. The
-files themselves have since been rebuilt or deleted per the fixes recorded
-in `docs/retired-figures.md`; `controlplane/bias_probe.py` no longer exists.
+Line numbers below are against the versions of those files that produced the
+retired numbers.
+
+**Release-state note (applies to this whole document):** the public baseline is
+`6ec4261` (`origin/main`). The verified local release candidate is `986b65e`,
+whose parent is that baseline; it is not public until integrated and pushed.
+The candidate changes only C/I/D engineering files and focused tests, so the
+benchmark and research state described here is identical in both trees.
+
+In both the public baseline and candidate,
+`bench/seb1_exp3_cross_validation.py`,
+`bench/seb1_exp5_confusion_matrix.py`, and `controlplane/mutation.py` are
+unchanged from the circular versions analysed below. `controlplane/bias_probe.py`
+also still exists; its docstring and output report a minimum detectable effect
+alongside the p-value, but the structural limitation identified here (the
+group label never reaching `decide()`) is unchanged. Corrective rewrites — a
+held-out gold set, a ground-truth-file design for Exp 3,
+specification-derived mutation operators, and deletion of the bias probe in
+favor of a structural test — were developed in off-release commit `b4ef009`,
+which is not an ancestor of the baseline or candidate. They are not part of
+either release state. Step 2's engineering verification did not run or
+validate these experiments.
 
 ---
 
@@ -61,22 +79,26 @@ function is deterministic, dressed up as an accuracy metric.
 
 A gold set whose labels are assigned by a process independent of `decide()`
 — a human annotator, or a separate reference implementation — and whose
-facts are resolved by the real registry + Zen predicate pipeline rather
-than chosen to hit a target verdict. That artifact is `bench/gold_set.jsonl`
-(task P03). Until it exists, exp 5 has no honest number and is marked
-BLOCKED in code (`raise SystemExit`).
+facts are resolved by the production registry + Zen predicate pipeline rather
+than chosen to hit a target verdict. Until such an artifact is used, Exp 5
+has no honest number.
 
-**Update (task P03, done):** `bench/gold_set.jsonl` now exists — 150 cases
-built from real `orders.db` rows, labelled by `bench/label.py`, a second
-implementation of the refund rules that imports nothing from `controlplane/`
-and parses its thresholds from the clause *prose* rather than the manifest.
-Independence is enforced by `tests/test_label_independence.py` and
-`tests/test_gold_set_holdout_isolation.py`; determinism by
-`tests/test_gold_set_determinism.py`. See `docs/gold-set.md`. Exp 5 stays
-BLOCKED for the *second* reason: it still needs a non-executing pipeline
-driver so `_predict_class()` can read a real verdict without running the
-refund. `run()` now raises `SystemExit` with a message that says exactly
-this.
+**OFF-RELEASE DEVELOPMENT HISTORY — NOT PART OF THE PUBLIC BASELINE OR
+VERIFIED CANDIDATE (task P03):** in later development at `b4ef009`,
+`bench/gold_set.jsonl` was built — 150 cases from `orders.db` rows, labelled
+by `bench/label.py`, a second implementation of the refund rules that imports
+nothing from `controlplane/` and parses its thresholds from clause prose —
+with independence and determinism tests and `docs/gold-set.md`. None of
+`bench/gold_set.jsonl`, `bench/label.py`, `docs/gold-set.md`,
+`tests/test_label_independence.py`, `tests/test_gold_set_holdout_isolation.py`
+or `tests/test_gold_set_determinism.py` exists in the baseline or candidate.
+
+**BASELINE/CANDIDATE STATE:** `bench/seb1_exp5_confusion_matrix.py` is
+unchanged from the circular version analysed above. `run()` does not raise
+`SystemExit` for a missing gold set — the only `SystemExit` in the file is an
+unrelated `dateparser` import guard. It executes to completion and still
+reproduces the circular matrix. The held-out set and the later BLOCKED state
+pending a non-executing pipeline driver are off-release development history.
 
 ---
 
@@ -128,9 +150,18 @@ never opens, with the verdict derived as `resolved_order_id !=
 true_order_id`. And the corpus must contain distractors the attribute check
 *cannot* see (same colour and category, differing on a field the check does
 not read), so that a wrong-order resolution can slip past `attributes_match`
-and produce a miss. Both changes are applied in the rebuilt file; the
-checker's independence from the ground-truth file is asserted in
-`tests/test_seb1_experiments.py`.
+and produce a miss.
+
+**BASELINE/CANDIDATE STATE:** neither change is present.
+`bench/seb1_exp3_cross_validation.py` remains the circular version analysed
+above: `resolved_colour` is always the claimed colour and
+`claimed_category` is always `target_category`, so `attributes_match` still
+reduces to `not resolves_to_distractor`. Neither
+`bench/exp3_ground_truth.jsonl` nor `bench/exp3_checker.py` exists.
+`tests/test_seb1_experiments.py` asserts
+`accuracy_with_attributes_check == 1.0`; it pins the circular result rather
+than testing ground-truth-file independence. The rebuilt checker-blind design
+is **OFF-RELEASE DEVELOPMENT HISTORY**, not part of the baseline or candidate.
 
 ---
 
@@ -175,8 +206,16 @@ threshold and posture in `manifests/servicing.yaml` — including the ones
 pure `decide()` does **not** check: `currency` enum, `latency_budget_ms`,
 `risk_tier_default`, `evidence_retention_days`,
 `fail_posture`. Corrupting those produces misses, and a score below 1.0 is
-the expected, desirable result. The rewritten file does this and reports
-per-operator hits and misses.
+the expected, desirable result.
+
+**BASELINE/CANDIDATE STATE:** `controlplane/mutation.py` still defines the
+same six operators analysed above (`order_id_nonexistent`,
+`amount_above_ceiling`, `delivered_at_outside_window`,
+`clause_version_superseded`, `customer_id_mismatched`, and
+`order_status_inconsistent`), and `was_caught` remains `intervention is not
+Intervention.ALLOW`. The specification-derived operator set and its non-1.0
+result are **OFF-RELEASE DEVELOPMENT HISTORY**, not part of either release
+state.
 
 ---
 
@@ -212,9 +251,17 @@ it. It passes by construction.
 ### What input would have produced a different number
 
 There is none for `decide()` as written — which is the actual, defensible
-finding, and it should be stated structurally, not statistically. The probe
-is deleted. It is replaced by:
-- `tests/test_no_protected_attributes.py` — asserts `decide()`'s input
+finding, and it should be stated structurally, not statistically.
+
+**BASELINE/CANDIDATE STATE:** `controlplane/bias_probe.py` is not deleted. It
+still assigns `group` independently of `days_ago`/`amount`, never passes it to
+`decide()`, and therefore retains the structural limitation above. Its
+docstring/output were narrowed to report a minimum detectable effect with the
+p-value, but this does not turn the probe into bias-performance evidence. The
+following replacement was developed later and is **OFF-RELEASE DEVELOPMENT
+HISTORY**; none of these paths exists in the baseline or candidate:
+
+- `tests/test_no_protected_attributes.py` — would assert `decide()`'s input
   types contain no protected-attribute field.
 - a paragraph in `docs/limitations.md` explaining why a statistical test
   over a variable the function cannot read is not evidence of anything.
@@ -252,6 +299,11 @@ anything about traffic, coverage, or the ladder's design.
 A claim set containing a C4 or C5 kind — which the current tool
 configuration cannot generate. The ratio is not a finding; the underlying
 property ("every `ClaimKind` is mapped to a tier") is an invariant, and its
-violation is a bug, not a low metric. It is moved to a `tests/` invariant
-(`tests/test_ladder.py`) and dropped from the reports. Per-tier claim
-*counts* remain as descriptive telemetry; the ratio does not.
+violation is a bug, not a low metric.
+
+**BASELINE/CANDIDATE STATE:** `tests/test_ladder.py` does enforce that every
+`ClaimKind` is mapped to a tier. However, `coverage_ratio` has not been
+removed from `controlplane/schema.py` (`Decision.coverage`) or
+`controlplane/telemetry.py`; both still compute and surface it. Per-tier
+counts remain alongside the ratio, not instead of it. Full removal of the
+ratio was completed only in off-release development.
