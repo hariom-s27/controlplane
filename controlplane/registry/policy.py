@@ -12,7 +12,9 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 
+from controlplane.errors import AmbiguousPolicyState
 from controlplane.registry.clock import now
+from controlplane.registry.sqlite_source import connect_readwrite, translate_availability
 from controlplane.schema import Claim, Confidence, Evidence, Reliability, SessionContext
 
 ROOT = Path(__file__).resolve().parent.parent.parent
@@ -28,15 +30,26 @@ class PolicyResolver:
             "AND effective_to IS NULL"
         )
 
-        conn = sqlite3.connect(DB)
+        conn = connect_readwrite(DB, source="policy_store.db")
         conn.row_factory = sqlite3.Row
         try:
-            row = conn.execute(
-                "SELECT version, text FROM clauses WHERE policy_id = ? AND effective_to IS NULL",
-                (policy_id,),
-            ).fetchone()
+            try:
+                rows = conn.execute(
+                    "SELECT version, text FROM clauses WHERE policy_id = ? AND effective_to IS NULL",
+                    (policy_id,),
+                ).fetchall()
+            except sqlite3.OperationalError as exc:
+                translate_availability(exc, source="policy_store.db", operation="read current policy")
+                raise AssertionError("translate_availability must raise")  # pragma: no cover
 
-            if row is None:
+            if len(rows) > 1:
+                raise AmbiguousPolicyState(
+                    policy_id=policy_id,
+                    row_count=len(rows),
+                    query=query,
+                )
+
+            if not rows:
                 return Evidence(
                     claim_id=claim.id,
                     value=None,
@@ -47,6 +60,8 @@ class PolicyResolver:
                     confidence=Confidence.NONE,
                     note=f"no current clause for policy_id={policy_id!r}",
                 )
+
+            row = rows[0]
 
             return Evidence(
                 claim_id=claim.id,

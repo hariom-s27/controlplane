@@ -1,0 +1,87 @@
+"""Atomic process-local execution ledger for governed tool calls.
+
+Completed calls replay their result without executing again. A failed call is
+kept indeterminate because its side effects may already have occurred. The
+ledger is intentionally non-durable and is cleared by a process restart.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from threading import RLock
+from typing import Any, Callable
+
+
+class DuplicateExecutionSuppressed(RuntimeError):
+    """A prior attempt may have executed but did not complete cleanly."""
+
+    def __init__(self, key: str) -> None:
+        self.key = key
+        super().__init__(f"execution suppressed for indeterminate idempotency key {key!r}")
+
+
+@dataclass(frozen=True)
+class ExecutionOutcome:
+    result: Any
+    replayed: bool
+
+
+@dataclass
+class _Entry:
+    state: str
+    result: Any = None
+
+
+class ExecutionLedger:
+    def __init__(self) -> None:
+        self._lock = RLock()
+        self._entries: dict[str, _Entry] = {}
+
+    def execute_once(self, key: str, call: Callable[[], Any]) -> ExecutionOutcome:
+        if not key:
+            raise ValueError("idempotency key must be non-empty")
+
+        with self._lock:
+            prior = self._entries.get(key)
+            if prior is not None:
+                if prior.state == "completed":
+                    return ExecutionOutcome(result=prior.result, replayed=True)
+                raise DuplicateExecutionSuppressed(key)
+            self._entries[key] = _Entry(state="in_flight")
+
+        try:
+            result = call()
+        except BaseException:
+            with self._lock:
+                self._entries[key].state = "indeterminate"
+            raise
+
+        with self._lock:
+            self._entries[key] = _Entry(state="completed", result=result)
+        return ExecutionOutcome(result=result, replayed=False)
+
+    def reset(self) -> None:
+        with self._lock:
+            self._entries.clear()
+
+
+_LEDGER = ExecutionLedger()
+
+
+def execute_once(key: str, call: Callable[[], Any]) -> ExecutionOutcome:
+    return _LEDGER.execute_once(key, call)
+
+
+def reset_execution_ledger() -> None:
+    """Test-isolation hook; production callers do not reset the ledger."""
+
+    _LEDGER.reset()
+
+
+__all__ = [
+    "DuplicateExecutionSuppressed",
+    "ExecutionLedger",
+    "ExecutionOutcome",
+    "execute_once",
+    "reset_execution_ledger",
+]
