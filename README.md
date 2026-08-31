@@ -6,10 +6,24 @@ claims inside it against the enterprise's own live systems of record, and
 decide whether to allow, modify, block or escalate — emitting a signed
 evidence receipt for every decision.
 
-> Most AI checkers ask another AI for a second opinion.
-> We ask the company's own systems for the actual answer.
-
 Accenture Innovation Challenge 2026 · Problem Track 1 · Round 2
+
+---
+
+## What changed after our internal audit
+
+An internal audit identified circularity and related methodological problems
+in several reported experiments and one coverage metric. The affected figures
+are retired; they are not current evidence. The original findings are preserved
+in [the experiment audit](docs/experiment-audit.md), and the affected figures
+and reasons for retirement are recorded in
+[the retraction record](docs/retired-figures.md).
+
+Those two documents are unchanged historical artifacts from commit
+`b4ef009ab309372d1cd683145684a313696fa06a`. They describe audit findings and
+repairs prepared in that source commit. This publication commit merges the
+disclosures and retires the public claims; it does not merge those repair
+implementations, and it did not generate replacement results.
 
 ---
 
@@ -82,8 +96,10 @@ controlplane/receipt.py ──┬── decisions.jsonl (signed, HMAC-SHA256)
 controlplane/telemetry.py ┘   + coverage / latency / promotion-cost blocks
 ```
 
-Built: S0-S18. `make bench` runs SEB-1 Exp 3 (D52 cross-validation) and
-Exp 5 (confusion matrix); `make reviewer` runs the human-in-the-loop
+Built: S0-S18. The existing `make bench` targets include the historical
+SEB-1 Exp 3 and Exp 5 harnesses, but their previously reported outputs are
+retired and must not be treated as current evidence; see the audit documents
+above. `make reviewer` runs the human-in-the-loop
 console (terminal, per the roadmap's own sanctioned alternative to
 FastAPI+HTMX — the effort went into the pipeline it measures instead of a
 web UI for it); `make report` regenerates `reports/` and `summary.json`
@@ -105,19 +121,18 @@ order ID) — detection works — and is deliberately NOT load-bearing on its
 own, so the receipt shows detection succeeding *and* not being what
 blocked it. Both halves matter; that's the actual thesis.
 
-`controlplane/bias_probe.py` (S14) is a standalone, offline counterfactual-
-twin probe — never on the critical path, since bias is a population
-property. `decide()` takes no protected-attribute input at all; the probe
-attaches a synthetic label decide() never reads and confirms block rates
-don't differ across it, reporting the minimum detectable effect alongside
-the p-value (0.17 at n=200, 80% power) rather than a bare "no bias found."
+The historical `controlplane/bias_probe.py` result is retired. Its synthetic
+group label never enters `decide()`, so equal block rates were forced by
+construction and do not support a bias-performance claim. A structural
+replacement was prepared in `b4ef009`, but it is not merged here; this branch
+reports no replacement result.
 
 `docs/invariants.md` states five metamorphic invariants (M1-M5) over
-`decide()`, property-tested with `hypothesis` in `tests/test_invariants.py`
-— and `controlplane/mutation.py` mutates ~200 scenario inputs (order_id,
-amount, dates, clause version, customer_id, reliability) against a
-genuinely ALLOW-worthy baseline, scoring what fraction the gate still
-catches.
+`decide()`, property-tested with `hypothesis` in `tests/test_invariants.py`.
+The historical mutation score is also retired: its operators were derived
+from checks already implemented by the gate, so the result restated those
+checks. A specification-derived replacement was prepared in `b4ef009`, but
+it is not merged here; this branch reports no replacement score.
 
 ## Dependencies
 
@@ -173,7 +188,7 @@ thing in the repo.)*
   (ORD-88472, same customer and colour, different category) directly.
 - **Escalation rate-limiting against the manifest's `escalation_budget_pct`
   is not implemented.** `decide()` must stay pure (no I/O, no clock — hard
-  constraint) for S15's metamorphic invariants and bias probe to hammer it;
+  constraint) for S15's metamorphic tests to exercise it;
   rate-limiting needs state across calls, so it belongs at the `dispatch_tool`
   caller level, which isn't wired up.
 - **Logger 2 (extraction accuracy under noise, the SEB-1 sweep) is an
@@ -212,24 +227,17 @@ thing in the repo.)*
   docstring and `tests/test_invariants.py` both carry the full explanation.
   This is the "found this and we fixed it" sentence the roadmap asked for —
   it isn't hypothetical.
-- **S16's SEB-1 Exp 3 and Exp 5 are new implementations, not a port of
-  `phase 1/`'s existing SEB-1 harness.** That harness benchmarks date-
-  extraction recoverability specifically — a different, tangential concern
-  from what Exp 3 (order_id cross-validation) and Exp 5 (confusion matrix)
-  ask for. Both are built fresh against the real `decide()`/`predicates`
-  pipeline. Exp 3's result is real and worth stating: 100% verdict accuracy
-  with the R3 `attributes_match` check on distractor cases, 75% without it
-  — exactly matching the 25% wrong-order-resolution rate the generator
-  produces. Logger 2 (SEB-1 extraction-accuracy-under-noise) stays an
-  honest `not_measured` stub regardless, since it specifically needs the
-  *date-extraction* harness re-run against the live extractor, which this
-  doesn't substitute for.
+- **The reported Exp 3 100% / 75% comparison and the prior Exp 5 confusion
+  matrix are retired.** The audit found that their labels and predictions
+  were circular, so the figures could not provide independent evidence.
+  They remain recoverable from Git history but are not valid current results.
+  Repairs and replacement figures described by the historical audit documents
+  were prepared in `b4ef009`; they are not merged here, and this publication
+  branch did not generate replacement numbers. Logger 2 (SEB-1
+  extraction-accuracy-under-noise) remains an honest `not_measured` stub.
 - **`reports/noise_sweep.png` is not a noise sweep.** No noise-level
-  experiment exists in this build (see above). The file is generated at
-  that path for `bench/report.py`'s file-list compliance, but its title
-  and content honestly say what it actually is: Exp 3's with/without-check
-  accuracy comparison. Mislabelling the filename would have been worse
-  than explaining it.
+  experiment exists in this build. Its Exp 3 comparison is part of the
+  retired evidence and must not be presented as a current result.
 - **The reviewer console's human-gate agreement rate needs an actual
   human.** `bench/reviewer_console.py --auto-approve` exists only to prove
   the console doesn't crash — it is explicitly NOT a measurement, and says
@@ -254,6 +262,6 @@ thing in the repo.)*
 
 Everything is seeded at `CP_SEED=20260814` and the demo clock is frozen at
 `CP_DEMO_DATE=2026-08-14`. `python data/build_db.py` produces byte-identical
-databases on every run — `tests/test_data.py` asserts it. If you run this
-code you should get the numbers we published; if you do not, that is a bug and
-we want to hear about it.
+databases on every run — `tests/test_data.py` asserts it. This reproducibility
+statement does not revive the audit-retired figures, and this publication
+branch did not rerun or generate replacement experiments.
