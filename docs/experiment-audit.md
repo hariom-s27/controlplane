@@ -18,10 +18,26 @@ File-name note: `docs/ROADMAP.md` planned these as `bench/exp3_orderid.py`,
 `bench/seb1_exp3_cross_validation.py`, `bench/seb1_exp5_confusion_matrix.py`,
 `controlplane/mutation.py`, `controlplane/bias_probe.py`.
 
-Line numbers below are against the **pre-fix** versions of those files (the
-state that produced the retired numbers), recoverable from git history. The
-files themselves have since been rebuilt or deleted per the fixes recorded
-in `docs/retired-figures.md`; `controlplane/bias_probe.py` no longer exists.
+Line numbers below are against the versions of those files that produced the
+retired numbers.
+
+**Public-release note (applies to this whole document):** in this public
+release (`6ec4261`), `bench/seb1_exp3_cross_validation.py`,
+`bench/seb1_exp5_confusion_matrix.py`, and `controlplane/mutation.py` are
+**unchanged** from the circular versions analysed below — the line-by-line
+analysis describes the files as they currently exist in this tree, not just
+a past state. `controlplane/bias_probe.py` also still exists in this
+release; its docstring and output were reworded to report a minimum
+detectable effect alongside the p-value, but the structural limitation this
+audit identifies (the group label never reaching `decide()`) is unchanged.
+Corrective rewrites of these four files — a real held-out gold set, a
+ground-truth-file design for Exp 3, specification-derived mutation
+operators, and deletion of the bias probe in favor of a structural test —
+were developed later in an **off-release development state** (source
+provenance: commit `b4ef009`, which is not an ancestor of this public
+release) and are **not part of this public release**. Each section below
+marks exactly which parts of its narrative are public-release fact and
+which are off-release development history.
 
 ---
 
@@ -66,17 +82,26 @@ than chosen to hit a target verdict. That artifact is `bench/gold_set.jsonl`
 (task P03). Until it exists, exp 5 has no honest number and is marked
 BLOCKED in code (`raise SystemExit`).
 
-**Update (task P03, done):** `bench/gold_set.jsonl` now exists — 150 cases
-built from real `orders.db` rows, labelled by `bench/label.py`, a second
-implementation of the refund rules that imports nothing from `controlplane/`
-and parses its thresholds from the clause *prose* rather than the manifest.
-Independence is enforced by `tests/test_label_independence.py` and
-`tests/test_gold_set_holdout_isolation.py`; determinism by
-`tests/test_gold_set_determinism.py`. See `docs/gold-set.md`. Exp 5 stays
-BLOCKED for the *second* reason: it still needs a non-executing pipeline
-driver so `_predict_class()` can read a real verdict without running the
-refund. `run()` now raises `SystemExit` with a message that says exactly
-this.
+**OFF-RELEASE DEVELOPMENT HISTORY — NOT PART OF PUBLIC RELEASE (task P03):**
+in later development (source provenance: `b4ef009`, not an ancestor of this
+public release), `bench/gold_set.jsonl` was built — 150 cases from real
+`orders.db` rows, labelled by `bench/label.py`, a second implementation of
+the refund rules that imports nothing from `controlplane/` and parses its
+thresholds from the clause *prose* rather than the manifest — with
+independence enforced by `tests/test_label_independence.py` and
+`tests/test_gold_set_holdout_isolation.py`, determinism by
+`tests/test_gold_set_determinism.py`, and documented in `docs/gold-set.md`.
+None of `bench/gold_set.jsonl`, `bench/label.py`, `docs/gold-set.md`, or the
+three tests above exist in this public release.
+
+**PUBLIC RELEASE STATE:** in `6ec4261`, `bench/seb1_exp5_confusion_matrix.py`
+is unchanged from the circular version analysed above. `run()` does **not**
+raise `SystemExit` for a missing gold set — the only `SystemExit` in this
+file is an unrelated `dateparser` import guard. The function executes to
+completion and still reproduces the circular confusion matrix this section
+describes. The gold-set work and the "BLOCKED pending a non-executing
+pipeline driver" state above describe the off-release development commit
+only.
 
 ---
 
@@ -128,9 +153,20 @@ never opens, with the verdict derived as `resolved_order_id !=
 true_order_id`. And the corpus must contain distractors the attribute check
 *cannot* see (same colour and category, differing on a field the check does
 not read), so that a wrong-order resolution can slip past `attributes_match`
-and produce a miss. Both changes are applied in the rebuilt file; the
-checker's independence from the ground-truth file is asserted in
-`tests/test_seb1_experiments.py`.
+and produce a miss.
+
+**PUBLIC RELEASE STATE:** neither change is applied in `6ec4261`.
+`bench/seb1_exp3_cross_validation.py` is unchanged from the circular version
+analysed above — `resolved_colour` is still always set equal to the claimed
+colour and `claimed_category` is still always `target_category`, so
+`attributes_match` still reduces to `not resolves_to_distractor`. There is
+no `bench/exp3_ground_truth.jsonl` or `bench/exp3_checker.py` in this
+release. `tests/test_seb1_experiments.py` exists, but it asserts
+`accuracy_with_attributes_check == 1.0` — it pins the circular result in
+place, and does not assert any ground-truth-file independence. A rebuilt
+version with a separate, checker-blind ground-truth file was developed
+later — **OFF-RELEASE DEVELOPMENT HISTORY, not part of this public
+release.**
 
 ---
 
@@ -175,8 +211,17 @@ threshold and posture in `manifests/servicing.yaml` — including the ones
 pure `decide()` does **not** check: `currency` enum, `latency_budget_ms`,
 `risk_tier_default`, `evidence_retention_days`,
 `fail_posture`. Corrupting those produces misses, and a score below 1.0 is
-the expected, desirable result. The rewritten file does this and reports
-per-operator hits and misses.
+the expected, desirable result.
+
+**PUBLIC RELEASE STATE:** `controlplane/mutation.py` in `6ec4261` is
+unchanged — it still defines exactly the same six operators analysed above
+(`order_id_nonexistent`, `amount_above_ceiling`,
+`delivered_at_outside_window`, `clause_version_superseded`,
+`customer_id_mismatched`, `order_status_inconsistent`), and `was_caught` is
+still `intervention is not Intervention.ALLOW`. The specification-derived
+operator set described in this section, and the resulting non-1.0 mutation
+score, were developed later — **OFF-RELEASE DEVELOPMENT HISTORY, not part
+of this public release.**
 
 ---
 
@@ -212,9 +257,21 @@ it. It passes by construction.
 ### What input would have produced a different number
 
 There is none for `decide()` as written — which is the actual, defensible
-finding, and it should be stated structurally, not statistically. The probe
-is deleted. It is replaced by:
-- `tests/test_no_protected_attributes.py` — asserts `decide()`'s input
+finding, and it should be stated structurally, not statistically.
+
+**PUBLIC RELEASE STATE:** `controlplane/bias_probe.py` is **not** deleted in
+`6ec4261` — it still exists, and `group` is still assigned independently of
+`days_ago`/`amount` and never reaches `decide()`, so the structural
+limitation above is unchanged. Its docstring and output were reworded to say
+so explicitly and to report a minimum detectable effect (MDE) alongside the
+p-value, so a reader of the public script can see the bound the "no
+detectable difference" conclusion is quantified against — but the probe
+itself is still the same counterfactual-twin design analysed above, not a
+structural test. The replacement described below was developed later and is
+**OFF-RELEASE DEVELOPMENT HISTORY — NOT PART OF PUBLIC RELEASE**: none of
+`tests/test_no_protected_attributes.py`, `docs/limitations.md`, or
+`bench/bias_proxy_probe.py` exist in this public release.
+- `tests/test_no_protected_attributes.py` — would assert `decide()`'s input
   types contain no protected-attribute field.
 - a paragraph in `docs/limitations.md` explaining why a statistical test
   over a variable the function cannot read is not evidence of anything.
@@ -252,6 +309,12 @@ anything about traffic, coverage, or the ladder's design.
 A claim set containing a C4 or C5 kind — which the current tool
 configuration cannot generate. The ratio is not a finding; the underlying
 property ("every `ClaimKind` is mapped to a tier") is an invariant, and its
-violation is a bug, not a low metric. It is moved to a `tests/` invariant
-(`tests/test_ladder.py`) and dropped from the reports. Per-tier claim
-*counts* remain as descriptive telemetry; the ratio does not.
+violation is a bug, not a low metric.
+
+**PUBLIC RELEASE STATE:** `tests/test_ladder.py` exists in `6ec4261` and
+does enforce "every `ClaimKind` is mapped to a tier" as an invariant.
+However `coverage_ratio` has **not** been dropped from
+`controlplane/schema.py` (`Decision.coverage`) or `controlplane/telemetry.py`
+in this release — both still compute and surface it. Per-tier claim counts
+remain as descriptive telemetry alongside the ratio, not instead of it; full
+removal of the ratio was completed later, off-release.
