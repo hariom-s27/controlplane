@@ -216,7 +216,9 @@ def dispatch_tool(name: str, args: dict[str, Any], session: SessionContext, just
     if decision.intervention is Intervention.ALLOW:
         return _execute_governed_once(impl, args, decision)
     if decision.intervention is Intervention.MODIFY:
-        return _execute_governed_once(impl, decision.modified_args or args, decision)
+        if decision.modified_args is None:
+            raise Pending(decision)
+        return _execute_governed_once(impl, decision.modified_args, decision)
     if decision.intervention is Intervention.BLOCK:
         raise Blocked(decision)
     if decision.intervention is Intervention.ESCALATE:

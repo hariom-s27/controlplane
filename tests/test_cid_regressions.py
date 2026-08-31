@@ -9,7 +9,8 @@ import pytest
 from controlplane.decide import decide
 from controlplane.errors import SourceUnavailable
 from controlplane.idempotency import DuplicateExecutionSuppressed, reset_execution_ledger
-from controlplane.intercept import _run_gate, dispatch_tool, register_tool
+from controlplane.intercept import Pending, _run_gate, dispatch_tool, register_tool
+from controlplane.manifest import load_manifest
 from controlplane.predicates import evaluate
 from controlplane.registry.clock import now
 from controlplane.registry.orders import OrdersResolver
@@ -106,6 +107,84 @@ def _allow_decision(key: str) -> Decision:
         intervention=Intervention.ALLOW,
         idempotency_key=key,
     )
+
+
+def _knowledge_unverifiable_decision() -> Decision:
+    action = ProposedAction(
+        tool="send_document",
+        recipient_id="EMP-4410",
+        doc_id="DOC-2277",
+        excerpt="original sensitive excerpt",
+    )
+    claim = Claim(
+        id="DOC-2277:classification",
+        kind=ClaimKind.DOC_CLASSIFICATION_PERMITTED,
+        subject="DOC-2277",
+        tier=Tier.C2,
+        load_bearing=True,
+    )
+    manifest = load_manifest("knowledge_assistant")
+    return decide(
+        "knowledge-trace",
+        manifest["manifest_id"],
+        action,
+        [claim],
+        [],
+        {},
+        manifest,
+    )
+
+
+def test_unverifiable_modify_without_args_never_executes_original(monkeypatch):
+    original_args = {
+        "recipient_id": "EMP-4410",
+        "doc_id": "DOC-2277",
+        "excerpt": "original sensitive excerpt",
+    }
+    calls = []
+    register_tool("cid_unavailable_modify", lambda **kwargs: calls.append(kwargs) or "sent")
+    decision = _knowledge_unverifiable_decision()
+    assert decision.verdict is Verdict.UNVERIFIABLE
+    assert decision.intervention is Intervention.MODIFY
+    assert decision.modified_args is None
+    monkeypatch.setattr("controlplane.intercept._run_gate", lambda *args, **kwargs: (decision, {}))
+
+    with pytest.raises(Pending):
+        dispatch_tool(
+            "cid_unavailable_modify",
+            original_args,
+            SessionContext(trace_id="knowledge-trace"),
+        )
+
+    assert calls == []
+
+
+def test_modify_with_explicit_args_executes_only_modified_values(monkeypatch):
+    original_args = {
+        "recipient_id": "EMP-4410",
+        "doc_id": "DOC-2277",
+        "excerpt": "original sensitive excerpt",
+    }
+    modified_args = {
+        "recipient_id": "EMP-4410",
+        "doc_id": "DOC-2277",
+        "excerpt": "[redacted]",
+    }
+    calls = []
+    register_tool("cid_valid_modify", lambda **kwargs: calls.append(kwargs) or "sent")
+    decision = _knowledge_unverifiable_decision()
+    decision.modified_args = modified_args
+    monkeypatch.setattr("controlplane.intercept._run_gate", lambda *args, **kwargs: (decision, {}))
+
+    result = dispatch_tool(
+        "cid_valid_modify",
+        original_args,
+        SessionContext(trace_id="knowledge-trace"),
+    )
+
+    assert result == "sent"
+    assert calls == [modified_args]
+    assert calls[0] != original_args
 
 
 def test_equivalent_allowed_dispatch_executes_only_once(monkeypatch):
