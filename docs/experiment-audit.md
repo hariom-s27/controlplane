@@ -18,10 +18,12 @@ File-name note: `docs/ROADMAP.md` planned these as `bench/exp3_orderid.py`,
 `bench/seb1_exp3_cross_validation.py`, `bench/seb1_exp5_confusion_matrix.py`,
 `controlplane/mutation.py`, `controlplane/bias_probe.py`.
 
-Line numbers below are against the **pre-fix** versions of those files (the
-state that produced the retired numbers), recoverable from git history. The
-files themselves have since been rebuilt or deleted per the fixes recorded
-in `docs/retired-figures.md`; `controlplane/bias_probe.py` no longer exists.
+Line numbers below are against the versions of those files **as shipped in
+this release** — nothing described below has been changed here. Rebuilds
+and deletions for some of these files have been **prepared off-release**;
+each is recorded in `docs/retired-figures.md`, labelled there as off-release
+and not merged. In this release, `controlplane/bias_probe.py` still exists,
+unchanged.
 
 ---
 
@@ -63,20 +65,26 @@ A gold set whose labels are assigned by a process independent of `decide()`
 — a human annotator, or a separate reference implementation — and whose
 facts are resolved by the real registry + Zen predicate pipeline rather
 than chosen to hit a target verdict. That artifact is `bench/gold_set.jsonl`
-(task P03). Until it exists, exp 5 has no honest number and is marked
-BLOCKED in code (`raise SystemExit`).
+(task P03). Until it exists, exp 5 has no honest number. **Correction:**
+in this release `run()` does not raise `SystemExit` and is not blocked in
+code — it executes and returns the circular matrix described above. A
+code change that blocks `run()` pending an independent gold set has been
+**prepared off-release and is not merged into this tree**.
 
-**Update (task P03, done):** `bench/gold_set.jsonl` now exists — 150 cases
-built from real `orders.db` rows, labelled by `bench/label.py`, a second
-implementation of the refund rules that imports nothing from `controlplane/`
-and parses its thresholds from the clause *prose* rather than the manifest.
-Independence is enforced by `tests/test_label_independence.py` and
-`tests/test_gold_set_holdout_isolation.py`; determinism by
-`tests/test_gold_set_determinism.py`. See `docs/gold-set.md`. Exp 5 stays
-BLOCKED for the *second* reason: it still needs a non-executing pipeline
-driver so `_predict_class()` can read a real verdict without running the
-refund. `run()` now raises `SystemExit` with a message that says exactly
-this.
+**Off-release status (task P03):** a gold set (`bench/gold_set.jsonl`, 150
+cases from real `orders.db` rows, labelled by `bench/label.py` — a second
+implementation of the refund rules that imports nothing from
+`controlplane/` and parses its thresholds from the clause *prose* rather
+than the manifest), independence tests (`tests/test_label_independence.py`,
+`tests/test_gold_set_holdout_isolation.py`, `tests/test_gold_set_determinism.py`)
+and `docs/gold-set.md` are **described on an off-release branch and are not
+shipped in this release** — none of those paths exist in this tree. In this
+release, Exp 5 has no independent gold set and its number remains a
+tautology of its generator, as described above; `run()` itself does not
+raise `SystemExit` and is not blocked in code (see correction above) — the
+non-executing pipeline driver needed for `_predict_class()` to read a real
+verdict without running the refund is part of the off-release design and is
+not present here either.
 
 ---
 
@@ -128,9 +136,12 @@ never opens, with the verdict derived as `resolved_order_id !=
 true_order_id`. And the corpus must contain distractors the attribute check
 *cannot* see (same colour and category, differing on a field the check does
 not read), so that a wrong-order resolution can slip past `attributes_match`
-and produce a miss. Both changes are applied in the rebuilt file; the
-checker's independence from the ground-truth file is asserted in
-`tests/test_seb1_experiments.py`.
+and produce a miss. Both changes are described as applied in an off-release
+rebuild; `bench/exp3_ground_truth.jsonl` and `bench/exp3_checker.py` are
+**not present in this release**. In this tree,
+`bench/seb1_exp3_cross_validation.py` is unchanged from the circular
+version described above, and `tests/test_seb1_experiments.py` exercises
+that unchanged file — it does not test a ground-truth/checker split.
 
 ---
 
@@ -175,8 +186,10 @@ threshold and posture in `manifests/servicing.yaml` — including the ones
 pure `decide()` does **not** check: `currency` enum, `latency_budget_ms`,
 `risk_tier_default`, `evidence_retention_days`,
 `fail_posture`. Corrupting those produces misses, and a score below 1.0 is
-the expected, desirable result. The rewritten file does this and reports
-per-operator hits and misses.
+the expected, desirable result. A rewritten file doing this and reporting
+per-operator hits and misses has been **prepared off-release and is not
+merged into this tree**; `controlplane/mutation.py` in this release is
+unchanged, with the original six operators described above.
 
 ---
 
@@ -212,9 +225,11 @@ it. It passes by construction.
 ### What input would have produced a different number
 
 There is none for `decide()` as written — which is the actual, defensible
-finding, and it should be stated structurally, not statistically. The probe
-is deleted. It is replaced by:
-- `tests/test_no_protected_attributes.py` — asserts `decide()`'s input
+finding, and it should be stated structurally, not statistically. In this
+release, `controlplane/bias_probe.py` still exists and still passes by
+construction as described above. A replacement has been **prepared
+off-release and is not merged into this tree**:
+- `tests/test_no_protected_attributes.py` — would assert `decide()`'s input
   types contain no protected-attribute field.
 - a paragraph in `docs/limitations.md` explaining why a statistical test
   over a variable the function cannot read is not evidence of anything.
@@ -222,6 +237,8 @@ is deleted. It is replaced by:
   analysis) — where the group label *is* correlated with an input `decide()`
   does read (group A systematically lower amounts), so the test can
   actually fail.
+
+None of these three files exist in this release.
 
 ---
 
@@ -252,6 +269,9 @@ anything about traffic, coverage, or the ladder's design.
 A claim set containing a C4 or C5 kind — which the current tool
 configuration cannot generate. The ratio is not a finding; the underlying
 property ("every `ClaimKind` is mapped to a tier") is an invariant, and its
-violation is a bug, not a low metric. It is moved to a `tests/` invariant
-(`tests/test_ladder.py`) and dropped from the reports. Per-tier claim
-*counts* remain as descriptive telemetry; the ratio does not.
+violation is a bug, not a low metric. `tests/test_ladder.py` does enforce
+that invariant in this release — that part is shipped. Dropping the ratio
+itself from `schema.Decision.coverage` and the reports has been **prepared
+off-release and is not merged into this tree**: in this release, `schema.py`
+still computes `coverage_ratio = checkable / total`, unchanged. Per-tier
+claim *counts* remain as descriptive telemetry alongside it.
