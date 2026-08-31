@@ -14,6 +14,7 @@ from pathlib import Path
 
 from controlplane.registry import freshness
 from controlplane.registry.clock import now
+from controlplane.registry.sqlite_source import connect_readwrite, translate_availability
 from controlplane.schema import Claim, ClaimKind, Confidence, Evidence, Reliability, SessionContext
 
 ROOT = Path(__file__).resolve().parent.parent.parent
@@ -41,12 +42,16 @@ class OrdersResolver:
         field = _FIELD_FOR_KIND.get(claim.kind, "order_id")
         query = f"SELECT {field} FROM orders WHERE order_id = {order_id!r}"
 
-        conn = sqlite3.connect(DB)
+        conn = connect_readwrite(DB, source="orders.db")
         conn.row_factory = sqlite3.Row
         try:
-            row = conn.execute(
-                f"SELECT {field} FROM orders WHERE order_id = ?", (order_id,)
-            ).fetchone()
+            try:
+                row = conn.execute(
+                    f"SELECT {field} FROM orders WHERE order_id = ?", (order_id,)
+                ).fetchone()
+            except sqlite3.OperationalError as exc:
+                translate_availability(exc, source="orders.db", operation=f"read {field}")
+                raise AssertionError("translate_availability must raise")  # pragma: no cover
 
             if row is None:
                 return Evidence(
@@ -58,6 +63,18 @@ class OrdersResolver:
                     reliability_class=Reliability.UNVERIFIED,
                     confidence=Confidence.NONE,
                     note=f"no order found for order_id={order_id!r}",
+                )
+
+            if row[field] is None:
+                return Evidence(
+                    claim_id=claim.id,
+                    value=None,
+                    source="orders.db",
+                    query=query,
+                    fetched_at=now(),
+                    reliability_class=Reliability.UNVERIFIED,
+                    confidence=Confidence.NONE,
+                    note=f"source field {field!r} is NULL for order_id={order_id!r}",
                 )
 
             return Evidence(
@@ -76,10 +93,14 @@ class OrdersResolver:
         cols = ", ".join(_ATTRIBUTE_FIELDS)
         query = f"SELECT {cols} FROM orders WHERE order_id = {order_id!r}"
 
-        conn = sqlite3.connect(DB)
+        conn = connect_readwrite(DB, source="orders.db")
         conn.row_factory = sqlite3.Row
         try:
-            row = conn.execute(f"SELECT {cols} FROM orders WHERE order_id = ?", (order_id,)).fetchone()
+            try:
+                row = conn.execute(f"SELECT {cols} FROM orders WHERE order_id = ?", (order_id,)).fetchone()
+            except sqlite3.OperationalError as exc:
+                translate_availability(exc, source="orders.db", operation="read order attributes")
+                raise AssertionError("translate_availability must raise")  # pragma: no cover
 
             if row is None:
                 return Evidence(
@@ -93,10 +114,23 @@ class OrdersResolver:
                     note=f"no order found for order_id={order_id!r}",
                 )
 
+            values = {"colour": row["item_colour"], "category": row["item_category"]}
+            if any(value is None for value in values.values()):
+                return Evidence(
+                    claim_id=claim.id,
+                    value=values,
+                    source="orders.db",
+                    query=query,
+                    fetched_at=now(),
+                    reliability_class=Reliability.UNVERIFIED,
+                    confidence=Confidence.NONE,
+                    note=f"one or more order attributes are NULL for order_id={order_id!r}",
+                )
+
             reliabilities = [freshness.reliability_for_field("orders", f, conn) for f in _ATTRIBUTE_FIELDS]
             return Evidence(
                 claim_id=claim.id,
-                value={"colour": row["item_colour"], "category": row["item_category"]},
+                value=values,
                 source="orders.db",
                 query=query,
                 fetched_at=now(),

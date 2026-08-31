@@ -23,6 +23,7 @@ any other prose-derived field.
 
 from __future__ import annotations
 
+import copy
 import json
 from pathlib import Path
 
@@ -55,9 +56,49 @@ def evaluate(evidence: dict, action: ProposedAction, manifest: dict) -> dict:
     what decides, the same way it decides window_days or the authority
     ceiling."""
     graph_name = manifest.get("_name", "servicing")
-    payload = {"evidence": evidence, "action": action.facts_for_predicate(), "manifest": manifest}
+    safe_evidence = copy.deepcopy(evidence)
+    unavailable_predicates: dict[str, str] = {}
+
+    # Zen's date() throws on null. Parseable sentinels let unrelated
+    # predicates run; the affected outputs are erased below before decide()
+    # can consume them.
+    if graph_name == "servicing" and safe_evidence.get("delivered_at") is None:
+        safe_evidence["delivered_at"] = safe_evidence.get("clock", {}).get("today", "1970-01-01")
+        unavailable_predicates.update(
+            {
+                "days_elapsed": "delivered_at is unavailable",
+                "within_window": "delivered_at is unavailable",
+            }
+        )
+
+    order = safe_evidence.setdefault("order", {}) if graph_name == "servicing" else None
+    if isinstance(order, dict):
+        if order.get("customer_id") is None:
+            order["customer_id"] = safe_evidence.get("session", {}).get("customer_id") or "__unavailable__"
+            unavailable_predicates["entity_match"] = "order.customer_id is unavailable"
+        if order.get("amount_paise") is None:
+            order["amount_paise"] = action.amount_paise or 0
+            unavailable_predicates["amount_sane"] = "order.amount_paise is unavailable"
+        if order.get("item_colour") is None:
+            order["item_colour"] = action.item_colour or "__unavailable__"
+            unavailable_predicates["attributes_match"] = "order attributes are unavailable"
+        if order.get("item_category") is None:
+            order["item_category"] = action.item_category or "__unavailable__"
+            unavailable_predicates["attributes_match"] = "order attributes are unavailable"
+
+    if graph_name == "servicing" and safe_evidence.get("authority_ceiling_paise") is None:
+        safe_evidence["authority_ceiling_paise"] = action.amount_paise or 0
+        unavailable_predicates["within_authority"] = "authority ceiling is unavailable"
+
+    payload = {"evidence": safe_evidence, "action": action.facts_for_predicate(), "manifest": manifest}
     response = _decision_for(graph_name).evaluate(payload, {"trace": True})
-    return {"result": response["result"], "trace": response.get("trace", {})}
+    result = dict(response["result"])
+    for field in unavailable_predicates:
+        result[field] = None
+    trace = response.get("trace", {})
+    if unavailable_predicates:
+        trace = {"engine": trace, "unavailable_predicates": unavailable_predicates}
+    return {"result": result, "trace": trace}
 
 
 def clause_matches_claim(claim: Claim, evidence: Evidence) -> bool:

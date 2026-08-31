@@ -14,11 +14,13 @@ import time
 from typing import Any, Callable
 
 from controlplane.decide import decide
+from controlplane.errors import SourceUnavailable
 from controlplane.extract import build_claims, extract_action
+from controlplane.idempotency import execute_once
 from controlplane.ladder import classify_claims
 from controlplane.manifest import load_manifest
 from controlplane.registry import resolve_all
-from controlplane.schema import ClaimKind, Decision, Intervention, SessionContext
+from controlplane.schema import ClaimKind, Compensability, Decision, Intervention, Reason, SessionContext, Verdict
 from controlplane.telemetry import record
 
 REGISTRY: dict[str, Callable[..., Any]] = {}
@@ -90,6 +92,39 @@ _EVIDENCE_BUILDER_FOR_MANIFEST = {
 }
 
 
+def _source_unavailable_decision(action, claims: list, session: SessionContext, manifest: dict) -> Decision:
+    """Translate a typed resolver outage through the manifest's fail posture."""
+
+    decision = decide(
+        trace_id=session.trace_id,
+        manifest_id=manifest["manifest_id"],
+        action=action,
+        claims=claims,
+        evidence=[],
+        predicate_result={},
+        manifest=manifest,
+    )
+    posture_key = (
+        "non_compensable"
+        if decision.compensation.compensability is Compensability.NOT
+        else "compensable"
+    )
+    posture = manifest.get("fail_posture", {}).get(posture_key, "closed")
+    decision.verdict = Verdict.UNVERIFIABLE
+    decision.intervention = Intervention.ALLOW if posture == "open" else Intervention.BLOCK
+    decision.reasons = [
+        Reason(
+            rule="authoritative_source_available",
+            expected=True,
+            observed=False,
+            passed=False,
+            policy_version=manifest["manifest_id"],
+        )
+    ]
+    decision.root_cause = "authoritative_source_unavailable"
+    return decision
+
+
 def _run_gate(name: str, args: dict[str, Any], session: SessionContext, justification: str, retrieved_chunks: list[str]) -> tuple[Decision, dict[str, float]]:
     latency_ms: dict[str, float] = {}
 
@@ -104,7 +139,13 @@ def _run_gate(name: str, args: dict[str, Any], session: SessionContext, justific
     manifest = load_manifest(os.environ.get("CP_MANIFEST", "servicing"))
 
     t0 = time.perf_counter()
-    resolved = [(c, e) for c, e in zip(claims, resolve_all(claims, session, manifest, action))]
+    try:
+        resolved = [(c, e) for c, e in zip(claims, resolve_all(claims, session, manifest, action))]
+    except SourceUnavailable:
+        latency_ms["resolve"] = round((time.perf_counter() - t0) * 1000, 2)
+        decision = _source_unavailable_decision(action, claims, session, manifest)
+        record(decision, action.facts_for_predicate(), latency_ms)
+        return decision, latency_ms
     latency_ms["resolve"] = round((time.perf_counter() - t0) * 1000, 2)
     evidence = [e for _, e in resolved]
 
@@ -160,6 +201,11 @@ def evaluate_predicates(evidence: dict, action, manifest: dict) -> dict:
     return evaluate(evidence, action, manifest)
 
 
+def _execute_governed_once(impl: Callable[..., Any], call_args: dict[str, Any], decision: Decision) -> Any:
+    outcome = execute_once(decision.idempotency_key, lambda: impl(**call_args))
+    return outcome.result
+
+
 def dispatch_tool(name: str, args: dict[str, Any], session: SessionContext, justification: str = "", retrieved_chunks: list[str] | None = None) -> Any:
     impl = REGISTRY[name]
     if not session.gate_enabled:
@@ -168,9 +214,9 @@ def dispatch_tool(name: str, args: dict[str, Any], session: SessionContext, just
     decision, _ = _run_gate(name, args, session, justification, retrieved_chunks or [])
 
     if decision.intervention is Intervention.ALLOW:
-        return impl(**args)
+        return _execute_governed_once(impl, args, decision)
     if decision.intervention is Intervention.MODIFY:
-        return impl(**(decision.modified_args or args))
+        return _execute_governed_once(impl, decision.modified_args or args, decision)
     if decision.intervention is Intervention.BLOCK:
         raise Blocked(decision)
     if decision.intervention is Intervention.ESCALATE:

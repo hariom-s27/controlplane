@@ -13,6 +13,7 @@ import sqlite3
 from pathlib import Path
 
 from controlplane.registry.clock import now
+from controlplane.registry.sqlite_source import connect_readwrite, translate_availability
 from controlplane.schema import Claim, Confidence, Evidence, Reliability, SessionContext
 
 ROOT = Path(__file__).resolve().parent.parent.parent
@@ -28,13 +29,17 @@ class PolicyResolver:
             "AND effective_to IS NULL"
         )
 
-        conn = sqlite3.connect(DB)
+        conn = connect_readwrite(DB, source="policy_store.db")
         conn.row_factory = sqlite3.Row
         try:
-            row = conn.execute(
-                "SELECT version, text FROM clauses WHERE policy_id = ? AND effective_to IS NULL",
-                (policy_id,),
-            ).fetchone()
+            try:
+                row = conn.execute(
+                    "SELECT version, text FROM clauses WHERE policy_id = ? AND effective_to IS NULL",
+                    (policy_id,),
+                ).fetchone()
+            except sqlite3.OperationalError as exc:
+                translate_availability(exc, source="policy_store.db", operation="read current policy")
+                raise AssertionError("translate_availability must raise")  # pragma: no cover
 
             if row is None:
                 return Evidence(

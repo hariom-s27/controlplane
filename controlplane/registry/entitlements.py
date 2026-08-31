@@ -11,6 +11,7 @@ import sqlite3
 from pathlib import Path
 
 from controlplane.registry.clock import now
+from controlplane.registry.sqlite_source import connect_readwrite, translate_availability
 from controlplane.schema import Claim, ClaimKind, Confidence, Evidence, Reliability, SessionContext
 
 ROOT = Path(__file__).resolve().parent.parent.parent
@@ -21,13 +22,17 @@ class EntitlementsResolver:
     def resolve(self, claim: Claim, session: SessionContext) -> Evidence:
         """claim.subject is the doc_id."""
         doc_id = claim.subject
-        conn = sqlite3.connect(DB)
+        conn = connect_readwrite(DB, source="entitlements.db")
         conn.row_factory = sqlite3.Row
         try:
-            doc = conn.execute(
-                "SELECT classification, about_customer_id FROM documents WHERE doc_id = ?",
-                (doc_id,),
-            ).fetchone()
+            try:
+                doc = conn.execute(
+                    "SELECT classification, about_customer_id FROM documents WHERE doc_id = ?",
+                    (doc_id,),
+                ).fetchone()
+            except sqlite3.OperationalError as exc:
+                translate_availability(exc, source="entitlements.db", operation="read document")
+                raise AssertionError("translate_availability must raise")  # pragma: no cover
 
             if doc is None:
                 return Evidence(
@@ -54,10 +59,14 @@ class EntitlementsResolver:
             #     particular customer's ticket.
             subject_id = session.subject_id
             query = f"SELECT entitled_classifications, entitled_customer_ids FROM subjects WHERE subject_id = {subject_id!r}"
-            subj = conn.execute(
-                "SELECT entitled_classifications, entitled_customer_ids FROM subjects WHERE subject_id = ?",
-                (subject_id,),
-            ).fetchone()
+            try:
+                subj = conn.execute(
+                    "SELECT entitled_classifications, entitled_customer_ids FROM subjects WHERE subject_id = ?",
+                    (subject_id,),
+                ).fetchone()
+            except sqlite3.OperationalError as exc:
+                translate_availability(exc, source="entitlements.db", operation="read subject entitlements")
+                raise AssertionError("translate_availability must raise")  # pragma: no cover
 
             if subj is None:
                 return Evidence(
