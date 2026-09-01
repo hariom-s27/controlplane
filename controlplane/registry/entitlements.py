@@ -49,20 +49,24 @@ class EntitlementsResolver:
             # Two independent boolean checks, deliberately not one combined
             # "entitled" flag — S13 asks two different questions:
             #   DOC_CLASSIFICATION_PERMITTED: is this classification
-            #     something this subject may EVER see, regardless of whose
+            #     something this recipient may EVER see, regardless of whose
             #     record it is?
             #   RECIPIENT_ENTITLED_TO_DOC: if the record is about a specific
-            #     customer, is this subject entitled to THAT customer's
+            #     customer, is this recipient entitled to THAT customer's
             #     records? This is the one the cross-tenant demo hinges on:
             #     a support agent can be fully permitted to read "internal"
             #     documents in general and still have no right to this
             #     particular customer's ticket.
-            subject_id = session.subject_id
-            query = f"SELECT entitled_classifications, entitled_customer_ids FROM subjects WHERE subject_id = {subject_id!r}"
+            # The execution target is the structural recipient_id carried in
+            # claim.asserted_value. Querying session.subject_id here would
+            # authorize one employee and then allow dispatch to send the
+            # document to a different, unchecked recipient.
+            recipient_id = claim.asserted_value
+            query = f"SELECT entitled_classifications, entitled_customer_ids FROM subjects WHERE subject_id = {recipient_id!r}"
             try:
                 subj = conn.execute(
                     "SELECT entitled_classifications, entitled_customer_ids FROM subjects WHERE subject_id = ?",
-                    (subject_id,),
+                    (recipient_id,),
                 ).fetchone()
             except sqlite3.OperationalError as exc:
                 translate_availability(
@@ -81,7 +85,7 @@ class EntitlementsResolver:
                     fetched_at=now(),
                     reliability_class=Reliability.UNVERIFIED,
                     confidence=Confidence.NONE,
-                    note=f"no subject found for subject_id={subject_id!r}",
+                    note=f"no recipient found for recipient_id={recipient_id!r}",
                 )
 
             entitled_classifications = json.loads(subj["entitled_classifications"])
