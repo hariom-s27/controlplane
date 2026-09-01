@@ -6,13 +6,14 @@ how the test inputs were built, not by anything the system does. None of
 the four could produce a failing result. They are retired here.
 
 **Release-state note:** the public baseline is `6ec4261` (`origin/main`). The
-verified local release candidate is `aac3bea`; it is not public until integrated
-and pushed. Its ancestor `986b65e` contains the original C/I/D reconciliation,
-`dce2e4c` contains the later recipient-authorization correction, and `aac3bea`
-synchronizes the threat model. The candidate chain adds no benchmark or research
-artifacts and does not rerun or validate any benchmark result listed here.
-Corrective implementations and replacement artifacts from off-release commit
-`b4ef009` are not ancestors of the baseline or candidate. They remain
+verified local release candidate is represented by the audited HEAD; it is not
+public until integrated and pushed. Its ancestor `986b65e` contains the original
+C/I/D reconciliation, `dce2e4c` contains the later recipient-authorization
+correction, and `aac3bea`, the Step 6B endpoint and immediate engineering
+parent, synchronizes the threat model. The candidate chain adds no benchmark or
+research artifacts and does not rerun or validate any benchmark result listed
+here. Corrective implementations and replacement artifacts from off-release
+commit `b4ef009` are not ancestors of the baseline or candidate. They remain
 historical/off-release evidence and are not presented as public or candidate
 results below.
 

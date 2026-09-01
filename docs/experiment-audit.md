@@ -22,13 +22,14 @@ Line numbers below are against the versions of those files that produced the
 retired numbers.
 
 **Release-state note (applies to this whole document):** the public baseline is
-`6ec4261` (`origin/main`). The verified local release candidate is `aac3bea`;
-it is not public until integrated and pushed. Its ancestor `986b65e` contains
-the original C/I/D reconciliation, `dce2e4c` contains the later recipient-
-authorization correction, and `aac3bea` synchronizes the threat model. The
-candidate chain adds engineering, focused-test and public-documentation changes
-but no benchmark or research artifacts, so the benchmark and research state
-described here is identical in both trees.
+`6ec4261` (`origin/main`). The verified local release candidate is represented
+by the audited HEAD; it is not public until integrated and pushed. Its ancestor
+`986b65e` contains the original C/I/D reconciliation, `dce2e4c` contains the
+later recipient-authorization correction, and `aac3bea`, the Step 6B endpoint
+and immediate engineering parent, synchronizes the threat model. The candidate
+chain adds engineering, focused-test and public-documentation changes but no
+benchmark or research artifacts, so the benchmark and research state described
+here is identical in both trees.
 
 In both the public baseline and candidate,
 `bench/seb1_exp3_cross_validation.py`,

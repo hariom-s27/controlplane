@@ -22,12 +22,13 @@ and reasons for retirement are recorded in
 
 The public baseline remains `6ec4261`; `origin/main` points to that commit.
 The engineering state documented here is the verified local release candidate
-`aac3bea`, which is not a public release until it is integrated and pushed.
-Its ancestor `986b65e` contains the original C/I/D reconciliation; `dce2e4c`
-later corrects recipient authorization to check the actual execution recipient,
-and `aac3bea` synchronizes the threat model with that correction. The candidate
-chain adds engineering, focused-test and public-documentation changes, but no
-benchmark or research artifacts.
+represented by the audited HEAD. It is not a public release until it is
+integrated and pushed. Its ancestor `986b65e` contains the original C/I/D
+reconciliation; `dce2e4c` later corrects recipient authorization to check the
+actual execution recipient; and `aac3bea`, the Step 6B endpoint and immediate
+engineering parent, synchronizes the threat model with that correction. The
+candidate chain adds engineering, focused-test and public-documentation
+changes, but no benchmark or research artifacts.
 
 The audit findings also exist in off-release development commit `b4ef009`,
 which is not an ancestor of either the public baseline or this candidate (their
@@ -38,13 +39,13 @@ the public baseline and verified candidate.
 
 ## Verified release-candidate engineering semantics
 
-The C/I/D reconciliation introduced at `986b65e` and carried by `aac3bea`
-preserves the existing behavior of boolean predicate results: `True` can
-support the normal success path and `False` the normal contradiction path. A
-missing, `None`, malformed or non-boolean result instead enters the existing
-unverifiable path; it cannot silently count as a pass. Missing rows and nullable
-source fields likewise produce unavailable evidence. SQLite availability
-failures are typed, ambiguous current-policy rows block as `SOURCE_UNRELIABLE`,
+The C/I/D reconciliation introduced at `986b65e` and carried by the current
+audited release candidate preserves the existing behavior of boolean predicate
+results: `True` can support the normal success path and `False` the normal
+contradiction path. A missing, `None`, malformed or non-boolean result enters
+the existing unverifiable path; it cannot silently count as a pass. Missing
+rows and nullable source fields likewise produce unavailable evidence. SQLite
+availability failures are typed, ambiguous current-policy rows block as `SOURCE_UNRELIABLE`,
 and schema/programming errors remain visible rather than being converted into
 favorable evidence. A typed source outage becomes `UNVERIFIABLE` and then uses
 the manifest's compensability-specific `fail_posture`; this is not a blanket
