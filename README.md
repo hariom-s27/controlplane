@@ -205,6 +205,40 @@ Bespoke-MiniCheck-7B (CC BY-NC) and SDV (BUSL-1.1).
 .\make.ps1 demo       # gate on  — BLOCK, plus a signed receipt in decisions.jsonl
 ```
 
+## Judge-facing demo
+
+```powershell
+.\make.ps1 judge-demo
+```
+
+(macOS/Linux: `make judge-demo`.) Deterministic and fully offline — no API
+key or network access is used; only `.\make.ps1 setup` needs to have run
+first. Takes under a minute and prints six governed scenarios in sequence,
+each showing AI intent → evidence → policy → decision → intervention →
+execution → signed audit receipt, plus why the decision was reached and a
+signature verification result:
+
+1. **Normal allow** — a permitted request executes.
+2. **Source unreliable** — evidence below the configured reliability floor
+   escalates rather than silently deciding either way.
+3. **Reliable contradiction** — a real cross-tenant entitlement failure
+   blocks, and nothing executes.
+4. **Invalid MODIFY / safety refusal** — an unresolved MODIFY (no
+   `modified_args`) is refused rather than silently executing the original,
+   unchecked arguments.
+5. **Valid MODIFY** — reported as `NOT AVAILABLE`: `decide()` has no runtime
+   path that populates `modified_args`, so this scenario does not fabricate one.
+6. **Duplicate / replay** — the same request sent twice executes exactly once;
+   the second call replays the first's stored result via the idempotency ledger.
+
+Each scenario is explicitly labeled `RUNTIME` (the real `dispatch_tool()`
+pipeline against the real `data/entitlements.db`, with only the LLM-backed
+claim extractor stubbed — the same technique `tests/test_intercept.py` and
+`tests/test_knowledge_assistant.py` already use) or `FIXTURE` (hand-built
+evidence feeding the real `decide()`). Run `.\make.ps1 judge-demo-reset`
+(macOS/Linux: `make judge-demo-reset`) to clear the demo's local state
+(the idempotency ledger and `decisions.jsonl`) between runs.
+
 ## Honest limitations
 
 *(this section grows as the build lands — keep it. It is the most credible

@@ -8,6 +8,8 @@
       .\make.ps1 test       run the test suite
       .\make.ps1 demo       run the gate (blocks ORD-88461)
       .\make.ps1 negative   run with the gate OFF (the money moves)
+      .\make.ps1 judge-demo         six-scenario judge-facing governance walkthrough (offline)
+      .\make.ps1 judge-demo-reset   reset judge-demo's local state
       .\make.ps1 bench      run SEB-1
       .\make.ps1 report     regenerate every number and chart
       .\make.ps1 clean      delete generated files
@@ -50,6 +52,8 @@ switch ($Task) {
     "test"     { Need-Venv; & $Py -m pytest tests -v }
     "demo"     { Need-Venv; $env:CP_GATE = "on";  & $Py -m agents.servicing_agent }
     "negative" { Need-Venv; $env:CP_GATE = "off"; & $Py -m agents.servicing_agent }
+    "judge-demo"       { Need-Venv; & $Py -m scripts.judge_demo }
+    "judge-demo-reset" { Need-Venv; & $Py -m scripts.judge_demo --reset }
     "bench"    { Need-Venv; & $Py bench\seb1_exp3_cross_validation.py; & $Py bench\seb1_exp5_confusion_matrix.py }
     "report"   { Need-Venv; & $Py bench\report.py }
     "reviewer" { Need-Venv; & $Py bench\reviewer_console.py }
@@ -69,6 +73,8 @@ switch ($Task) {
         Write-Host "  test      run the test suite"
         Write-Host "  demo      run the gate (blocks ORD-88461)"
         Write-Host "  negative  run with the gate OFF"
+        Write-Host "  judge-demo         six-scenario judge-facing governance walkthrough (offline)"
+        Write-Host "  judge-demo-reset   reset judge-demo's local state"
         Write-Host "  bench     run SEB-1"
         Write-Host "  report    regenerate every number and chart"
         Write-Host "  clean     delete generated files"
