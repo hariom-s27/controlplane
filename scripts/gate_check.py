@@ -39,7 +39,7 @@ PHRASINGS = [
 def main() -> int:
     proposed = 0
     for i, phrasing in enumerate(PHRASINGS, start=1):
-        call, message, _ = propose(phrasing)
+        call, message, _, _ = propose(phrasing)
         if call:
             proposed += 1
             print(f"[{i}] PROPOSED  {call['name']}({call['args']})")
