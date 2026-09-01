@@ -1,0 +1,45 @@
+# Q. Research debt register
+
+Deadline context: `CLAUDE.md` states the Accenture Round 2 deadline is **~6 September 2026**; this audit is dated 2026-08-30. "Deadline relevance" is scored against that.
+
+| ID | Weakness | Why it matters | Current evidence | Closure method | Cost | Risk | Deadline relevance | Status |
+|---|---|---|---|---|---|---|---|---|
+| **D-01** | Every accuracy figure is a tautology of its generator | Removes all empirical support from the central claims; a reviewer finds it in five minutes | `bench/seb1_exp3…::_make_case`; `bench/seb1_exp5…::_generate` | EMPIRICAL — commit `bench/label.py` + gold set; re-score Exp 5 | low (written already) | low | **CRITICAL — do first** | **OPEN** |
+| **D-02** | `bench/label.py`, `gold_set.jsonl`, `ground_truth_holdout.jsonl`, `exp3_checker.py`, `docs/experiment-audit.md` and 2 isolation tests are documented but not committed | `docs/gold-set.md`'s entire independence guarantee is unauditable; `agreement.py` reads a file that does not exist | branch `8a48bf7` file list | IMPLEMENTATION — push | trivial | none | **CRITICAL** | **OPEN** |
+| **D-03** | `MODIFY` executes unmodified arguments; `knowledge_assistant.yaml` routes `UNVERIFIABLE → allow_with_caveat → MODIFY` | Silent fail-open on the cross-tenant document path — the exact failure the second use case exists to prevent | `modified_args` never assigned; `intercept.py:173` | IMPLEMENTATION | ~3 lines | none | **CRITICAL** | **OPEN** |
+| **D-04** | Missing record → `RuntimeError` from the Zen graph instead of ESCALATE | 10 of the gold set's 15 `corrupted_or_missing_record` cases cannot be scored end-to-end | `docs/gold-set.md` §5; `intercept.py::_run_gate` has no try/except | IMPLEMENTATION | ~10 lines | none | **HIGH** | **OPEN** (project-identified, assigned to "P08") |
+| **D-05** | `scripts/gate_check.py` unpacks 3 values from a 4-tuple | The one anti-staging artifact cannot be regenerated | `gate_check.py:42` vs `servicing_agent.py::propose` | IMPLEMENTATION | **1 line** | none | **HIGH** | **OPEN** |
+| **D-06** | No frozen result artifact; `reports/` and `decisions.jsonl` gitignored | No published figure is inspectable without rebuilding the environment | `.gitignore` | METHODOLOGICAL | ~30 min | none | **HIGH** | **OPEN** |
+| **D-07** | `bench/report.py` hard-codes three latency constants while README says "never from hand-typed numbers" | A self-contradiction in the project's headline virtue | `report.py:41-43` vs README | DOCUMENTATION + IMPLEMENTATION | 15 min | none | **HIGH** | **OPEN** |
+| **D-08** | No threat model; the ROADMAP's own "one test worth naming" (chaos-test the verifier) not built | Prior art (OAP) ships an 879-attempt adversarial evaluation | `docs/ROADMAP.md` §6; no such test in any commit | DOCUMENT LIMITATION now; EMPIRICAL later | low now / high later | low | MEDIUM | **OPEN** |
+| **D-09** | 5 of 9 manifest fields read by no code; `fail_posture` among them | "Same engine, different behaviour" is 4 fields, and the safety-posture field is inert | grep across all `.py`/`.json` | IMPLEMENTATION (wire `fail_posture`) or DOCUMENTATION (mark the rest as reserved) | ~1 h | none | MEDIUM | **OPEN** |
+| **D-10** | `registry/freshness.py::escalation_for()` is dead code; `SOURCE_UNRELIABLE` cannot fire from real data | A named verdict class with no runtime path; two tests exercise dead code | called only from `tests/test_registry.py:71,76` | IMPLEMENTATION — wire or delete | ~1 h | none | MEDIUM | **OPEN** (project-identified) |
+| **D-11** | Bias probe cannot detect bias | A "bias tested" claim would be unsupportable | `bias_probe.py::run_probe` | DOCUMENTATION — rename to an independence check | 15 min | none | MEDIUM | **OPEN** |
+| **D-12** | HMAC receipts: shared secret, no chaining, telemetry unsigned | "Audit trail" is weaker than the word implies; line deletion is undetectable | `receipt.py`; `telemetry.py::record` | IMPLEMENTATION (prev-hash) + DOCUMENTATION | ~2 h | none | MEDIUM | **OPEN** |
+| **D-13** | Gate bypassable via `session.gate_enabled`; impls are ordinary functions | Any non-bypassability framing (SEC 15c3-5 analogy) is unsupported | `intercept.py:165`; `schema.py:160` | **DOCUMENTED LIMITATION** — an in-process prototype cannot close this | — | — | LOW | **DOCUMENTED LIMITATION** |
+| **D-14** | 77.4% bound belongs to Bespoke-MiniCheck-7B, not the deployed HHEM-2.1-Open | The honest-coverage argument rests on a model the project excluded on licence grounds | LLM-AggreFact leaderboard; `requirements.txt` | DOCUMENTATION (restate with attribution) or EMPIRICAL (measure HHEM) | 1 sentence / half a day | none | MEDIUM | **OPEN** |
+| **D-15** | `schema.py`'s "USPS OIG … 2.45%" not found in report 22-159-R23 | An unverifiable citation inside the shipped code, in a project whose pitch is citation discipline | `schema.py::Reliability` docstring | DOCUMENTATION — find the source or remove the figure | 30 min | none | MEDIUM | **OPEN** |
+| **D-16** | Entitlements resolver returns verdict-shaped booleans, violating `orders.py`'s stated "never a verdict" contract; the KA JDM graph is two identity aliases | The "policy as data" claim does not hold for use case 2 | `registry/entitlements.py`; `graphs/knowledge_assistant.json` | IMPLEMENTATION (move membership tests into the graph) | ~2 h | low | MEDIUM | **OPEN** |
+| **D-17** | Metamorphic invariants cover `decide()` only; M3/M4 near-vacuous | The suite reads stronger than it is | `tests/test_invariants.py` | DOCUMENTATION + EMPIRICAL (lift to `dispatch_tool`) | half a day | low | LOW | **PARTIALLY CLOSED** — M1/M5 are genuine |
+| **D-18** | `tests/test_receipt.py` asserts <2 KB on a strawman; real receipt ~3.8 KB | A test that cannot fail on the case it names | `tests/test_receipt.py`; README | IMPLEMENTATION — assert against the real BLOCK receipt | 30 min | none | LOW | **PARTIALLY CLOSED** — README discloses it |
+| **D-19** | `registry/entitlements.py` docstring says the KA agent "doesn't exist"; it does | A docstring asserting a false fact about the system | contradiction C-3 | DOCUMENTATION | 5 min | none | LOW | **OPEN** |
+| **D-20** | Unpinned Python; floor-only deps; no lockfile; `zen-engine>=0.30` carries the whole predicate layer | Silent behaviour drift; `09` T-4 shows a null from the engine is treated as *pass* | `requirements.txt`; `Makefile` | METHODOLOGICAL — `pyproject.toml` + lockfile | ~30 min | none | MEDIUM | **OPEN** |
+| **D-21** | `data/fixtures/` committed, unsigned, rewritten at runtime under `CP_MODE=live` | In the default replay mode the fixtures *are* the experiment | `agents/llm.py::chat`; `extract.py` | METHODOLOGICAL — SHA-256 manifest asserted by a test | ~1 h | none | MEDIUM | **OPEN** |
+| **D-22** | ALLOW slice: 50 cases on 5 source orders | Effective n ≈ 5; a naive binomial CI would be ~3× too narrow | `docs/gold-set.md` §2, §5 | METHODOLOGICAL — cluster bootstrap over `source_order_id` | ~2 h | none | MEDIUM when #1 lands | **DOCUMENTED LIMITATION**, correctly, by the project |
+| **D-23** | Slice confounding: "outside window → BLOCK" passes three other slices | Slice accuracy measures "did it stop the action", not "did it exercise the check" | `docs/gold-set.md` §5 | METHODOLOGICAL — single-condition cases, or score per `label_rationale` | ~half a day | low | MEDIUM when #1 lands | **DOCUMENTED LIMITATION**, correctly |
+| **D-24** | `human_label_sample.csv`'s `agent_justification` often states the elapsed-days arithmetic and a conclusion | Reduces annotator independence beyond the four tells §6 lists | `gs-005`, `gs-009` in the branch CSV | DOCUMENTATION — add to §6's residual-tells list | 15 min | none | LOW | **OPEN** (newly found by this audit) |
+| **D-25** | `docs/gold-set.md` §5 states Exp 5 `run()` raises `SystemExit`; it does not | Documentation describing an intended state as actual | `git diff` main↔branch for that file is empty | DOCUMENTATION | 10 min | none | MEDIUM | **OPEN** (newly found) |
+| **D-26** | No external benchmark of any kind | Blocks any external-validation claim | `05` | **BLOCKED EXTERNALLY / NOT WORTH CLOSING before the deadline** | very high | medium | LOW for this deadline, CRITICAL for a paper | **DOCUMENTED LIMITATION** |
+| **D-27** | Two coverage-ratio definitions under similar names | Ambiguity in a headline metric | `schema.py::Decision.coverage` vs `report.py::_coverage_report` | DOCUMENTATION / rename | 15 min | none | LOW | **OPEN** |
+| **D-28** | M5 chronology unverifiable; framing calls it "exploitable by an agent" | Retrospective wording used as evidence; the attack path does not exist | single mega-commit `c653b7f`; `reliability_class` is not agent-reachable | DOCUMENTATION — reframe | 30 min | none | MEDIUM | **OPEN** |
+
+## Totals
+
+| Status | Count |
+|---|---|
+| OPEN | 21 |
+| PARTIALLY CLOSED | 2 |
+| DOCUMENTED LIMITATION (correctly) | 4 |
+| BLOCKED EXTERNALLY / NOT WORTH CLOSING now | 1 |
+
+**Seven items (D-02, D-03, D-04, D-05, D-07, D-19, D-25) total well under a day of work and are pure repository hygiene.** They would remove five of the twenty hostile-reviewer objections outright.
