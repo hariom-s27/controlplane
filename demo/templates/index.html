@@ -53,6 +53,80 @@
         <div id="proposedAction" class="proposed-action"></div>
       </section>
 
+      <section class="block decision-chain-block" aria-labelledby="decisionChainTitle">
+        <div class="decision-chain-heading">
+          <h2 id="decisionChainTitle">DECISION CHAIN</h2>
+          <span>READ-ONLY VIEW OF ONE RETURNED RESULT</span>
+        </div>
+        <div id="decisionChain" class="decision-chain">
+          <div class="decision-chain-stage">
+            <span class="chain-index" aria-hidden="true">1</span>
+            <div class="chain-stage-label">AI INTENT</div>
+            <div class="chain-stage-content">
+              <div id="chainIntent" class="chain-primary"></div>
+              <div id="chainAction" class="chain-secondary mono"></div>
+            </div>
+          </div>
+
+          <div class="decision-chain-stage evidence-stage">
+            <span class="chain-index" aria-hidden="true">2</span>
+            <div class="chain-stage-label">EVIDENCE CHECK</div>
+            <div class="chain-stage-content chain-evidence-split">
+              <div class="chain-evidence-side chain-claims">
+                <div class="chain-side-label">CLAIMS</div>
+                <div class="chain-side-help">What the agent asserted</div>
+                <ul id="chainClaims" class="chain-summary-list"></ul>
+              </div>
+              <div class="chain-evidence-side chain-facts">
+                <div class="chain-side-label">COMPANY FACTS</div>
+                <div class="chain-side-help">What systems of record say</div>
+                <ul id="chainFacts" class="chain-summary-list"></ul>
+              </div>
+            </div>
+          </div>
+
+          <div class="decision-chain-stage">
+            <span class="chain-index" aria-hidden="true">3</span>
+            <div class="chain-stage-label">POLICY / MANIFEST</div>
+            <div id="chainPolicy" class="chain-stage-content chain-primary mono"></div>
+          </div>
+
+          <div class="decision-chain-stage">
+            <span class="chain-index" aria-hidden="true">4</span>
+            <div class="chain-stage-label">PREDICATE / EVALUATION</div>
+            <div class="chain-stage-content">
+              <div class="chain-readonly-label">READ-ONLY RESULT</div>
+              <div id="chainPredicate" class="chain-primary mono"></div>
+            </div>
+          </div>
+
+          <div class="decision-chain-stage">
+            <span class="chain-index" aria-hidden="true">5</span>
+            <div class="chain-stage-label">DECISION</div>
+            <div class="chain-stage-content chain-badge-row">
+              <div><span class="chain-field-label">VERDICT</span><span id="chainVerdict" class="badge verdict-badge"></span></div>
+              <div><span class="chain-field-label">INTERVENTION</span><span id="chainIntervention" class="badge intervention-badge"></span></div>
+            </div>
+          </div>
+
+          <div class="decision-chain-stage runtime-stage">
+            <span class="chain-index" aria-hidden="true">6</span>
+            <div class="chain-stage-label">RUNTIME OUTCOME</div>
+            <div class="chain-stage-content chain-badge-row">
+              <div><span class="chain-field-label">EXECUTION</span><span id="chainExecution" class="badge execution-badge"></span></div>
+            </div>
+          </div>
+
+          <div class="decision-chain-stage receipt-stage">
+            <span class="chain-index" aria-hidden="true">7</span>
+            <div class="chain-stage-label">DECISION RECEIPT</div>
+            <div class="chain-stage-content chain-badge-row">
+              <div><span class="chain-field-label">RECEIPT VERIFICATION</span><span id="chainReceipt" class="badge receipt-badge"></span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section class="block claims-evidence-block">
         <div class="ce-header">
           <h2>CLAIMS <span class="vs">vs</span> EVIDENCE</h2>

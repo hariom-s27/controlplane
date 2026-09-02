@@ -28,12 +28,13 @@ from __future__ import annotations
 import copy
 import json
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 
 from controlplane.idempotency import reset_execution_ledger
-from demo.web import PROFILES, SCENARIO_CATALOG, _is_supported, app
+from demo.web import PROFILES, SCENARIO_CATALOG, _claim_evidence_rows, _is_supported, app
 from product.judge_presentation import build_presentation_model, classify_receipt
 from scripts import judge_demo as demo
 
@@ -134,6 +135,133 @@ def test_passport_and_inspector_data_appear_in_the_run_response():
     assert body["inspector"]["kind"] == "DECISION_INSPECTOR"
     assert body["passport"]["evidence"] != "NOT AVAILABLE"
     assert body["inspector"]["claim_evidence_chain"]
+
+
+# ---------------------------------------------------------------------------
+# OPTIONAL-PRODUCT-04 — read-only decision chain
+# ---------------------------------------------------------------------------
+
+
+def _client_source(name: str) -> str:
+    return (Path(__file__).parents[1] / "demo" / "static" / name).read_text(encoding="utf-8")
+
+
+def _javascript_function(source: str, name: str, next_name: str) -> str:
+    start = source.index(f"function {name}")
+    candidates = (
+        source.find(f"\nfunction {next_name}", start),
+        source.find(f"\nasync function {next_name}", start),
+    )
+    end = min(position for position in candidates if position >= 0)
+    return source[start:end]
+
+
+def test_decision_chain_has_all_stages_and_visually_separates_claims_from_company_facts():
+    html = client.get("/").text
+    assert 'id="decisionChain"' in html
+    for label in (
+        "AI INTENT", "EVIDENCE CHECK", "POLICY / MANIFEST",
+        "PREDICATE / EVALUATION", "DECISION", "RUNTIME OUTCOME",
+        "DECISION RECEIPT",
+    ):
+        assert label in html
+
+    assert 'class="chain-evidence-side chain-claims"' in html
+    assert "What the agent asserted" in html
+    assert 'class="chain-evidence-side chain-facts"' in html
+    assert "What systems of record say" in html
+    assert 'class="decision-chain-stage runtime-stage"' in html
+    assert 'class="decision-chain-stage receipt-stage"' in html
+
+    css = _client_source("app.css")
+    assert ".chain-claims { border-left: 3px solid var(--amber); }" in css
+    assert ".chain-facts { border-left: 3px solid var(--blue); }" in css
+    assert ".runtime-stage" in css and ".receipt-stage" in css
+
+
+def test_completed_chain_fields_are_the_same_real_presentation_result_fields():
+    body = _run(HERO_PROFILE, HERO_SCENARIO)
+    real_result = demo.scenario_7_stale_policy_refund()
+    reset_execution_ledger()
+    demo._call_log.clear()
+    model = build_presentation_model(real_result)
+
+    assert body["ai_intent"] == model.ai_intent
+    assert body["proposed_action"] == model.proposed_action
+    assert body["claim_evidence_rows"] == _claim_evidence_rows(model)
+    assert body["policy_version"] == model.policy_version
+    assert body["predicate_result"] == model.predicate_result
+    assert body["verdict"] == model.verdict
+    assert body["intervention"] == model.intervention
+    assert body["execution_state"] == model.execution_state
+    assert body["receipt_verification"] == model.receipt_verification
+
+
+def test_decision_chain_renderer_only_selects_and_formats_one_returned_result():
+    js = _client_source("app.js")
+    chain = _javascript_function(js, "renderDecisionChain", "renderResult")
+
+    required_direct_sources = (
+        "body.ai_intent", "body.proposed_action", "body.claim_evidence_rows",
+        "row.asserted_value", "row.evidence_value", "row.evidence_source",
+        "body.policy_version", "body.predicate_result", "body.verdict",
+        "body.intervention", "body.execution_state", "body.receipt_verification",
+    )
+    for source in required_direct_sources:
+        assert source in chain
+
+    assert "fetch(" not in chain
+    assert "decide(" not in chain
+    assert "dispatch_tool(" not in chain
+    assert "build_receipt(" not in chain
+    assert "renderDecisionChain(body);" in _javascript_function(js, "renderResult", "renderExplanationChain")
+
+
+def test_chain_is_empty_before_run_and_cleared_for_reset_errors_and_selection_changes():
+    html = client.get("/").text
+    for element_id in (
+        "chainIntent", "chainAction", "chainClaims", "chainFacts", "chainPolicy",
+        "chainPredicate", "chainVerdict", "chainIntervention", "chainExecution",
+        "chainReceipt",
+    ):
+        assert f'id="{element_id}"' in html
+    assert 'id="resultPanel" class="result-panel" hidden' in html
+
+    js = _client_source("app.js")
+    show_only = _javascript_function(js, "showOnly", "collapseExpandables")
+    reset = _javascript_function(js, "resetDashboard", "render")
+    stale = _javascript_function(js, "markStaleIfNeeded", "showOnly")
+    init = js[js.index("async function init()") : js.index("\ninit();")]
+
+    assert 'if (idToShow !== "resultPanel") clearDecisionChain();' in show_only
+    assert 'showOnly("emptyState");' in reset
+    assert "state.lastRunKey = null;" in reset
+    assert "state.requestToken++;" in reset
+    assert "state.requestToken++;" in stale
+    assert "state.lastRunKey = null;" in stale
+    assert '$("profileSelect").addEventListener("change"' in init
+    assert '$("scenarioSelect").addEventListener("change", markStaleIfNeeded);' in init
+    assert "runScenario();" not in init
+
+
+def test_late_run_response_is_invalidated_without_leaving_run_disabled():
+    js = _client_source("app.js")
+    run = _javascript_function(js, "runScenario", "resetDashboard")
+    stale = _javascript_function(js, "markStaleIfNeeded", "showOnly")
+
+    assert "const token = ++state.requestToken;" in run
+    assert "if (token !== state.requestToken) return;" in run
+    assert "state.requestToken++;" in stale
+    assert '$("runBtn").disabled = false;' in run
+    assert '$("runBtn").textContent = "RUN";' in run
+
+
+def test_chain_rendering_source_does_not_mutate_the_returned_result():
+    chain = _javascript_function(_client_source("app.js"), "renderDecisionChain", "renderResult")
+    assert "body =" not in chain
+    assert ".sort(" not in chain
+    assert ".reverse(" not in chain
+    assert ".splice(" not in chain
 
 
 # ---------------------------------------------------------------------------

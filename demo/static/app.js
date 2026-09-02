@@ -120,18 +120,15 @@ function escapeHtml(s) {
 // ---------------------------------------------------------------------------
 
 function markStaleIfNeeded() {
-  const key = selectionKey();
-  if (state.lastRunKey === null) {
-    showOnly("emptyState");
-    return;
-  }
-  if (key !== state.lastRunKey) {
-    showOnly("staleBanner");
-    collapseExpandables();
-  }
+  const hadCurrentResult = state.lastRunKey !== null;
+  state.requestToken++; // invalidate a late response for the old selection
+  state.lastRunKey = null;
+  showOnly(hadCurrentResult ? "staleBanner" : "emptyState");
+  collapseExpandables();
 }
 
 function showOnly(idToShow) {
+  if (idToShow !== "resultPanel") clearDecisionChain();
   const ids = ["emptyState", "staleBanner", "notApplicable", "notAvailable", "errorState", "resultPanel"];
   for (const id of ids) {
     $(id).hidden = id !== idToShow;
@@ -178,23 +175,24 @@ async function runScenario() {
     }
 
     if (!resp.ok && body.status !== "NOT_APPLICABLE_FOR_PROFILE") {
-      state.lastRunKey = key;
+      state.lastRunKey = null;
       renderError(body);
       return;
     }
 
-    state.lastRunKey = key;
+    state.lastRunKey = body.status === "OK" ? key : null;
     render(body);
   } catch (err) {
     if (token !== state.requestToken) return;
-    state.lastRunKey = key;
+    state.lastRunKey = null;
     renderError({ message: String(err) });
   } finally {
-    if (token === state.requestToken) {
-      state.running = false;
-      $("runBtn").disabled = false;
-      $("runBtn").textContent = "RUN";
-    }
+    // state.running prevents another local RUN from starting, so this
+    // request always owns the button even when a selection change has
+    // invalidated its response token.
+    state.running = false;
+    $("runBtn").disabled = false;
+    $("runBtn").textContent = "RUN";
   }
 }
 
@@ -259,7 +257,100 @@ function slug(s) {
   return String(s).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 }
 
+function formatExistingValue(value) {
+  if (value === null || value === undefined || value === "") return "NOT AVAILABLE";
+  return typeof value === "object" ? JSON.stringify(value) : String(value);
+}
+
+function formatProposedAction(action) {
+  if (!action || typeof action !== "object") return formatExistingValue(action);
+  const args = action.args && typeof action.args === "object"
+    ? Object.entries(action.args).map(([key, value]) => `${key}=${formatExistingValue(value)}`).join(", ")
+    : formatExistingValue(action.args);
+  return `${formatExistingValue(action.tool)}(${args})`;
+}
+
+function formatPredicateResult(predicate) {
+  if (predicate === null || predicate === undefined || predicate === "NOT AVAILABLE") {
+    return "Evaluation details not exposed by the current presentation model.";
+  }
+  if (typeof predicate !== "object") return String(predicate);
+  const entries = Object.entries(predicate);
+  if (!entries.length) return "Evaluation details not exposed by the current presentation model.";
+  return entries.map(([key, value]) => `${key}=${formatExistingValue(value)}`).join("  ·  ");
+}
+
+function representativeChainRows(rows) {
+  const returnedRows = Array.isArray(rows) ? rows : [];
+  const conflicts = returnedRows.filter((row) => row.comparison_result === "CONFLICT");
+  const otherRows = returnedRows.filter((row) => row.comparison_result !== "CONFLICT");
+  return [...conflicts, ...otherRows].slice(0, 2);
+}
+
+function renderChainSummary(list, allRows, textForRow) {
+  list.innerHTML = "";
+  const returnedRows = Array.isArray(allRows) ? allRows : [];
+  const displayedRows = representativeChainRows(returnedRows);
+  for (const row of displayedRows) {
+    const li = document.createElement("li");
+    li.textContent = textForRow(row);
+    list.appendChild(li);
+  }
+  if (!displayedRows.length) {
+    const li = document.createElement("li");
+    li.textContent = "No value exposed by the returned result.";
+    list.appendChild(li);
+  } else if (displayedRows.length < returnedRows.length) {
+    const li = document.createElement("li");
+    li.className = "chain-more";
+    li.textContent = "Additional returned items are shown in the detailed comparison below.";
+    list.appendChild(li);
+  }
+}
+
+function clearDecisionChain() {
+  for (const id of ["chainIntent", "chainAction", "chainPolicy", "chainPredicate"]) {
+    $(id).textContent = "";
+  }
+  $("chainClaims").innerHTML = "";
+  $("chainFacts").innerHTML = "";
+  for (const [id, kind] of [
+    ["chainVerdict", "verdict"],
+    ["chainIntervention", "intervention"],
+    ["chainExecution", "execution"],
+    ["chainReceipt", "receipt"],
+  ]) {
+    $(id).textContent = "";
+    $(id).className = `badge ${kind}-badge`;
+  }
+}
+
+function renderDecisionChain(body) {
+  // Presentation only: every value below is selected directly from this
+  // single returned result. No predicate, verdict, execution, or receipt
+  // state is inferred or recalculated in the browser.
+  $("chainIntent").textContent = formatExistingValue(body.ai_intent);
+  $("chainAction").textContent = formatProposedAction(body.proposed_action);
+  renderChainSummary(
+    $("chainClaims"),
+    body.claim_evidence_rows,
+    (row) => `${formatExistingValue(row.claim_kind)}: ${formatExistingValue(row.asserted_value)}`,
+  );
+  renderChainSummary(
+    $("chainFacts"),
+    body.claim_evidence_rows,
+    (row) => `${formatExistingValue(row.evidence_field)}: ${formatExistingValue(row.evidence_value)} (${formatExistingValue(row.evidence_source)})`,
+  );
+  $("chainPolicy").textContent = formatExistingValue(body.policy_version);
+  $("chainPredicate").textContent = formatPredicateResult(body.predicate_result);
+  badge($("chainVerdict"), body.verdict, "verdict");
+  badge($("chainIntervention"), body.intervention, "intervention");
+  badge($("chainExecution"), body.execution_state, "execution");
+  badge($("chainReceipt"), body.receipt_verification, "receipt");
+}
+
 function renderResult(body) {
+  renderDecisionChain(body);
   $("aiIntent").textContent = body.ai_intent;
   const action = body.proposed_action;
   $("proposedAction").textContent =
@@ -369,7 +460,6 @@ function renderReceiptDetail(body) {
     ["Policy version", body.policy_version],
     ["Verdict", body.verdict],
     ["Intervention", body.intervention],
-    ["Execution state", body.execution_state],
     ["Verification", body.receipt_verification],
   ];
   dl.innerHTML = rows.map(([k, v]) => `<dt>${escapeHtml(k)}</dt><dd class="mono">${escapeHtml(String(v))}</dd>`).join("");

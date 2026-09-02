@@ -151,7 +151,7 @@ body {
   font-weight: 700;
 }
 
-.intent-block, .claims-evidence-block, .policy-block, .actions-block {
+.intent-block, .decision-chain-block, .claims-evidence-block, .policy-block, .actions-block {
   grid-column: 1 / -1;
 }
 
@@ -166,6 +166,136 @@ body {
   color: var(--ink-dim);
   margin-top: 3px;
 }
+
+/* ---- compact read-only decision chain ------------------------------- */
+
+.decision-chain-block { padding: 11px 12px 12px; }
+.decision-chain-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 7px;
+}
+.decision-chain-heading h2 { margin: 0; }
+.decision-chain-heading span {
+  color: var(--ink-dim);
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+.decision-chain {
+  display: grid;
+  gap: 7px;
+}
+.decision-chain-stage {
+  position: relative;
+  display: grid;
+  grid-template-columns: 30px 175px minmax(0, 1fr);
+  align-items: start;
+  min-width: 0;
+  padding: 7px 9px 7px 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #f9fafb;
+}
+.decision-chain-stage:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  left: 20px;
+  bottom: -8px;
+  width: 2px;
+  height: 8px;
+  background: #b9c3d3;
+}
+.chain-index {
+  display: inline-grid;
+  place-items: center;
+  width: 21px;
+  height: 21px;
+  border-radius: 50%;
+  background: var(--blue-bg);
+  color: var(--blue);
+  font-size: 10.5px;
+  font-weight: 800;
+}
+.chain-stage-label {
+  padding: 2px 12px 0 2px;
+  color: var(--ink-dim);
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.055em;
+}
+.chain-stage-content { min-width: 0; }
+.chain-primary {
+  overflow-wrap: anywhere;
+  font-size: 12px;
+  font-weight: 650;
+}
+.chain-secondary {
+  margin-top: 2px;
+  color: var(--ink-dim);
+  font-size: 10.5px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.chain-evidence-split {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.chain-evidence-side {
+  min-width: 0;
+  padding: 6px 8px;
+  border-radius: 5px;
+  background: #fff;
+}
+.chain-claims { border-left: 3px solid var(--amber); }
+.chain-facts { border-left: 3px solid var(--blue); }
+.chain-side-label {
+  font-size: 10.5px;
+  font-weight: 850;
+  letter-spacing: 0.055em;
+}
+.chain-claims .chain-side-label { color: var(--amber); }
+.chain-facts .chain-side-label { color: var(--blue); }
+.chain-side-help {
+  color: var(--ink-dim);
+  font-size: 10px;
+  margin-bottom: 3px;
+}
+.chain-summary-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-family: var(--mono);
+  font-size: 10.5px;
+}
+.chain-summary-list li {
+  padding: 2px 0;
+  overflow-wrap: anywhere;
+}
+.chain-summary-list .chain-more {
+  color: var(--ink-dim);
+  font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-style: italic;
+}
+.chain-readonly-label, .chain-field-label {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--ink-dim);
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: 0.055em;
+}
+.chain-badge-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+.runtime-stage { border-left: 3px solid #778398; }
+.receipt-stage { border-left: 3px solid var(--green); }
 
 /* ---- claims/evidence table -------------------------------------------- */
 
@@ -383,4 +513,12 @@ body {
 @media (max-width: 900px) {
   .result-panel { grid-template-columns: 1fr; }
   .profile-meta-grid { grid-template-columns: repeat(2, 1fr); }
+  .decision-chain-stage { grid-template-columns: 30px 145px minmax(0, 1fr); }
+}
+
+@media (max-width: 700px) {
+  .decision-chain-heading { align-items: flex-start; flex-direction: column; gap: 2px; }
+  .decision-chain-stage { grid-template-columns: 30px minmax(0, 1fr); }
+  .chain-stage-content { grid-column: 2; margin-top: 4px; }
+  .chain-evidence-split { grid-template-columns: 1fr; }
 }
