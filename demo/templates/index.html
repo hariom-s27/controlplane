@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ControlPlane — Governance Dashboard</title>
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+  <div class="wrap">
+
+    <header class="topbar">
+      <div class="brand">CONTROLPLANE</div>
+      <div class="controls">
+        <label class="control">
+          <span>Profile</span>
+          <select id="profileSelect"></select>
+        </label>
+        <label class="control">
+          <span>Scenario</span>
+          <select id="scenarioSelect"></select>
+        </label>
+        <button id="runBtn" class="run-btn">RUN</button>
+        <button id="resetBtn" class="action-btn reset-btn" type="button" title="Clear demo-local state (idempotency ledger, decision trail, current result)">RESET</button>
+      </div>
+    </header>
+
+    <div class="demo-mode-banner">
+      DEMO MODE &nbsp;&middot;&nbsp; OFFLINE &nbsp;&middot;&nbsp; DETERMINISTIC &nbsp;&middot;&nbsp; NO API CALLS
+    </div>
+
+    <div class="trust-statement">
+      Claims come from the AI. Facts come from company systems. Policy decides. The receipt records the decision.
+    </div>
+
+    <div id="staleBanner" class="stale-banner" hidden>
+      Selection changed — press RUN to see the result for this profile / scenario.
+    </div>
+
+    <div id="emptyState" class="empty-state">
+      Select a profile and scenario, then press RUN.
+    </div>
+
+    <div id="notApplicable" class="not-applicable" hidden></div>
+    <div id="notAvailable" class="not-available" hidden></div>
+    <div id="errorState" class="error-state" hidden></div>
+
+    <main id="resultPanel" class="result-panel" hidden>
+
+      <section class="block intent-block">
+        <h2>AI INTENT</h2>
+        <div id="aiIntent" class="ai-intent"></div>
+        <div id="proposedAction" class="proposed-action"></div>
+      </section>
+
+      <section class="block claims-evidence-block">
+        <div class="ce-header">
+          <h2>CLAIMS <span class="vs">vs</span> EVIDENCE</h2>
+        </div>
+        <div class="ce-table-wrap">
+          <table class="ce-table">
+            <thead>
+              <tr>
+                <th>Claim</th>
+                <th>Asserted</th>
+                <th>Comparison</th>
+                <th>Evidence value</th>
+                <th>Source</th>
+                <th>Reliability</th>
+                <th>Freshness</th>
+                <th>Query</th>
+              </tr>
+            </thead>
+            <tbody id="ceRows"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="block policy-block">
+        <h2>POLICY <span id="policyVersion" class="policy-version"></span></h2>
+        <ul id="policyLines" class="policy-lines"></ul>
+      </section>
+
+      <section class="block decision-block">
+        <h2>DECISION</h2>
+        <div class="stat-row inline">
+          <div class="stat"><div class="label">VERDICT</div><div id="verdictBadge" class="badge verdict-badge"></div></div>
+          <div class="stat"><div class="label">INTERVENTION</div><div id="interventionBadge" class="badge intervention-badge"></div></div>
+        </div>
+        <div class="stat"><div class="label">ROOT CAUSE</div><div id="rootCause" class="value"></div></div>
+        <div class="stat"><div class="label">LATENCY <span class="hint">(current run observation)</span></div><div id="latency" class="value"></div></div>
+        <ul id="reasonLines" class="reason-lines"></ul>
+      </section>
+
+      <section class="block execution-block">
+        <h2>EXECUTION</h2>
+        <div class="stat"><div class="label">STATUS</div><div id="executionState" class="badge execution-badge"></div></div>
+        <div class="stat"><div class="label">IMPLEMENTATION CALLS</div><div id="callCount" class="value"></div></div>
+        <div class="stat"><div class="label">IDEMPOTENCY</div><div id="idempotencyKey" class="value mono"></div></div>
+      </section>
+
+      <section class="block receipt-block">
+        <h2>RECEIPT</h2>
+        <div class="stat"><div class="label">VERIFICATION</div><div id="receiptVerification" class="badge receipt-badge"></div></div>
+        <div class="stat"><div class="label">RECEIPT REFERENCE</div><div id="receiptReference" class="value mono"></div></div>
+        <div class="stat"><div class="label">TRACE ID</div><div id="traceId" class="value mono"></div></div>
+      </section>
+
+      <section class="block actions-block">
+        <h2>ACTIONS</h2>
+        <div class="action-buttons">
+          <button class="action-btn" data-target="inspectorPanel">Explain this decision</button>
+          <button class="action-btn" data-target="passportPanel">Evidence Passport</button>
+          <button class="action-btn" data-target="receiptPanel">Signed Receipt</button>
+        </div>
+
+        <div id="inspectorPanel" class="expandable" hidden>
+          <h3>WHY DID CONTROLPLANE DECIDE THIS?</h3>
+          <div class="chain" id="explanationChain"></div>
+          <div class="disclaimer">{{ evidence_health_disclaimer }}</div>
+        </div>
+
+        <div id="passportPanel" class="expandable" hidden>
+          <h3>EVIDENCE PASSPORT</h3>
+          <pre id="passportJson" class="raw-json"></pre>
+        </div>
+
+        <div id="receiptPanel" class="expandable" hidden>
+          <h3>SIGNED RECEIPT</h3>
+          <dl class="kv-list" id="receiptDetail"></dl>
+        </div>
+      </section>
+
+      <section class="block meta-block">
+        <span id="evidenceOrigin" class="tag"></span>
+        <span id="unavailableFields" class="tag warn"></span>
+      </section>
+
+    </main>
+
+    <footer class="profile-footer">
+      <div id="profileMeta" class="profile-meta"></div>
+    </footer>
+
+  </div>
+
+  <script id="catalog-data" type="application/json">
+    {"profiles": {{ profiles | tojson }}, "scenarios": {{ scenarios | tojson }}}
+  </script>
+  <script src="/static/app.js"></script>
+</body>
+</html>
