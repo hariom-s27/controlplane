@@ -10,6 +10,8 @@
       .\make.ps1 demo2      use case 2: knowledge assistant (cross-tenant block)
       .\make.ps1 demo3      use case 3: discount approval — manifest + graph data, no engine change
       .\make.ps1 negative   run with the gate OFF (the money moves)
+      .\make.ps1 judge-demo         six-scenario judge-facing governance walkthrough (offline)
+      .\make.ps1 judge-demo-reset   reset judge-demo's local state
       .\make.ps1 bench      run SEB-1
       .\make.ps1 goldset    rebuild the P03 independent gold set + label + agreement
       .\make.ps1 baselines  P04 baseline table B0-B5 (B3 needs CP_MODE=live once)
@@ -62,6 +64,8 @@ switch ($Task) {
     "demo2"    { Need-Venv; $env:CP_GATE = "on";  & $Py -m agents.knowledge_assistant }
     "demo3"    { Need-Venv; $env:CP_GATE = "on";  & $Py -m agents.discount_agent }
     "negative" { Need-Venv; $env:CP_GATE = "off"; & $Py -m agents.servicing_agent }
+    "judge-demo"       { Need-Venv; & $Py -m scripts.judge_demo }
+    "judge-demo-reset" { Need-Venv; & $Py -m scripts.judge_demo --reset }
     "bench" {
         Need-Venv
         & $Py bench\seb1_exp3_cross_validation.py
@@ -106,6 +110,8 @@ switch ($Task) {
         Write-Host "  demo2     use case 2: knowledge assistant"
         Write-Host "  demo3     use case 3: discount approval (manifest + graph, no engine change)"
         Write-Host "  negative  run with the gate OFF"
+        Write-Host "  judge-demo         six-scenario judge-facing governance walkthrough (offline)"
+        Write-Host "  judge-demo-reset   reset judge-demo's local state"
         Write-Host "  bench     run SEB-1"
         Write-Host "  goldset   rebuild the P03 independent gold set + label + agreement"
         Write-Host "  baselines P04 baseline table B0-B5 over the gold set"

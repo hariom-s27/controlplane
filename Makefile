@@ -1,7 +1,7 @@
 # ControlPlane — macOS / Linux. Windows users: use .\make.ps1 instead.
 PY := .venv/bin/python
 
-.PHONY: help setup probe db test ci demo demo2 demo3 negative bench goldset baselines ablation robustness latency report review reviewer product-demo clean
+.PHONY: help setup probe db test ci demo demo2 demo3 negative judge-demo judge-demo-reset bench goldset baselines ablation robustness latency report review reviewer product-demo clean
 help:
 	@echo "  setup     one-time: venv + install + build db"
 	@echo "  probe     check the LLM provider works   <- do this first"
@@ -12,6 +12,8 @@ help:
 	@echo "  demo2     use case 2: knowledge assistant (cross-tenant block)"
 	@echo "  demo3     use case 3: discount approval — manifest + graph data, no engine change"
 	@echo "  negative  use case 1 with the gate OFF"
+	@echo "  judge-demo       six-scenario judge-facing governance walkthrough (offline)"
+	@echo "  judge-demo-reset reset judge-demo's local state"
 	@echo "  bench     run SEB-1"
 	@echo "  goldset   rebuild the P03 independent gold set + label + agreement"
 	@echo "  baselines P04 baseline table B0-B5 over the gold set (B3 needs CP_MODE=live once)"
@@ -39,6 +41,8 @@ demo:     ; CP_GATE=on  $(PY) -m agents.servicing_agent
 demo2:    ; CP_GATE=on  $(PY) -m agents.knowledge_assistant
 demo3:    ; CP_GATE=on  $(PY) -m agents.discount_agent
 negative: ; CP_GATE=off $(PY) -m agents.servicing_agent
+judge-demo:       ; $(PY) -m scripts.judge_demo
+judge-demo-reset: ; $(PY) -m scripts.judge_demo --reset
 # Exp 5 (confusion matrix) is BLOCKED until a held-out gold set exists (P03) —
 # it exits non-zero on purpose; see docs/experiment-audit.md. `- ` lets bench
 # continue and still run the mutation harness.

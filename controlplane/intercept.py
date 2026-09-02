@@ -400,9 +400,15 @@ def dispatch_tool(
             impl=impl, call_args=args, decision=decision, name=name, session=session
         )
     if decision.intervention is Intervention.MODIFY:
+        # A MODIFY verdict whose modified_args never got populated (or was
+        # corrupted into a non-mapping) must never silently fall back to the
+        # original, unmodified args — that would execute exactly the call
+        # MODIFY was raised to prevent. Hold it as Pending instead.
+        if not isinstance(decision.modified_args, dict):
+            raise Pending(decision)
         return _execute_governed_once(
             impl=impl,
-            call_args=decision.modified_args or args,
+            call_args=decision.modified_args,
             decision=decision,
             name=name,
             session=session,

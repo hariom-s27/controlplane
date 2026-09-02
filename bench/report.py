@@ -8,8 +8,13 @@ this script is that another can't get in through a transcription error.
     make report   ->   python bench/report.py
 
 Writes reports/coverage.md, latency_trail.md, confusion.md, noise_sweep.png,
-promotion_curve.png, and merges its own keys into summary.json. It does NOT
-touch reports/latency.md (P09 owns it) or the p04/p05/p08/p09 summary sections.
+and merges its own keys into summary.json. It does NOT touch reports/latency.md
+(P09 owns it) or the p04/p05/p08/p09 summary sections.
+
+promotion_curve.png is intentionally not generated: its model-load input was
+a hand-typed value from a past session with no reproducible source in this
+repository. Restore that chart only when every input comes from preserved,
+logged measurements.
 
 Post-audit state (docs/experiment-audit.md):
   * confusion matrix (Exp 5) is BLOCKED until task P03 delivers a held-out
@@ -45,12 +50,6 @@ from receipt_size import measure_receipt_sizes
 DECISIONS = ROOT / "decisions.jsonl"
 REPORTS = ROOT / "reports"
 ACCENT = "#2563eb"
-
-# Measured this session (README's S8 section) — not re-measured here to
-# avoid a second ~13s model load every time `make report` runs.
-MEASURED_GROUNDING_LOAD_MS = 13_209.0
-MEASURED_GROUNDING_CALL_MS = 109.8
-TYPICAL_PREDICATE_MS = 0.6
 
 
 def _load_decisions() -> list[dict]:
@@ -109,26 +108,6 @@ def _write_markdown_table(path: Path, title: str, rows: list[tuple], headers: tu
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
-def _promotion_curve_chart(path: Path) -> None:
-    fig, ax = plt.subplots(figsize=(6, 4))
-    stages = ["C1/C2\npredicate\n(Zen graph)", "C3\ngrounding\n(model load)", "C3\ngrounding\n(scored call)"]
-    values_ms = [TYPICAL_PREDICATE_MS, MEASURED_GROUNDING_LOAD_MS, MEASURED_GROUNDING_CALL_MS]
-    bars = ax.bar(stages, values_ms, color=ACCENT)
-    ax.set_yscale("log")
-    ax.set_ylabel("milliseconds (log scale)")
-    ax.set_title("Rule promotion cost: C1/C2 predicate vs. C3 grounding (HHEM-2.1-Open)",
-                 fontsize=10, loc="left")
-    ax.text(0, 1.02, "measured this session, CP_SEED=20260814 · n=1 per bar — see README's S8 section",
-            transform=ax.transAxes, fontsize=8, color="#666")
-    for bar, val in zip(bars, values_ms):
-        ax.annotate(f"{val:,.1f} ms", (bar.get_x() + bar.get_width() / 2, bar.get_height()),
-                    ha="center", va="bottom", fontsize=9)
-    ax.spines[["top", "right"]].set_visible(False)
-    fig.tight_layout()
-    fig.savefig(path, dpi=150)
-    plt.close(fig)
-
-
 def _exp3_chart(path: Path) -> dict:
     """Named noise_sweep.png per the roadmap's file list, but honestly
     titled for what this build actually measured: no noise-level sweep
@@ -182,7 +161,6 @@ def main() -> int:
 
     exp5 = _exp5_result()
     exp3 = _exp3_chart(REPORTS / "noise_sweep.png")
-    _promotion_curve_chart(REPORTS / "promotion_curve.png")
 
     from mutation import run_mutation_testing
 
@@ -274,7 +252,7 @@ def main() -> int:
     summary.update(owned)
     summary_path.write_text(json.dumps(summary, indent=2, default=str) + "\n", encoding="utf-8")
     print("wrote reports/coverage.md, latency_trail.md, confusion.md, mutation.md, "
-          "noise_sweep.png, promotion_curve.png, summary.json (merged; latency.md is P09's)")
+          "noise_sweep.png, summary.json (merged; latency.md is P09's)")
     if exp5.get("status") == "BLOCKED":
         print("  note: Exp 5 (confusion matrix) is BLOCKED — see docs/experiment-audit.md")
     print(f"  mutation score: {mutation['mutation_score']:.3f} (spec-derived; < 1.0 expected)")

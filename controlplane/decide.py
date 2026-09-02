@@ -116,7 +116,14 @@ def decide(
 
         ev = evidence_by_claim.get(claim.id)
 
-        is_unreliable = ev is not None and _RELIABILITY_RANK.get(ev.reliability_class, 0) < floor_rank
+        if ev is None:
+            unverifiable = True
+            reasons.append(
+                Reason(rule=f"{claim.kind.value}_resolved", expected="a value", observed=None, passed=False)
+            )
+            continue
+
+        is_unreliable = _RELIABILITY_RANK.get(ev.reliability_class, 0) < floor_rank
         if is_unreliable:
             source_unreliable = True
             reasons.append(
@@ -148,6 +155,30 @@ def decide(
         predicate_field = _PREDICATE_FOR_KIND.get(claim.kind)
         if predicate_field is not None:
             passed = predicate_result.get(predicate_field)
+            if predicate_field not in predicate_result or passed is None:
+                unverifiable = True
+                reasons.append(
+                    Reason(
+                        rule=f"{predicate_field}_available",
+                        expected="boolean",
+                        observed=None,
+                        passed=False,
+                        policy_version=manifest_id,
+                    )
+                )
+                continue
+            if type(passed) is not bool:
+                unverifiable = True
+                reasons.append(
+                    Reason(
+                        rule=f"{predicate_field}_available",
+                        expected="boolean",
+                        observed=type(passed).__name__,
+                        passed=False,
+                        policy_version=manifest_id,
+                    )
+                )
+                continue
             violated = passed is False
             rule_name, expected, observed = predicate_field, True, passed
         elif claim.kind is ClaimKind.POLICY_CLAUSE_CURRENT and clause_match is not None:

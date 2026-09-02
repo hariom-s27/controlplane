@@ -56,7 +56,16 @@ def evaluate(evidence: dict, action: ProposedAction, manifest: dict) -> dict:
     # availability/reliability result, not a predicate-engine crash.  Use a
     # transient parseable sentinel only to let independent expressions run,
     # then erase both date-dependent outputs before they can influence decide.
-    if "delivered_at" in safe_evidence and safe_evidence["delivered_at"] is None:
+    # Manifest-driven, not name-gated: only a manifest whose own
+    # claim_bindings actually declare a delivered_at predicate_key can be
+    # missing it — a use case with no such binding (e.g. knowledge_assistant)
+    # must never have this key spuriously injected. Checked by "is this key
+    # bound at all", so absence (the claim never resolved, so build_predicate_payload
+    # omitted the key) and an explicit null both take this path.
+    _expects_delivered_at = any(
+        b.get("predicate_key") == "delivered_at" for b in manifest.get("claim_bindings", [])
+    )
+    if _expects_delivered_at and safe_evidence.get("delivered_at") is None:
         safe_evidence["delivered_at"] = safe_evidence.get("clock", {}).get("today")
         unavailable_predicates = {
             "days_elapsed": "delivered_at is NULL",

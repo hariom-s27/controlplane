@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import pytest
 
+pytest.importorskip("torch")
 pytest.importorskip("transformers")
 
 from controlplane import ground  # noqa: E402

@@ -118,10 +118,23 @@ class OrdersResolver:
                     note=f"no order found for order_id={order_id!r}",
                 )
 
+            values = {"colour": row["item_colour"], "category": row["item_category"]}
+            if any(value is None for value in values.values()):
+                return Evidence(
+                    claim_id=claim.id,
+                    value=values,
+                    source="orders.db",
+                    query=query,
+                    fetched_at=now(),
+                    reliability_class=Reliability.UNVERIFIED,
+                    confidence=Confidence.NONE,
+                    note=f"one or more order attributes are NULL for order_id={order_id!r}",
+                )
+
             reliabilities = [freshness.reliability_for_field("orders", f, conn) for f in _ATTRIBUTE_FIELDS]
             return Evidence(
                 claim_id=claim.id,
-                value={"colour": row["item_colour"], "category": row["item_category"]},
+                value=values,
                 source="orders.db",
                 query=query,
                 fetched_at=now(),
