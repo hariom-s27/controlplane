@@ -31,10 +31,10 @@ def test_demo_initializes():
     assert demo.ENTITLEMENTS_DB.exists(), "run `make db` / `.\\make.ps1 db` before running the demo tests"
 
 
-def test_six_scenarios_load():
-    assert len(demo.SCENARIOS) == 6
+def test_eight_scenarios_load_without_changing_existing_indices():
+    assert len(demo.SCENARIOS) == 8
     results = [fn() for fn in demo.SCENARIOS]
-    assert [r.number for r in results] == [1, 2, 3, 4, 5, 6]
+    assert [r.number for r in results] == [1, 2, 3, 4, 5, 6, 7, 8]
 
 
 def test_full_catalog_has_no_unavailable_scenarios():
@@ -99,6 +99,43 @@ def test_duplicate_replay_executes_only_once():
     assert r.call_count == "1"
     assert "executed=True" in r.execution_status
     assert "executed=False" in r.execution_status
+
+
+def test_customer_support_stale_policy_refund_blocks_without_calling_implementation():
+    r = demo.scenario_7_stale_policy_refund()
+    trace = r.receipt["predicate_trace"]
+
+    assert r.number == 7
+    assert r.key == "stale_policy_refund"
+    assert r.title == "₹42,999 STALE-POLICY REFUND"
+    assert r.evidence_source == "RUNTIME"
+    assert trace["days_elapsed"] == 26
+    assert trace["within_window"] is False
+    assert trace["within_authority"] is False
+    assert r.verdict == "CONTRADICTED"
+    assert r.intervention == "BLOCK"
+    assert r.execution_status == "BLOCKED"
+    assert r.call_count == "0"
+    assert demo._call_log == []
+    assert r.receipt_verified is True
+
+
+def test_customer_support_allow_control_executes_once():
+    r = demo.scenario_8_servicing_allow()
+    trace = r.receipt["predicate_trace"]
+
+    assert r.number == 8
+    assert r.key == "servicing_allow"
+    assert r.receipt["action"]["args"]["order_id"] == "ORD-90233"
+    assert trace["days_elapsed"] == 3
+    assert trace["within_window"] is True
+    assert trace["within_authority"] is True
+    assert r.verdict == "VERIFIED"
+    assert r.intervention == "ALLOW"
+    assert r.execution_status == "EXECUTED"
+    assert r.call_count == "1"
+    assert len(demo._call_log) == 1
+    assert r.receipt_verified is True
 
 
 def test_receipt_verification_succeeds_and_detects_tampering():

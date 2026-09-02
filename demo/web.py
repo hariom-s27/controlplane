@@ -13,7 +13,7 @@ never re-derived.
 EXECUTION BOUNDARY: only `POST /api/run` executes a scenario. Every other
 route (`GET /`, `GET /api/catalog`, `POST /api/reset`) is presentation-only
 or state-clearing and touches no governance execution path. `POST /api/run`
-itself only ever calls one of the six real `scripts.judge_demo.SCENARIOS`
+itself only ever calls one of the real `scripts.judge_demo.SCENARIOS`
 functions — nothing else in this file calls `dispatch_tool`, `decide`,
 `extract_action`, `build_receipt`, or a registry resolver. `POST /api/reset`
 calls only `scripts.judge_demo.reset_demo()` — the same demo-local reset
@@ -107,31 +107,12 @@ def _profile_manifest_summary(profile: dict[str, Any]) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
-# Scenario catalog — static UI labels only (section 28: the only permitted
-# hardcoding). The literal numbers/keys/titles mirror the dataclass fields
-# scripts/judge_demo.py's own ScenarioResult objects are constructed with
-# (see e.g. `ScenarioResult(number=3, key="contradiction", title="RELIABLE
-# CONTRADICTION", ...)` in scenario_3_contradiction()) — kept in sync by
-# tests/test_product03_dashboard.py, which runs every real scenario once and
-# asserts this catalog's key/title match the real result exactly.
-# `supported_profiles` is derived from the ACTUAL manifest each scenario
-# binds to (also asserted by that same test), not inferred from the name.
+# Scenario catalog — generated from the same Product-01 scenario definitions
+# used by POST /api/run. GET / and GET /api/catalog consume metadata only and
+# never execute a scenario to discover it.
 # ---------------------------------------------------------------------------
 
-SCENARIO_CATALOG: list[dict[str, Any]] = [
-    {"index": 1, "key": "allow", "title": "NORMAL ALLOW",
-     "supported_profiles": ["knowledge_assistant-v1"], "hero": False},
-    {"index": 2, "key": "source_unreliable", "title": "SOURCE UNRELIABLE",
-     "supported_profiles": ["servicing-v1"], "hero": False},
-    {"index": 3, "key": "contradiction", "title": "RELIABLE CONTRADICTION",
-     "supported_profiles": ["knowledge_assistant-v1"], "hero": True},
-    {"index": 4, "key": "invalid_modify", "title": "INVALID MODIFY / SAFETY REFUSAL",
-     "supported_profiles": ["knowledge_assistant-v1"], "hero": False},
-    {"index": 5, "key": "unsafe_modify", "title": "UNSAFE MODIFY / SAFETY REFUSAL",
-     "supported_profiles": ["knowledge_assistant-v1"], "hero": False},
-    {"index": 6, "key": "duplicate_replay", "title": "DUPLICATE / REPLAY",
-     "supported_profiles": ["knowledge_assistant-v1"], "hero": False},
-]
+SCENARIO_CATALOG: list[dict[str, Any]] = demo.scenario_catalog()
 _SCENARIO_BY_INDEX = {s["index"]: s for s in SCENARIO_CATALOG}
 
 

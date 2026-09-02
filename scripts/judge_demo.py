@@ -1,6 +1,6 @@
 """Judge-facing ControlPlane demo — PRODUCT-01.
 
-Six deterministic, offline scenarios built entirely on the existing
+Eight deterministic, offline scenarios built entirely on the existing
 runtime (controlplane/intercept.py::dispatch_tool, controlplane/decide.py,
 controlplane/idempotency.py, controlplane/receipt.py). Nothing here
 reimplements governance logic; every verdict, intervention, execution
@@ -10,8 +10,9 @@ code, not by inventing new decision logic.
 The only piece of the real pipeline this script does not exercise is the
 LLM-backed claim extractor (controlplane/extract.py::extract_action),
 because that requires a live model call. Every scenario below stubs it
-with a fixed ProposedAction built directly from the tool call's own
-structural arguments — the exact technique tests/test_intercept.py's own
+with a fixed ProposedAction built from the tool call's structural arguments
+and, where the scenario explicitly supplies agent claims, keeps those values
+in the ProposedAction's claimed_* fields — the exact technique tests/test_intercept.py's own
 `test_gate_on_unmodeled_tool_fails_loudly_never_calls_impl` and
 tests/test_knowledge_assistant.py's `_dispatch_send` already use for the
 same reason. Everything downstream of that point — claim classification,
@@ -20,8 +21,8 @@ predicate graph, decide(), idempotency and receipt signing — runs for
 real. Each scenario below is labeled RUNTIME or FIXTURE (see
 _ScenarioResult.evidence_source) so this is never ambiguous on screen.
 
-Run:  python -m scripts.judge_demo            (all six scenarios)
-      python -m scripts.judge_demo --scenario 3
+Run:  python -m scripts.judge_demo            (all eight scenarios)
+      python -m scripts.judge_demo --scenario 7
       python -m scripts.judge_demo --reset     (clear demo-local state)
 """
 
@@ -32,6 +33,7 @@ import os
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any, Callable
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -48,13 +50,21 @@ load_dotenv(ROOT / ".env")
 os.environ["CP_MANIFEST"] = "knowledge_assistant"
 
 import agents.knowledge_assistant as ka  # noqa: E402
+import agents.servicing_agent as servicing  # noqa: E402
 from controlplane.decide import decide  # noqa: E402
 from controlplane.idempotency import reset_execution_ledger  # noqa: E402
-from controlplane.intercept import Blocked, Pending, dispatch_tool, register_tool  # noqa: E402
+from controlplane.intercept import (  # noqa: E402
+    REGISTRY,
+    Blocked,
+    Pending,
+    dispatch_tool,
+    register_tool,
+)
 from controlplane.manifest import load_manifest  # noqa: E402
 from controlplane import receipt as cp_receipt  # noqa: E402
 from controlplane.receipt import build_receipt  # noqa: E402
 from controlplane.receipt import verify as verify_receipt  # noqa: E402
+from controlplane.render import to_rupees  # noqa: E402
 from controlplane.registry.clock import now as cp_now  # noqa: E402
 from controlplane.schema import (  # noqa: E402
     Claim,
@@ -72,8 +82,8 @@ ENTITLEMENTS_DB = ROOT / "data" / "entitlements.db"
 _OK, _WARN, _FAIL = "[OK]", "[WARN]", "[FAIL]"
 
 # ---------------------------------------------------------------------------
-# Wiring — reuse the real send_document implementation, only adding a call
-# counter so the EXECUTION section can show a real, observed call count.
+# Wiring — reuse the real implementations, only adding a call counter so the
+# EXECUTION section can show a real, observed call count.
 # ---------------------------------------------------------------------------
 
 _call_log: list[dict] = []
@@ -84,7 +94,16 @@ def _counting_send_document(**kwargs) -> dict:
     return ka._send_document_impl(**kwargs)
 
 
+_registered_issue_refund = REGISTRY["issue_refund"]
+
+
+def _counting_issue_refund(**kwargs) -> dict:
+    _call_log.append(kwargs)
+    return _registered_issue_refund(**kwargs)
+
+
 register_tool("send_document", _counting_send_document)
+register_tool("issue_refund", _counting_issue_refund)
 
 
 def _extract_stub(**kwargs):
@@ -177,17 +196,33 @@ def _finish_from_receipt(result: ScenarioResult, receipt: dict) -> None:
 # ---------------------------------------------------------------------------
 
 
-def _run_dispatch(trace_id: str, subject_id: str, args: dict, *, isolate: bool = True):
+def _run_dispatch(
+    trace_id: str,
+    subject_id: str | None,
+    args: dict,
+    *,
+    isolate: bool = True,
+    tool: str = "send_document",
+    manifest_name: str = "knowledge_assistant",
+    manifest_id: str = "knowledge_assistant-v1",
+    customer_id: str | None = None,
+    agent_role: str = "knowledge_assistant",
+    use_case: str = "knowledge_assistant",
+    claimed_fields: dict[str, Any] | None = None,
+    justification: str = "",
+    retrieved_chunks: list[str] | None = None,
+):
     if isolate:
         reset_execution_ledger()
         _call_log.clear()
 
     session = SessionContext(
         trace_id=trace_id,
+        customer_id=customer_id,
         subject_id=subject_id,
-        agent_role="knowledge_assistant",
-        use_case="knowledge_assistant",
-        manifest_id="knowledge_assistant-v1",
+        agent_role=agent_role,
+        use_case=use_case,
+        manifest_id=manifest_id,
         gate_enabled=True,
     )
 
@@ -204,11 +239,23 @@ def _run_dispatch(trace_id: str, subject_id: str, args: dict, *, isolate: bool =
     calls_before = len(_call_log)
     status = "EXECUTED"
     exec_result = None
-    with patch("controlplane.intercept.extract_action", _extract_stub), \
+    claimed_fields = claimed_fields or {}
+
+    def _scenario_extract_stub(**kwargs):
+        action_fields = _extract_stub(**kwargs).model_dump()
+        action_fields.update(claimed_fields)
+        return ProposedAction(**action_fields)
+
+    with patch.dict(os.environ, {"CP_MANIFEST": manifest_name}), \
+         patch("controlplane.intercept.extract_action", _scenario_extract_stub), \
          patch("controlplane.intercept.record", _capturing_record):
         try:
             exec_result = dispatch_tool(
-                "send_document", args, session, justification="", retrieved_chunks=[]
+                tool,
+                args,
+                session,
+                justification=justification,
+                retrieved_chunks=retrieved_chunks or [],
             )
         except Blocked:
             status = "BLOCKED"
@@ -429,14 +476,162 @@ def scenario_6_duplicate_replay() -> ScenarioResult:
     return result
 
 
-SCENARIOS = [
-    scenario_1_allow,
-    scenario_2_source_unreliable,
-    scenario_3_contradiction,
-    scenario_4_invalid_modify,
-    scenario_5_unsafe_modify,
-    scenario_6_duplicate_replay,
+SERVICING_HERO_ARGS = {
+    "order_id": "ORD-88461",
+    "amount_paise": 4299900,
+    "currency": "INR",
+    "item_colour": "blue",
+    "item_category": "shoes",
+}
+SERVICING_ALLOW_ARGS = {
+    "order_id": "ORD-90233",
+    "amount_paise": 849900,
+    "currency": "INR",
+    "item_colour": "grey",
+    "item_category": "shirt",
+}
+SERVICING_HERO_TITLE = f"{to_rupees(SERVICING_HERO_ARGS['amount_paise'])} STALE-POLICY REFUND"
+SERVICING_ALLOW_TITLE = f"{to_rupees(SERVICING_ALLOW_ARGS['amount_paise'])} IN-POLICY REFUND"
+
+
+def _run_servicing_refund(
+    trace_id: str,
+    args: dict,
+    *,
+    claimed_fields: dict[str, Any] | None = None,
+    justification: str = "",
+    retrieved_chunks: list[str] | None = None,
+):
+    return _run_dispatch(
+        trace_id,
+        None,
+        args,
+        tool="issue_refund",
+        manifest_name="servicing",
+        manifest_id="servicing-v1",
+        customer_id="CUST-2291",
+        agent_role="servicing_agent",
+        use_case="servicing",
+        claimed_fields=claimed_fields,
+        justification=justification,
+        retrieved_chunks=retrieved_chunks,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Scenario 7 — ₹42,999 STALE-POLICY REFUND (primary Customer Support hero)
+# ---------------------------------------------------------------------------
+
+
+def scenario_7_stale_policy_refund() -> ScenarioResult:
+    args = dict(SERVICING_HERO_ARGS)
+    retrieved_policy = servicing._retrieve_policy(servicing.CUSTOMER_MESSAGE)
+    stale_policy = next(
+        chunk for chunk in retrieved_policy if chunk["chunk_id"] == "refund_window_v38"
+    )
+    claimed_fields = {
+        "claimed_policy_version": stale_policy["version"],
+        "claimed_clause_text": stale_policy["text"],
+        "claimed_reasoning": (
+            f"The retrieved {stale_policy['version']} policy permits a full refund "
+            "within 30 days of delivery."
+        ),
+    }
+    result = ScenarioResult(
+        number=7,
+        key="stale_policy_refund",
+        title=SERVICING_HERO_TITLE,
+        evidence_source="RUNTIME",
+    )
+    item = f"{args['item_colour']} running {args['item_category']}"
+    result.ai_intent = (
+        f"Refund {to_rupees(args['amount_paise'])} for {item} on {args['order_id']} "
+        f"using retrieved policy {stale_policy['version']}"
+    )
+    result.notes.append(
+        f"The agent's stale retrieval supplied refund policy {stale_policy['version']}; "
+        "ControlPlane resolves the order, current policy, and authority ceiling from "
+        "authoritative company sources before execution."
+    )
+
+    status, exec_result, executed, receipt = _run_servicing_refund(
+        "demo-s7-stale-policy-refund",
+        args,
+        claimed_fields=claimed_fields,
+        justification=claimed_fields["claimed_reasoning"],
+        retrieved_chunks=[chunk["text"] for chunk in retrieved_policy],
+    )
+    _finish_from_receipt(result, receipt)
+    result.execution_status = status
+    result.call_count = "1" if executed else "0"
+    result.execution_result = "(not executed)" if exec_result is None else repr(exec_result)
+    return result
+
+
+# ---------------------------------------------------------------------------
+# Scenario 8 — Customer Support ALLOW control
+# ---------------------------------------------------------------------------
+
+
+def scenario_8_servicing_allow() -> ScenarioResult:
+    args = dict(SERVICING_ALLOW_ARGS)
+    result = ScenarioResult(
+        number=8,
+        key="servicing_allow",
+        title=SERVICING_ALLOW_TITLE,
+        evidence_source="RUNTIME",
+    )
+    result.ai_intent = (
+        f"Refund {to_rupees(args['amount_paise'])} for order {args['order_id']} "
+        "under the current policy"
+    )
+
+    status, exec_result, executed, receipt = _run_servicing_refund(
+        "demo-s8-servicing-allow",
+        args,
+    )
+    _finish_from_receipt(result, receipt)
+    result.execution_status = status
+    result.call_count = "1" if executed else "0"
+    result.execution_result = repr(exec_result) if exec_result is not None else "(not executed)"
+    return result
+
+
+@dataclass(frozen=True)
+class ScenarioDefinition:
+    index: int
+    key: str
+    title: str
+    supported_profiles: tuple[str, ...]
+    hero: bool
+    run: Callable[[], ScenarioResult]
+
+    def catalog_entry(self) -> dict[str, Any]:
+        return {
+            "index": self.index,
+            "key": self.key,
+            "title": self.title,
+            "supported_profiles": list(self.supported_profiles),
+            "hero": self.hero,
+        }
+
+
+SCENARIO_DEFINITIONS = [
+    ScenarioDefinition(1, "allow", "NORMAL ALLOW", ("knowledge_assistant-v1",), False, scenario_1_allow),
+    ScenarioDefinition(2, "source_unreliable", "SOURCE UNRELIABLE", ("servicing-v1",), False, scenario_2_source_unreliable),
+    ScenarioDefinition(3, "contradiction", "RELIABLE CONTRADICTION", ("knowledge_assistant-v1",), False, scenario_3_contradiction),
+    ScenarioDefinition(4, "invalid_modify", "INVALID MODIFY / SAFETY REFUSAL", ("knowledge_assistant-v1",), False, scenario_4_invalid_modify),
+    ScenarioDefinition(5, "unsafe_modify", "UNSAFE MODIFY / SAFETY REFUSAL", ("knowledge_assistant-v1",), False, scenario_5_unsafe_modify),
+    ScenarioDefinition(6, "duplicate_replay", "DUPLICATE / REPLAY", ("knowledge_assistant-v1",), False, scenario_6_duplicate_replay),
+    ScenarioDefinition(7, "stale_policy_refund", SERVICING_HERO_TITLE, ("servicing-v1",), True, scenario_7_stale_policy_refund),
+    ScenarioDefinition(8, "servicing_allow", SERVICING_ALLOW_TITLE, ("servicing-v1",), False, scenario_8_servicing_allow),
 ]
+SCENARIOS = [definition.run for definition in SCENARIO_DEFINITIONS]
+
+
+def scenario_catalog() -> list[dict[str, Any]]:
+    """Presentation metadata from the same definitions that dispatch RUN."""
+    return [definition.catalog_entry() for definition in SCENARIO_DEFINITIONS]
 
 
 # ---------------------------------------------------------------------------
@@ -450,7 +645,10 @@ def render(result: ScenarioResult) -> None:
     print("CONTROLPLANE")
     print("AI ACTION GOVERNANCE")
     print("=" * width)
-    print(f"SCENARIO {result.number}/6 — {result.title}   [evidence source: {result.evidence_source}]")
+    print(
+        f"SCENARIO {result.number}/{len(SCENARIOS)} — {result.title}   "
+        f"[evidence source: {result.evidence_source}]"
+    )
     print()
 
     if not result.available:
@@ -536,7 +734,13 @@ def reset_demo() -> None:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Judge-facing ControlPlane demo (PRODUCT-01)")
-    parser.add_argument("--scenario", type=int, choices=range(1, 7), default=None, help="run one scenario only")
+    parser.add_argument(
+        "--scenario",
+        type=int,
+        choices=range(1, len(SCENARIOS) + 1),
+        default=None,
+        help="run one scenario only",
+    )
     parser.add_argument("--reset", action="store_true", help="reset demo-local state and exit")
     args = parser.parse_args(argv)
 

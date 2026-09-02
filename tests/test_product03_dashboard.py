@@ -55,8 +55,9 @@ def _run(profile_id: str, scenario_index: int) -> dict:
     return resp.json()
 
 
-HERO_PROFILE = "knowledge_assistant-v1"
-HERO_SCENARIO = 3  # RELIABLE CONTRADICTION — the real BLOCK+PREVENTED case
+HERO_PROFILE = "servicing-v1"
+HERO_SCENARIO = 7  # ₹42,999 STALE-POLICY REFUND — primary BLOCK+PREVENTED hero
+SERVICING_ALLOW_SCENARIO = 8
 
 
 # ---------------------------------------------------------------------------
@@ -70,19 +71,32 @@ def test_app_imports_and_page_renders():
     assert "CONTROLPLANE" in resp.text
     assert "profileSelect" in resp.text
     assert "scenarioSelect" in resp.text
+    assert PROFILES[0]["id"] == HERO_PROFILE
+    assert next(s for s in SCENARIO_CATALOG if s["hero"])["index"] == HERO_SCENARIO
+    assert demo._call_log == []
 
 
 def test_catalog_lists_profiles_and_scenarios_for_the_selectors():
     resp = client.get("/api/catalog")
     assert resp.status_code == 200
     body = resp.json()
+    assert SCENARIO_CATALOG == demo.scenario_catalog()
     profile_ids = {p["id"] for p in body["profiles"]}
     assert profile_ids == {"servicing-v1", "knowledge_assistant-v1"}
     scenario_indices = {s["index"] for s in body["scenarios"]}
-    assert scenario_indices == {1, 2, 3, 4, 5, 6}
+    assert scenario_indices == {1, 2, 3, 4, 5, 6, 7, 8}
     hero = [s for s in body["scenarios"] if s["hero"]]
     assert len(hero) == 1
     assert hero[0]["index"] == HERO_SCENARIO
+    assert hero[0]["key"] == "stale_policy_refund"
+    assert hero[0]["title"] == "₹42,999 STALE-POLICY REFUND"
+    assert hero[0]["supported_profiles"] == ["servicing-v1"]
+    assert next(s for s in body["scenarios"] if s["index"] == 3)["hero"] is False
+
+    servicing = [
+        s for s in body["scenarios"] if "servicing-v1" in s["supported_profiles"]
+    ]
+    assert {s["index"] for s in servicing} >= {HERO_SCENARIO, SERVICING_ALLOW_SCENARIO}
 
 
 def test_scenario_selection_and_profile_selection_each_reach_a_real_result():
@@ -90,6 +104,10 @@ def test_scenario_selection_and_profile_selection_each_reach_a_real_result():
     assert allow["status"] == "OK"
     escalate = _run("servicing-v1", 2)
     assert escalate["status"] == "OK"
+    servicing_allow = _run(HERO_PROFILE, SERVICING_ALLOW_SCENARIO)
+    servicing_block = _run(HERO_PROFILE, HERO_SCENARIO)
+    assert (servicing_allow["verdict"], servicing_allow["intervention"]) == ("VERIFIED", "ALLOW")
+    assert (servicing_block["verdict"], servicing_block["intervention"]) == ("CONTRADICTED", "BLOCK")
 
 
 # ---------------------------------------------------------------------------
@@ -99,7 +117,7 @@ def test_scenario_selection_and_profile_selection_each_reach_a_real_result():
 
 def test_run_consumes_the_real_product01_result_and_product02_model():
     body = _run(HERO_PROFILE, HERO_SCENARIO)
-    real_result = demo.scenario_3_contradiction()
+    real_result = demo.scenario_7_stale_policy_refund()
     reset_execution_ledger()
     demo._call_log.clear()
     real_model = build_presentation_model(real_result)
@@ -136,7 +154,7 @@ def test_claim_evidence_rows_preserve_the_real_semantic_mapping():
 
 
 def test_unrelated_claim_kinds_show_no_direct_comparison():
-    body = _run(HERO_PROFILE, HERO_SCENARIO)
+    body = _run("knowledge_assistant-v1", 3)
     rows = body["claim_evidence_rows"]
     assert rows, "hero scenario has claims to check"
     for r in rows:
@@ -160,18 +178,44 @@ def test_evidence_origin_is_preserved_not_invented():
     assert fixture_body["evidence_origin"] == "FIXTURE"
 
 
+def test_hero_exposes_claims_and_authoritative_evidence_without_reconstructing_sql():
+    body = _run(HERO_PROFILE, HERO_SCENARIO)
+    rows = {row["claim_kind"]: row for row in body["claim_evidence_rows"]}
+
+    delivered = rows["within_refund_window"]
+    assert delivered["evidence_value"] == "2026-07-19"
+    assert delivered["evidence_source"] == "orders.db"
+    assert delivered["evidence_query"] == (
+        "SELECT delivered_at FROM orders WHERE order_id = 'ORD-88461'"
+    )
+
+    current_policy = rows["policy_clause_current"]
+    assert current_policy["asserted_value"] == "v3.8"
+    assert current_policy["evidence_value"] == "v4.2"
+    assert current_policy["evidence_source"] == "policy_store.db"
+    assert "effective_to IS NULL" in current_policy["evidence_query"]
+
+    authority = rows["amount_within_authority"]
+    assert authority["asserted_value"] == 4299900
+    assert authority["evidence_value"] == 2500000
+    assert authority["evidence_source"] == "manifest:servicing"
+    assert authority["evidence_query"] == "authority_ceiling_paise"
+    assert body["evidence_origin"] == "RUNTIME"
+
+
 # ---------------------------------------------------------------------------
 # Execution safety — only POST /api/run may execute a scenario
 # ---------------------------------------------------------------------------
 
 
-def test_index_page_never_executes(monkeypatch):
+@pytest.mark.parametrize("path", ["/", "/?autorun=1"])
+def test_index_page_never_executes(monkeypatch, path):
     def _explode(*_a, **_k):
         raise AssertionError("GET / must never dispatch/decide")
 
     monkeypatch.setattr("controlplane.intercept.dispatch_tool", _explode)
     monkeypatch.setattr("controlplane.decide.decide", _explode)
-    resp = client.get("/")
+    resp = client.get(path)
     assert resp.status_code == 200
     assert demo._call_log == []
 
@@ -220,8 +264,8 @@ def test_rendering_the_passport_and_inspector_from_an_existing_result_never_exec
     from product.judge_views import decision_inspector, evidence_passport
 
     _claim_evidence_rows(model)
-    evidence_passport(model, expected_profile=HERO_PROFILE)
-    decision_inspector(model, expected_profile=HERO_PROFILE)
+    evidence_passport(model, expected_profile="knowledge_assistant-v1")
+    decision_inspector(model, expected_profile="knowledge_assistant-v1")
     assert demo._call_log == []
 
 
@@ -240,6 +284,9 @@ def test_scenario_profile_matrix_matches_the_actual_manifest_each_scenario_binds
         demo._call_log.clear()
         result = demo.SCENARIOS[scenario["index"] - 1]()
         model = build_presentation_model(result)
+        assert (result.number, result.key, result.title) == (
+            scenario["index"], scenario["key"], scenario["title"],
+        )
         assert model.available, f"scenario {scenario['key']} is unexpectedly NOT_AVAILABLE"
         for profile in PROFILES:
             expected = profile["id"] in scenario["supported_profiles"]
@@ -262,11 +309,16 @@ def test_stale_result_never_silently_reused_under_a_new_profile():
     produced under one profile must never validate as current for another."""
     from product.judge_presentation import is_stale_for_profile
 
-    result = demo.scenario_1_allow()
+    result = demo.scenario_7_stale_policy_refund()
     model = build_presentation_model(result)
-    assert model.profile == "knowledge_assistant-v1"
-    assert is_stale_for_profile(model, "servicing-v1") is True
-    assert is_stale_for_profile(model, "knowledge_assistant-v1") is False
+    assert model.profile == "servicing-v1"
+    assert is_stale_for_profile(model, "knowledge_assistant-v1") is True
+    assert is_stale_for_profile(model, "servicing-v1") is False
+
+    knowledge_result = demo.scenario_3_contradiction()
+    knowledge_model = build_presentation_model(knowledge_result)
+    assert knowledge_model.profile == "knowledge_assistant-v1"
+    assert knowledge_model.trace_id != model.trace_id
 
 
 def test_no_scenario_is_reported_not_available():
@@ -304,7 +356,7 @@ def test_unsafe_modify_scenario_not_applicable_for_servicing_profile():
 
 
 def test_receipt_verified():
-    body = _run(HERO_PROFILE, 1)
+    body = _run(HERO_PROFILE, HERO_SCENARIO)
     assert body["receipt_verification"] == "VERIFIED"
 
 
@@ -351,7 +403,7 @@ def test_block_renders_correctly():
 
 
 def test_allow_renders_correctly():
-    body = _run(HERO_PROFILE, 1)
+    body = _run(HERO_PROFILE, SERVICING_ALLOW_SCENARIO)
     assert body["verdict"] == "VERIFIED"
     assert body["intervention"] == "ALLOW"
     assert body["execution_state"] == "EXECUTED"
@@ -417,7 +469,10 @@ def test_run_concurrency_is_rejected_not_serialized_and_never_corrupts_a_result(
     oracle behind this same fix."""
 
     def _fire(_i):
-        return client.post("/api/run", json={"profile_id": HERO_PROFILE, "scenario_index": 6})
+        return client.post(
+            "/api/run",
+            json={"profile_id": "knowledge_assistant-v1", "scenario_index": 6},
+        )
 
     with ThreadPoolExecutor(max_workers=5) as pool:
         responses = list(pool.map(_fire, range(5)))
@@ -447,13 +502,18 @@ def test_cli_and_dashboard_agree_on_the_hero_scenario():
 
     reset_execution_ledger()
     demo._call_log.clear()
-    cli_result = demo.scenario_3_contradiction()  # exactly what product/judge_cli.py runs
+    cli_result = demo.scenario_7_stale_policy_refund()  # exactly what Product-01 runs
 
     assert dashboard_body["ai_intent"] == cli_result.ai_intent
+    assert dashboard_body["trace_id"] == cli_result.receipt["trace_id"]
     assert dashboard_body["verdict"] == cli_result.verdict
+    assert dashboard_body["verdict"] == cli_result.receipt["verdict"]
     assert dashboard_body["intervention"] == cli_result.intervention
+    assert dashboard_body["intervention"] == cli_result.receipt["intervention"]
     assert dashboard_body["root_cause"] == cli_result.receipt.get("root_cause")
     assert dashboard_body["proposed_action"] == cli_result.receipt.get("action")
+    assert dashboard_body["proposed_action"]["args"] == cli_result.receipt["action"]["args"]
+    assert "execution_state" not in cli_result.receipt
     assert dashboard_body["receipt_verification"] == "VERIFIED"
     assert cli_result.receipt_verified is True
 
