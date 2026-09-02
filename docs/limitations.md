@@ -8,27 +8,45 @@ external validation, and the judge dashboard's own scope boundaries.
 
 ## Known test-suite state
 
-Full-suite result at this repository state: **497 collected, 496 passed, 1
-failed, 1 skipped.**
+Full-suite result, measured now on this exact tree (`python -m pytest
+tests/`, JUnit-XML counts): **498 collected, 496 passed, 1 failed, 1
+skipped, 2 warnings.**
 
 - **The 1 skipped test** is `tests/test_ground.py`, guarded by
   `pytest.importorskip("torch")`. Grounding (S8, `CP_GROUNDING`) is optional
   and default-off — see `README.md`'s Honest limitations, "S8 grounding" —
-  and is not required by the base fixture demo.
-- **The 1 failure** is the known P06 archival-integrity/provenance check,
+  and is not required by the base fixture demo. This skip is
+  environment-dependent: `torch` is deliberately not in `requirements.txt`
+  (it's a ~2GB+ CPU wheel with its own install command, documented inline
+  next to the commented-out line), so whether this test runs or skips
+  depends on whether a given machine has installed it manually, not on the
+  platform (Windows/Linux/macOS all behave the same way given the same
+  optional-dependency state).
+- **The 1 failure** is the known P06 archival-integrity/provenance check
+  (`tests/test_tau2_c2_controlplane_side.py::test_post_p02_integrity_record_accounts_for_one_authorized_change`),
   comparing a historical snapshot/manifest state
   (`docs/p06-post-p02-integrity.sha256`) against the repository as it exists
   today, after later legitimate changes to that state. The mismatch is
   preserved as an explicit record of what changed and why — see the
   `AUTHORIZED_CHANGE` row in that file — rather than silently regenerated or
   rewritten to hide the diff. This is an archival-record discrepancy, not a
-  product runtime failure.
+  product runtime failure, and it is deliberately left unrepaired here.
 - **The focused product/release suite is green**: the Product-01 through
   04A test suites and the P02 use-case-agnostic engine regression gate
   (`tests/test_engine_is_use_case_agnostic.py`) pass, matching the scope the
   CI workflow runs (see `README.md`'s "Continuous integration" section).
 - **Public fixture-mode demo behaviour has been independently verified** —
   see the Live demo section of `README.md`.
+- **The two human-label-sheet hashes** pinned in
+  `tests/test_human_label_sample_blind.py`
+  (`bench/human_label_sample.csv`, `bench/human_label_sample_pass1.csv`)
+  were previously recorded from a CRLF working copy and have now been
+  corrected to their canonical git-blob (LF) hashes, with
+  `/bench/human_label_sample.csv text eol=lf` and
+  `/bench/human_label_sample_pass1.csv text eol=lf` added to
+  `.gitattributes`. The suite therefore behaves consistently across
+  Windows, Linux and macOS instead of depending on which platform last
+  checked the files out.
 
 This is the actual, current state, reported as-is: not "all tests pass," and
 not "zero skipped tests."

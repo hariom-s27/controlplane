@@ -23,6 +23,7 @@ behavior change to assert in those files at all.
 
 from __future__ import annotations
 
+import threading
 from concurrent.futures import ThreadPoolExecutor
 
 import pytest
@@ -118,24 +119,43 @@ def test_concurrent_duplicate_run_is_rejected_with_exactly_one_execution():
 
     demo.SCENARIOS is a plain list (no .get()), so it is saved/restored by
     hand here rather than via monkeypatch.setitem, which requires a mapping.
+
+    Synchronized on explicit events rather than raw thread-pool timing: the
+    winning call blocks *inside* `demo._RUN_LOCK`'s critical section (it only
+    returns once told to) until this test has confirmed it is actually
+    holding the lock, then fires the other 4 requests, which are therefore
+    guaranteed to observe the lock held instead of merely hoping 5 threads
+    happen to race closely enough under whatever CPU contention is present.
     """
     calls: list[int] = []
     real_scenario = demo.SCENARIOS[0]
+    entered = threading.Event()
+    release = threading.Event()
 
-    def _counting_wrapper():
+    def _blocking_wrapper():
         calls.append(1)
+        entered.set()
+        assert release.wait(timeout=5), "winning RUN was never told to proceed"
         return real_scenario()
 
-    demo.SCENARIOS[0] = _counting_wrapper
+    demo.SCENARIOS[0] = _blocking_wrapper
     try:
         def _fire(_i):
             return client.post("/api/run", json={"profile_id": HERO_PROFILE, "scenario_index": 1})
 
-        with ThreadPoolExecutor(max_workers=5) as pool:
-            responses = list(pool.map(_fire, range(5)))
+        with ThreadPoolExecutor(max_workers=1) as winner_pool:
+            winner_future = winner_pool.submit(_fire, 0)
+            assert entered.wait(timeout=5), "winning RUN never entered its critical section"
+
+            with ThreadPoolExecutor(max_workers=4) as pool:
+                rejected_responses = list(pool.map(_fire, range(4)))
+
+            release.set()
+            winner_response = winner_future.result(timeout=5)
     finally:
         demo.SCENARIOS[0] = real_scenario
 
+    responses = [winner_response, *rejected_responses]
     oks = [r for r in responses if r.status_code == 200]
     rejected = [r for r in responses if r.status_code == 409]
     assert len(oks) == 1, "exactly one concurrent duplicate RUN should execute"

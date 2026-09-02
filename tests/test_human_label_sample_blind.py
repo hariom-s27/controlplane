@@ -77,10 +77,14 @@ VALID_LABELS = {"ALLOW", "BLOCK", "ESCALATE", "AMBIGUOUS"}
 PINNED_BLANK_CSV_SHA256 = "7a41fc7b0c462ee4f66216551aa9fdb4da11484c45add7bdbc7f1139d7f52da6"
 # The completed pass-2 sheet: 30/30 human labels under the repaired
 # instrument, entered manually. This is the FINAL M4 human-validation sheet.
-PINNED_PASS2_CSV_SHA256 = "ccf356a53088c4ae68562364cade01f0b02b2da6ab7daf1f206b943027c22d91"
+# The previous value was captured from a CRLF working copy; this is the
+# canonical git-blob LF hash and is platform-independent.
+PINNED_PASS2_CSV_SHA256 = "c58a3ed172458e9cd25b2a0267f51a037ce2f7d653b7acb13aa7c15049e84550"
 # The immutable pass-1 artifact: 30/30 human labels, entered manually, saved
 # with a UTF-8 BOM. Historical evidence only — never an active sheet.
-PINNED_PASS1_CSV_SHA256 = "919627b0e3ec1b6fc5d5e71f46561ed767a7aea4fd2961717cf5684e5c0ab729"
+# The previous value was captured from a CRLF working copy; this is the
+# canonical git-blob LF hash and is platform-independent.
+PINNED_PASS1_CSV_SHA256 = "dfd7f67c20d7bcc764f457d392b99f23c9573831e157499ac681d9a3fd7fda5a"
 
 # Columns that would hand the annotator the answer or the construction intent.
 FORBIDDEN_COLUMNS = {

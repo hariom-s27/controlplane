@@ -1,5 +1,7 @@
 # ControlPlane
 
+[![CI](https://github.com/hariom-s27/controlplane/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/hariom-s27/controlplane/actions/workflows/ci.yml)
+
 **A runtime verification layer for enterprise AI agents.** When an agent
 proposes an action, we intercept the tool call *before it executes*, check the
 claims inside it against the enterprise's own live systems of record, and
@@ -16,6 +18,9 @@ ControlPlane can **block the action before it executes** — not just flag it
 afterward.
 
 Accenture Innovation Challenge 2026 · Problem Track 1 · Round 2
+
+**Live demo:** https://controlplane-qvr2.onrender.com/ · **Walkthrough
+video:** https://drive.google.com/file/d/1xY9aRYtE8hGwFtVfI7Ku9jBMZXa2-A9T/view?usp=sharing
 
 **Current public main.** `round2-final` is this repository's published
 branch — the state described in this README.
@@ -170,7 +175,7 @@ so a judge can see it work without reading Python.
 
 The dashboard exposes exactly **two** of the three governed use cases as
 profiles — **Customer Support** (`servicing-v1`) and **Internal Knowledge
-Assistant** (`knowledge_assistant-v1`). Each of the six scenarios is gated
+Assistant** (`knowledge_assistant-v1`). Each of the eight scenarios is gated
 by a real, server-side applicability matrix (`demo/web.py::_is_supported`):
 requesting a scenario under a profile it wasn't built for returns `NOT
 APPLICABLE FOR PROFILE` rather than a stale or fabricated result — verified
@@ -217,9 +222,11 @@ smoke test (`python -m scripts.judge_demo`), and a dashboard import / `GET
 see the workflow's own header comment for the documented pre-existing
 failures (outside these product layers) that scope excludes. This
 reconciliation re-ran that same scope locally against this exact tree and
-every suite passed; **remote GitHub Actions have not yet been executed on
-this branch as of this reconciliation** — "CI configuration validated
-locally" is not the same claim as "remote CI passed."
+every suite passed; **remote GitHub Actions have also run successfully on
+`main`** for this commit — see the Actions tab of the repository. A green
+run means only "the configured checks above passed," not "the full test
+suite is green" or "the research/benchmark findings are validated" — see
+`docs/limitations.md` for the actual full-suite counts.
 
 ## Implementation approach
 
@@ -349,7 +356,7 @@ score was 1.000 by construction — retired, see `docs/experiment-audit.md`.
 | `.\make.ps1 demo` | Gate ON, use case 1 — the ₹42,999 scenario above. BLOCK, signed receipt. |
 | `.\make.ps1 demo2` | Use case 2 — the cross-tenant document block. |
 | `.\make.ps1 demo3` | Use case 3 — discount approval, added as manifest + graph data only. |
-| `.\make.ps1 judge-demo` | All six Product-01 scenarios, offline, over the real pipeline. |
+| `.\make.ps1 judge-demo` | All eight Product-01 scenarios, offline, over the real pipeline. |
 | `python -m demo.web` | The one-screen judge dashboard (Product-03) — open `http://127.0.0.1:8000/`. |
 | `.\make.ps1 review` | Human-in-the-loop console for ESCALATE decisions (needs an interactive human — see Limitations). |
 
@@ -581,8 +588,7 @@ are in `docs/limitations.md`.
 
 ## Demo / video
 
-[PENDING] — no walkthrough video is committed to this repository at this
-state. If/when one is published, it will be linked here.
+Walkthrough video: https://drive.google.com/file/d/1xY9aRYtE8hGwFtVfI7Ku9jBMZXa2-A9T/view?usp=sharing
 
 ## Submission information
 
@@ -600,7 +606,7 @@ state. If/when one is published, it will be linked here.
 |---|---|
 | `controlplane/` | The product — use-case agnostic. The gate, the registry, `bindings.py`, the receipt. |
 | `agents/` | Three demo agents — servicing, knowledge assistant, discount approval. |
-| `scripts/` | `judge_demo.py` (Product-01, six scripted scenarios), `probe.py`, `scrape_policies.py`. |
+| `scripts/` | `judge_demo.py` (Product-01, eight scripted scenarios), `probe.py`, `scrape_policies.py`. |
 | `product/` | Presentation layers over the real pipeline — Product-02's Evidence Passport / Decision Inspector (`judge_presentation.py`, `judge_views.py`, `judge_cli.py`) and an earlier per-case CLI view (`views.py`/`cli.py`, `make product-demo`). |
 | `demo/` | Product-03/04A — the one-screen FastAPI judge dashboard (`web.py`, `templates/`, `static/`) over Product-01/02. |
 | `data/` | Committed JSON seeds + a deterministic database builder. |
