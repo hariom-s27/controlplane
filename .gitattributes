@@ -1,0 +1,2 @@
+/bench/gold_set.jsonl text eol=lf
+/bench/ground_truth_holdout.jsonl text eol=lf

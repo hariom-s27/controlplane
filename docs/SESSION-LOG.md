@@ -104,9 +104,9 @@ roadmap's `query`/`params` sketch was dropped), `docs/architecture.md`
 
 **Spec:** `phase 2/doc/task/P07-quick-fixes.txt`, Fix 7.
 
-**The problem:** the project's sampling argument ("Deming proved that when
-defects are correlated, there is no optimal sample size") inverts the
-actual theorem's assumption set — Deming's kp rule / all-or-none inspection
+**The problem:** the project's sampling argument attributed to Deming the
+claim that correlated defects leave no optimal sample size — inverting the
+actual theorem's assumption set. Deming's kp rule / all-or-none inspection
 criterion is proved for a process **in statistical control**, not for
 correlated defects. `docs/ROADMAP.md` said to replace it with "the Runbook
 §02 reformulation" — but that runbook was not in the repository, so Fix 7
@@ -152,8 +152,8 @@ avoid):
   pointing at the new file.
 - **New `tests/test_deming_reformulation.py`** (12 tests) — guards that the
   capture contains the reformulation verbatim, that ROADMAP points at it,
-  and that no shippable doc uses the prohibited "Deming showed/proved" or
-  a bare "Deming, 1986 —" attribution.
+  and that no shippable doc asserts the retired kp-rule theorem framing or
+  cites Deming with a bare year-only attribution.
 
 **Not changed:** the Round-1 deck sources and content specs under
 `phase 1/` (not a git repo, not the P07 target, some of it an append-only

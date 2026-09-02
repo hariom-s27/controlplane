@@ -113,7 +113,7 @@ The live negative-control run was not repeated during this documentation-only re
 
 The present tree no longer states the old values as current facts. These files retain them only to document retirement or enforce regression protection:
 
-- `docs/ROADMAP.md` — records and retires the old “75% in 1–20 ms” claim, then points to P09 measurements.
+- `docs/ROADMAP.md` — records the now-retired old “75% in 1–20 ms” claim, then points to P09 measurements.
 - `tests/test_latency.py` — contains the old wording solely as a forbidden-pattern regression test.
 - `README.md` — mentions the approximately 2 KB receipt **target**, clearly contrasted with the measured larger result; it is not presented as the measured size.
 - `docs/ROADMAP.md` — mentions Proof of Execution’s approximately 1.1 KB object as external prior art, explicitly separated from this project’s 2,282/3,763-byte measurement.
