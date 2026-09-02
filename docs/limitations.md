@@ -6,6 +6,45 @@ bias-measurement framing, the retired figures, the P08 robustness findings
 (we inherit the record's errors, and the boundaries of SOURCE-UNRELIABLE),
 external validation, and the judge dashboard's own scope boundaries.
 
+## Known test-suite state
+
+Full-suite result at this repository state: **497 collected, 496 passed, 1
+failed, 1 skipped.**
+
+- **The 1 skipped test** is `tests/test_ground.py`, guarded by
+  `pytest.importorskip("torch")`. Grounding (S8, `CP_GROUNDING`) is optional
+  and default-off — see `README.md`'s Honest limitations, "S8 grounding" —
+  and is not required by the base fixture demo.
+- **The 1 failure** is the known P06 archival-integrity/provenance check,
+  comparing a historical snapshot/manifest state
+  (`docs/p06-post-p02-integrity.sha256`) against the repository as it exists
+  today, after later legitimate changes to that state. The mismatch is
+  preserved as an explicit record of what changed and why — see the
+  `AUTHORIZED_CHANGE` row in that file — rather than silently regenerated or
+  rewritten to hide the diff. This is an archival-record discrepancy, not a
+  product runtime failure.
+- **The focused product/release suite is green**: the Product-01 through
+  04A test suites and the P02 use-case-agnostic engine regression gate
+  (`tests/test_engine_is_use_case_agnostic.py`) pass, matching the scope the
+  CI workflow runs (see `README.md`'s "Continuous integration" section).
+- **Public fixture-mode demo behaviour has been independently verified** —
+  see the Live demo section of `README.md`.
+
+This is the actual, current state, reported as-is: not "all tests pass," and
+not "zero skipped tests."
+
+## Public demo scope
+
+- The public demo (https://controlplane-qvr2.onrender.com/) runs in
+  deterministic fixture mode and does not require external LLM provider
+  credentials.
+- It is a prototype/demo deployment, not a production deployment.
+- Optional grounding (S8, HHEM-2.1-Open) is not part of the base demo path
+  and is not exercised by the public demo.
+- The demo should not be read as evidence of production-scale performance —
+  see "Measured results" and "External validation — tau²-bench post-mortem"
+  in `README.md` for what is and is not measured.
+
 ## External validation is incomplete
 
 Every quantitative result in `README.md` ("Measured results") and

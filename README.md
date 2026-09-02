@@ -9,10 +9,16 @@ evidence receipt for every decision.
 > Most AI checkers ask another AI for a second opinion.
 > We ask the company's own systems for the actual answer.
 
+**The mechanism, in one line:** AI claims → company-system facts → policy
+evaluation → intervention → signed receipt. When a claim inside a proposed
+action contradicts what the enterprise's own systems say right now,
+ControlPlane can **block the action before it executes** — not just flag it
+afterward.
+
 Accenture Innovation Challenge 2026 · Problem Track 1 · Round 2
 
-`round2-final` is the current Round-2 release candidate branch for this
-repository — the state described below, not yet the published submission.
+**Current public main.** `round2-final` is this repository's published
+branch — the state described in this README.
 
 ---
 
@@ -30,7 +36,7 @@ cd controlplane
 .\make.ps1 demo       # use case 1: the gate catches it — BLOCK, plus a signed receipt
 .\make.ps1 demo2      # use case 2: the cross-tenant document block
 .\make.ps1 demo3      # use case 3: discount approval — added as manifest + graph data, zero engine code
-.\make.ps1 judge-demo # six-scenario judge-facing walkthrough (offline, all fixtures)
+.\make.ps1 judge-demo # eight-scenario judge-facing walkthrough (offline, all fixtures)
 python -m demo.web    # one-screen judge dashboard — open http://127.0.0.1:8000/
 ```
 
@@ -40,6 +46,41 @@ python -m demo.web    # one-screen judge dashboard — open http://127.0.0.1:800
 You do **not** need an API key to run any of the above: LLM responses for the
 demo scenarios are cached as committed fixtures (`CP_MODE=fixture`). Set
 `CP_MODE=live` in `.env` to call the provider for real.
+
+`python -m demo.web` is the local development/demo entry point for the
+one-screen judge dashboard — the same UI shown in the public live demo below,
+run on your own machine.
+
+---
+
+## Live demo
+
+**https://controlplane-qvr2.onrender.com/** — a public prototype of the judge
+dashboard (Product-03/04A). It runs in deterministic fixture mode
+(`CP_MODE=fixture`): every scenario replays a committed LLM-response fixture,
+so no external LLM provider credentials are needed to use it. This is a demo
+deployment, not a service with an uptime guarantee.
+
+The two strongest outcomes on that dashboard, Customer Support profile
+(`servicing-v1`):
+
+| Scenario | Amount | Order | Verdict | Intervention | Execution | Receipt |
+|---|---|---|---|---|---|---|
+| 7 — Stale-policy refund | ₹42,999 | ORD-88461 | CONTRADICTED | BLOCK | PREVENTED | VERIFIED |
+| 8 — In-policy refund | ₹8,499 | ORD-90233 | VERIFIED | ALLOW | EXECUTED (1 implementation call) | VERIFIED |
+
+Scenario 7: the agent's claim about the refund window contradicts what
+`orders.db`/`policy_store.db` actually say — the refund is blocked before it
+executes. Scenario 8: the agent's claim checks out against the same live
+systems — the refund is allowed and actually executes. Full eight-scenario
+catalog: see "Judge-facing product layer" below.
+
+## Architecture
+
+![ControlPlane architecture](docs/architecture.png)
+
+Full pipeline narrative: `docs/architecture.md`. An ASCII call-graph version
+of the same pipeline is under "Solution architecture" below.
 
 ---
 
@@ -122,7 +163,7 @@ so a judge can see it work without reading Python.
 
 | Layer | What it is | Entry point |
 |---|---|---|
-| **Product-01** | Six scripted, offline scenarios run over the real pipeline: NORMAL ALLOW, SOURCE UNRELIABLE, RELIABLE CONTRADICTION, INVALID MODIFY / SAFETY REFUSAL, VALID MODIFY, DUPLICATE / REPLAY | `scripts/judge_demo.py` — `.\make.ps1 judge-demo` |
+| **Product-01** | Eight scripted, offline scenarios run over the real pipeline, across both profiles: NORMAL ALLOW, SOURCE UNRELIABLE, RELIABLE CONTRADICTION, INVALID MODIFY / SAFETY REFUSAL, UNSAFE MODIFY / SAFETY REFUSAL, DUPLICATE / REPLAY (Internal Knowledge Assistant); ₹42,999 STALE-POLICY REFUND, ₹8,499 IN-POLICY REFUND (Customer Support) | `scripts/judge_demo.py` — `.\make.ps1 judge-demo` |
 | **Product-02** | Evidence Passport + Decision Inspector: both read off one shared, real `PresentationModel` — neither re-derives evidence, claims, policy or the verdict | `product/judge_presentation.py`, `product/judge_views.py` — `python -m product.judge_cli --scenario 3` |
 | **Product-03** | One-screen FastAPI dashboard: profile switcher, scenario picker, RUN, RESET | `demo/web.py` — `python -m demo.web`, then open `http://127.0.0.1:8000/` |
 | **Product-04A** | Dashboard hardening: no autorun on page load, query params, or refresh; a second RUN or RESET arriving while one is in flight is **rejected** (HTTP 409), never queued or silently serialized; a fixed-message error firewall (no raw exception text ever reaches the UI); RESET clears only demo-local state | same files as Product-03 — `tests/test_product04a_hardening.py` |
