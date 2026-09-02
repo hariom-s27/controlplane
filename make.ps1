@@ -18,6 +18,7 @@
       .\make.ps1 latency    P09 latency profile (4 configs x >=1,000 gated calls)
       .\make.ps1 report     regenerate every number and chart
       .\make.ps1 review     review pending escalations
+      .\make.ps1 product-demo  render Evidence Health/Passport/Inspector/Timeline/Policy for one case (env:CASE=gs-001)
       .\make.ps1 clean      delete generated files
 
   If PowerShell refuses to run this, once per machine:
@@ -82,6 +83,11 @@ switch ($Task) {
     "report"   { Need-Venv; & $Py bench\report.py }
     "review"   { Need-Venv; & $Py bench\reviewer_console.py }
     "reviewer" { Need-Venv; & $Py bench\reviewer_console.py }
+    "product-demo" {
+        Need-Venv
+        $CaseId = if ($env:CASE) { $env:CASE } else { "gs-001" }
+        & $Py -m product.cli $CaseId --replay
+    }
     "clean" {
         Remove-Item -Recurse -Force -EA SilentlyContinue `
             data\*.db, data\stale_index, reports, decisions.jsonl, .pytest_cache
@@ -108,6 +114,7 @@ switch ($Task) {
         Write-Host "  latency   P09 latency profile (4 configs x >=1,000 gated calls)"
         Write-Host "  report    regenerate every number and chart"
         Write-Host "  review    review pending escalations"
+        Write-Host "  product-demo  render Evidence Health/Passport/Inspector/Timeline/Policy for one case (env:CASE=gs-001)"
         Write-Host "  clean     delete generated files"
         Write-Host ""
     }

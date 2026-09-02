@@ -1,7 +1,7 @@
 # ControlPlane — macOS / Linux. Windows users: use .\make.ps1 instead.
 PY := .venv/bin/python
 
-.PHONY: help setup probe db test ci demo demo2 demo3 negative bench goldset baselines ablation robustness latency report review reviewer clean
+.PHONY: help setup probe db test ci demo demo2 demo3 negative bench goldset baselines ablation robustness latency report review reviewer product-demo clean
 help:
 	@echo "  setup     one-time: venv + install + build db"
 	@echo "  probe     check the LLM provider works   <- do this first"
@@ -20,6 +20,7 @@ help:
 	@echo "  latency   P09 latency profile (4 configs x >=1,000 gated calls)"
 	@echo "  report    regenerate every number and chart"
 	@echo "  review    review pending escalations"
+	@echo "  product-demo  render Evidence Health/Passport/Inspector/Timeline/Policy for one case (CASE=gs-001)"
 	@echo "  clean     delete generated files"
 
 setup:
@@ -56,6 +57,7 @@ latency:  ; $(PY) bench/latency.py --write
 report:   ; $(PY) bench/report.py
 review:   ; $(PY) bench/reviewer_console.py
 reviewer: review
+product-demo: ; $(PY) -m product.cli $(CASE) --replay
 clean:
 	rm -rf data/*.db data/stale_index reports decisions.jsonl .pytest_cache
 	find . -name __pycache__ -type d -exec rm -rf {} +
