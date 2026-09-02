@@ -240,12 +240,7 @@ def test_scenario_profile_matrix_matches_the_actual_manifest_each_scenario_binds
         demo._call_log.clear()
         result = demo.SCENARIOS[scenario["index"] - 1]()
         model = build_presentation_model(result)
-        if not model.available:
-            # scenario 5: genuinely unavailable, independent of profile —
-            # the catalog marks it supported everywhere for exactly this
-            # reason (see demo/web.py SCENARIO_CATALOG comment).
-            assert scenario["supported_profiles"] == [p["id"] for p in PROFILES]
-            continue
+        assert model.available, f"scenario {scenario['key']} is unexpectedly NOT_AVAILABLE"
         for profile in PROFILES:
             expected = profile["id"] in scenario["supported_profiles"]
             actual = model.profile == profile["id"]
@@ -274,11 +269,33 @@ def test_stale_result_never_silently_reused_under_a_new_profile():
     assert is_stale_for_profile(model, "knowledge_assistant-v1") is False
 
 
-def test_not_available_scenario_is_reported_for_every_profile():
+def test_no_scenario_is_reported_not_available():
+    """Section 10 sweep requirement: the full scenario catalog must contain
+    no NOT_AVAILABLE entries (scenario 5 was the last one; see
+    scripts/judge_demo.py::scenario_5_unsafe_modify)."""
     for profile in PROFILES:
-        body = _run(profile["id"], 5)
-        assert body["status"] == "NOT_AVAILABLE"
-        assert "not currently implemented" in body["reason"]
+        for scenario in SCENARIO_CATALOG:
+            if not _is_supported(scenario["index"], profile["id"]):
+                continue
+            body = _run(profile["id"], scenario["index"])
+            assert body["status"] != "NOT_AVAILABLE", (
+                f"scenario {scenario['key']} under {profile['id']} unexpectedly NOT_AVAILABLE"
+            )
+
+
+def test_unsafe_modify_scenario_is_refused_with_zero_calls():
+    body = _run("knowledge_assistant-v1", 5)
+    assert body["status"] == "OK"
+    assert body["verdict"] == "UNVERIFIABLE"
+    assert body["intervention"] == "MODIFY"
+    assert body["execution_state"] == "REFUSED"
+    assert body["call_count"] == "0"
+    assert body["receipt_verification"] == "VERIFIED"
+
+
+def test_unsafe_modify_scenario_not_applicable_for_servicing_profile():
+    body = _run("servicing-v1", 5)
+    assert body["status"] == "NOT APPLICABLE FOR PROFILE"
 
 
 # ---------------------------------------------------------------------------

@@ -127,8 +127,8 @@ SCENARIO_CATALOG: list[dict[str, Any]] = [
      "supported_profiles": ["knowledge_assistant-v1"], "hero": True},
     {"index": 4, "key": "invalid_modify", "title": "INVALID MODIFY / SAFETY REFUSAL",
      "supported_profiles": ["knowledge_assistant-v1"], "hero": False},
-    {"index": 5, "key": "valid_modify", "title": "VALID MODIFY",
-     "supported_profiles": ["servicing-v1", "knowledge_assistant-v1"], "hero": False},
+    {"index": 5, "key": "unsafe_modify", "title": "UNSAFE MODIFY / SAFETY REFUSAL",
+     "supported_profiles": ["knowledge_assistant-v1"], "hero": False},
     {"index": 6, "key": "duplicate_replay", "title": "DUPLICATE / REPLAY",
      "supported_profiles": ["knowledge_assistant-v1"], "hero": False},
 ]

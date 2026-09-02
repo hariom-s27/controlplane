@@ -141,7 +141,16 @@ def test_explicit_match_and_conflict_are_reachable():
 
 
 def test_unavailable_scenario_renders_not_available_everywhere():
-    result = demo.scenario_5_valid_modify()
+    """No current judge_demo scenario is genuinely unavailable (see
+    tests/test_judge_demo.py::test_full_catalog_has_no_unavailable_scenarios),
+    so this exercises build_presentation_model's own NOT_AVAILABLE branch
+    directly against a synthetic unavailable ScenarioResult — the same
+    dataclass shape a genuinely-unsupported future scenario would use."""
+    result = demo.ScenarioResult(
+        number=99, key="synthetic_unavailable", title="SYNTHETIC UNAVAILABLE",
+        evidence_source="N/A", available=False,
+        unavailable_reason="synthetic: exercises the NOT AVAILABLE rendering path only.",
+    )
     model = build_presentation_model(result)
 
     assert model.available is False
@@ -153,7 +162,7 @@ def test_unavailable_scenario_renders_not_available_everywhere():
     inspector = decision_inspector(model)
     assert passport["status"] == NOT_AVAILABLE
     assert inspector["status"] == NOT_AVAILABLE
-    assert "not currently implemented" in passport["reason"]
+    assert "exercises the NOT AVAILABLE rendering path" in passport["reason"]
 
 
 def test_missing_runtime_latency_is_not_available_not_inferred():

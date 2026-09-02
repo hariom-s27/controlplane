@@ -37,6 +37,14 @@ def test_six_scenarios_load():
     assert [r.number for r in results] == [1, 2, 3, 4, 5, 6]
 
 
+def test_full_catalog_has_no_unavailable_scenarios():
+    for fn in demo.SCENARIOS:
+        reset_execution_ledger()
+        demo._call_log.clear()
+        r = fn()
+        assert r.available is True, f"scenario {r.number} ({r.key!r}) is unexpectedly NOT_AVAILABLE"
+
+
 def test_allow_scenario_works():
     r = demo.scenario_1_allow()
     assert r.evidence_source == "RUNTIME"
@@ -74,11 +82,14 @@ def test_invalid_modify_prevents_execution_with_zero_calls():
     assert r.receipt_verified is True
 
 
-def test_valid_modify_is_shown_only_when_genuinely_supported():
-    r = demo.scenario_5_valid_modify()
-    assert r.available is False
-    assert r.receipt is None
-    assert "not currently implemented" in r.unavailable_reason
+def test_unsafe_modify_prevents_execution_with_zero_calls():
+    r = demo.scenario_5_unsafe_modify()
+    assert r.available is True
+    assert r.verdict == "UNVERIFIABLE"
+    assert r.intervention == "MODIFY"
+    assert r.call_count == "0"
+    assert "not executed" in r.execution_result
+    assert r.receipt_verified is True
 
 
 def test_duplicate_replay_executes_only_once():

@@ -361,26 +361,34 @@ def scenario_4_invalid_modify() -> ScenarioResult:
 
 
 # ---------------------------------------------------------------------------
-# Scenario 5 — VALID MODIFY (not genuinely supported end-to-end)
+# Scenario 5 — UNSAFE MODIFY / SAFETY REFUSAL
 # ---------------------------------------------------------------------------
 
 
-def scenario_5_valid_modify() -> ScenarioResult:
+def scenario_5_unsafe_modify() -> ScenarioResult:
+    args = {"recipient_id": "EMP-0000", "doc_id": "DOC-1042", "excerpt": "n/a"}
     result = ScenarioResult(
-        number=5,
-        key="valid_modify",
-        title="VALID MODIFY",
-        evidence_source="N/A",
-        available=False,
-        unavailable_reason="Valid MODIFY execution path is not currently implemented.",
+        number=5, key="unsafe_modify", title="UNSAFE MODIFY / SAFETY REFUSAL", evidence_source="RUNTIME"
     )
+    result.ai_intent = f"send_document(recipient_id={args['recipient_id']!r}, doc_id={args['doc_id']!r})"
     result.notes.append(
-        "controlplane/decide.py can reach Intervention.MODIFY (e.g. knowledge_assistant.yaml's "
-        "UNVERIFIABLE -> allow_with_caveat), but decide() never populates Decision.modified_args "
-        "on any real evidence-driven path — it is only ever set by tests that construct a Decision "
-        "by hand (tests/test_cid_regressions.py). Since there is no genuine runtime path from real "
-        "evidence to a populated modified_args, this demo does not fabricate one."
+        "EMP-0000 does not exist in entitlements.db's subjects table (DOC-1042 does exist — "
+        "it is the same real document scenario 1 sends). With no recognized recipient, both "
+        "entitlement claims resolve to evidence with confidence=NONE, so the verdict is "
+        "UNVERIFIABLE. knowledge_assistant.yaml maps UNVERIFIABLE to 'allow_with_caveat' "
+        "(Intervention.MODIFY) — but the real decide() never computes modified_args for this "
+        "path, so it stays None. controlplane/intercept.py::dispatch_tool() treats a non-dict "
+        "modified_args as an unresolved MODIFY and raises Pending — it never falls back to "
+        "executing the original arguments. This is the same unsafe-MODIFY safety refusal "
+        "scenario 4 exercises (an unresolved recipient here, instead of an unresolved "
+        "document) — no second governance rule, just the existing path with different input."
     )
+
+    status, exec_result, executed, receipt = _run_dispatch("demo-s5-unsafe-modify", "EMP-4410", args)
+    _finish_from_receipt(result, receipt)
+    result.execution_status = "REFUSED — execution prevented" if status == "PENDING" else status
+    result.call_count = "1" if executed else "0"
+    result.execution_result = "(not executed — original arguments were never substituted)"
     return result
 
 
@@ -426,7 +434,7 @@ SCENARIOS = [
     scenario_2_source_unreliable,
     scenario_3_contradiction,
     scenario_4_invalid_modify,
-    scenario_5_valid_modify,
+    scenario_5_unsafe_modify,
     scenario_6_duplicate_replay,
 ]
 
