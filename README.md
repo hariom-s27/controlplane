@@ -583,11 +583,7 @@ thing in the repo.)*
 
 Deeper limitations — the bias-measurement framing, retired figures, the
 P08 robustness findings, and the judge dashboard's own scope boundaries —
-are in `docs/limitations.md`.
-
-## Demo / video
-
-Walkthrough video: https://drive.google.com/file/d/1xY9aRYtE8hGwFtVfI7Ku9jBMZXa2-A9T/view?usp=sharing
+are in `docs/limitations.md
 
 ## Submission information
 
