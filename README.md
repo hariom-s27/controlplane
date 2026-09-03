@@ -19,8 +19,7 @@ afterward.
 
 Accenture Innovation Challenge 2026 · Problem Track 1 · Round 2
 
-**Live demo:** https://controlplane-qvr2.onrender.com/ · **Walkthrough
-video:** https://drive.google.com/file/d/1xY9aRYtE8hGwFtVfI7Ku9jBMZXa2-A9T/view?usp=sharing
+**Live demo:** https://controlplane-qvr2.onrender.com/ · 
 
 **Current public main.** `round2-final` is this repository's published
 branch — the state described in this README.
