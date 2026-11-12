@@ -39,3 +39,34 @@ whitespace (`json.dumps(..., sort_keys=True, separators=(",", ":"))`) —
 computed before the `sig` field is added, so verification re-derives the
 same bytes. The key comes from `CP_RECEIPT_SECRET` in `.env`; a real
 deployment would source it from a secret manager, not a dotfile.
+
+## Verification coverage (P1)
+
+Two fields say two different things and must not be confused:
+
+- `verification_state` (`verified` / `unverified`) — the *receipt-and-verdict*
+  story: is this a decision the gate could stand behind, or one it reached
+  under a source outage / ambiguity. It is not affected by how many claims
+  were checked.
+- `verification_coverage` — the *scope of factual checking* behind the
+  action: `verified` load-bearing verification-eligible claims over the total
+  `eligible` load-bearing claims, plus `coverage` (the ratio, `null` when
+  `eligible` is 0 — never `1.0`), `coverage_basis` naming that denominator
+  population, and the four non-verified counters (`contradicted`,
+  `unverified`, `unavailable`, `unmodelled`).
+
+Each entry in `claims[]` also carries a `verification` field, so the coverage
+number can be recomputed from the receipt and checked against the stored
+value. It is a plain status string in the common case
+(`"verification": "verified"`) and a dict —
+`{status, modelling?, eligible?, reason?}` — only when the extra fields carry
+information (an `unmodelled` claim, a `not_eligible` tier, or a `reason` that
+is not just a restatement of the status). `status` is one of `verified` /
+`contradicted` / `unverified` / `unavailable` / `not_eligible`; only
+`verified` counts toward coverage. See `docs/verification-coverage.md` for
+the full definition and what the metric does *not* mean.
+
+Both are covered by the signature: the block is assembled before `sig`. A
+receipt written before P1 (or a hand-built `Decision` with no claims) has
+`verification_coverage: null` and no per-claim `verification` block, and
+still verifies.

@@ -18,6 +18,7 @@ import statistics
 from pathlib import Path
 from typing import Any
 
+from controlplane.decide import resolved_verification_ledger
 from controlplane.receipt import OPERATIONAL_TRAIL, build_receipt, persist
 from controlplane.schema import Decision
 
@@ -25,9 +26,16 @@ _TIER_KEYS = ("C1", "C2", "C3", "C4", "C5")
 
 
 def _coverage_block(decision: Decision) -> dict:
-    # Per-tier counts only. No coverage_ratio: it was deterministically 1.0
-    # for every decision the system can produce (see schema.Decision.coverage
-    # and docs/experiment-audit.md).
+    # Two distinct things live here:
+    #  * per-tier CLAIM COUNTS — descriptive telemetry. The old
+    #    coverage_ratio (C1+C2+C3 / total) was deterministically 1.0 for
+    #    every decision the system can produce and was retired (see
+    #    schema.Decision.coverage and docs/experiment-audit.md).
+    #  * P1 verification_coverage — verified load-bearing eligible claims /
+    #    load-bearing eligible claims. This one is a RUNTIME OUTCOME: a claim
+    #    only counts as verified if authoritative evidence actually supported
+    #    it on this decision, so the value genuinely varies (0.0 .. 1.0 .. N/A)
+    #    and is not a restatement of the ladder. See docs/verification-coverage.md.
     cov = decision.coverage
     by_tier = {t: cov["by_tier"].get(t, 0) for t in _TIER_KEYS}
     block = {
@@ -39,6 +47,21 @@ def _coverage_block(decision: Decision) -> dict:
     if isinstance(c3, dict) and c3.get("status") == "unavailable":
         block["c3_available_n"] = 0
         block["c3_unavailable_n"] = by_tier["C3"]
+
+    ledger = resolved_verification_ledger(decision)
+    if ledger is not None:
+        c = ledger.coverage
+        block["verification_coverage"] = {
+            "verified": c.verified,
+            "eligible": c.eligible,
+            "value": c.value,
+            "basis": c.basis,
+            "n_a": c.n_a,
+            "contradicted": ledger.contradicted_claims,
+            "unverified": ledger.unverified_claims,
+            "unavailable": ledger.unavailable_claims,
+            "unmodelled": ledger.claims_unmodelled,
+        }
     return block
 
 

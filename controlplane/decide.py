@@ -38,14 +38,20 @@ from controlplane.compensation import compensation_for
 from controlplane.schema import (
     Claim,
     ClaimKind,
+    ClaimVerification,
     Compensability,
     Confidence,
     Decision,
     Evidence,
     Intervention,
+    ModellingState,
     ProposedAction,
     Reason,
     Reliability,
+    Tier,
+    VerificationCoverage,
+    VerificationLedger,
+    VerificationStatus,
     Verdict,
 )
 
@@ -69,6 +75,185 @@ _RELIABILITY_RANK: dict[Reliability, int] = {
     Reliability.INFERRED: 1,
     Reliability.CORROBORATED: 2,
 }
+
+# P1 — tiers that have an authoritative check path in this build. Mirrors
+# controlplane/ladder._VERIFIABLE_TIERS; kept as a local literal so decide()
+# stays a pure function of its arguments with no extra import.
+_VERIFIABLE_TIERS = (Tier.C1, Tier.C2, Tier.C3)
+_COVERAGE_BASIS = "load_bearing_verification_eligible_claims"
+
+
+def _claim_check_outcome(
+    claim: Claim,
+    ev: Evidence,
+    predicate_result: dict[str, bool],
+    clause_match: bool | None,
+    grounding_score: float | None,
+    grounding_threshold: float,
+) -> tuple[bool, bool | None, Any]:
+    """Did a real check run for this claim, and did it pass? Mirrors the
+    dispatch inside decide()'s own loop exactly, so the ledger can never
+    disagree with the verdict. Returns (rule_ran, passed, observed_value)."""
+    predicate_field = _PREDICATE_FOR_KIND.get(claim.kind)
+    if predicate_field is not None:
+        if predicate_field not in predicate_result:
+            return False, None, None
+        value = predicate_result[predicate_field]
+        if type(value) is not bool:  # None / unavailable predicate
+            return False, None, value
+        return True, value, value
+    if claim.kind is ClaimKind.POLICY_CLAUSE_CURRENT:
+        if clause_match is None:
+            return False, None, (ev.value if ev else None)
+        return True, clause_match, (ev.value if ev else None)
+    if claim.kind is ClaimKind.CLAUSE_SEMANTICS_MATCH:
+        if grounding_score is None:
+            return False, None, None
+        return True, grounding_score >= grounding_threshold, grounding_score
+    # An eligible kind with no rule wired in this build: honestly "not checked".
+    return False, None, (ev.value if ev else None)
+
+
+def _verify_one_claim(
+    claim: Claim,
+    ev: Evidence | None,
+    predicate_result: dict[str, bool],
+    clause_match: bool | None,
+    grounding_score: float | None,
+    grounding_threshold: float,
+    floor_rank: int,
+) -> ClaimVerification:
+    modelled = claim.tier is not None
+    eligible = modelled and claim.tier in _VERIFIABLE_TIERS
+
+    row = ClaimVerification(
+        claim_id=claim.id,
+        kind=claim.kind,
+        subject=claim.subject,
+        modelling_state=ModellingState.MODELLED if modelled else ModellingState.UNMODELLED,
+        tier=claim.tier,
+        resolver=claim.resolver,
+        load_bearing=claim.load_bearing,
+        verification_eligible=eligible,
+        verification_status=VerificationStatus.NOT_ELIGIBLE,
+        asserted_value=claim.asserted_value,
+        authoritative_source=ev.source if ev else None,
+        evidence_ref=ev.claim_id if ev else None,
+    )
+
+    if not modelled:
+        row.reason = "unmodelled_no_tier"
+        return row
+    if not eligible:
+        row.reason = f"tier_{claim.tier.value}_no_checker"
+        return row
+
+    if ev is None:
+        row.verification_status = VerificationStatus.UNAVAILABLE
+        row.reason = "no_evidence_resolved"
+        return row
+    if ev.confidence == Confidence.NONE:
+        row.verification_status = VerificationStatus.UNAVAILABLE
+        row.reason = "authoritative_lookup_empty"
+        return row
+
+    below_floor = _RELIABILITY_RANK.get(ev.reliability_class, 0) < floor_rank
+    rule_ran, passed, observed = _claim_check_outcome(
+        claim, ev, predicate_result, clause_match, grounding_score, grounding_threshold
+    )
+    row.observed_value = observed if isinstance(observed, (str, int, float, bool)) or observed is None else str(observed)
+
+    if not rule_ran:
+        row.verification_status = VerificationStatus.UNVERIFIED
+        row.reason = "no_conclusive_check_ran"
+        return row
+    if passed is False:
+        row.verification_status = VerificationStatus.CONTRADICTED
+        row.reason = "contradicted_on_subfloor_evidence" if below_floor else "contradicted"
+        return row
+    if below_floor:
+        row.verification_status = VerificationStatus.UNVERIFIED
+        row.reason = "source_below_reliability_floor"
+        return row
+    row.verification_status = VerificationStatus.VERIFIED
+    return row
+
+
+def build_verification_ledger(
+    claims: list[Claim],
+    evidence: list[Evidence],
+    predicate_result: dict[str, bool],
+    *,
+    clause_match: bool | None = None,
+    grounding_score: float | None = None,
+    grounding_threshold: float = 0.5,
+    reliability_floor: Reliability = Reliability.CORROBORATED,
+) -> VerificationLedger:
+    """P1 — the per-action verification ledger. Pure. Every claim that reaches
+    here is recorded with an explicit modelling state and verification status;
+    nothing is dropped. Coverage is verified / eligible over the LOAD-BEARING
+    eligible population only (`_COVERAGE_BASIS`)."""
+    evidence_by_claim = {e.claim_id: e for e in evidence}
+    floor_rank = _RELIABILITY_RANK[reliability_floor]
+
+    rows = [
+        _verify_one_claim(
+            c, evidence_by_claim.get(c.id), predicate_result,
+            clause_match, grounding_score, grounding_threshold, floor_rank,
+        )
+        for c in claims
+    ]
+
+    def n(pred) -> int:
+        return sum(1 for r in rows if pred(r))
+
+    lb_eligible = [r for r in rows if r.load_bearing and r.verification_eligible]
+    verified_lb = sum(1 for r in lb_eligible if r.verification_status is VerificationStatus.VERIFIED)
+    denom = len(lb_eligible)
+    coverage = VerificationCoverage(
+        verified=verified_lb,
+        eligible=denom,
+        value=(round(verified_lb / denom, 6) if denom else None),
+        basis=_COVERAGE_BASIS,
+        n_a=(denom == 0),
+    )
+
+    return VerificationLedger(
+        claims_extracted=len(rows),
+        claims_modelled=n(lambda r: r.modelling_state is ModellingState.MODELLED),
+        claims_unmodelled=n(lambda r: r.modelling_state is ModellingState.UNMODELLED),
+        load_bearing_claims=n(lambda r: r.load_bearing),
+        verification_eligible_claims=n(lambda r: r.verification_eligible),
+        verified_claims=n(lambda r: r.verification_status is VerificationStatus.VERIFIED),
+        contradicted_claims=n(lambda r: r.verification_status is VerificationStatus.CONTRADICTED),
+        unverified_claims=n(lambda r: r.verification_status is VerificationStatus.UNVERIFIED),
+        unavailable_claims=n(lambda r: r.verification_status is VerificationStatus.UNAVAILABLE),
+        coverage=coverage,
+        claims=rows,
+    )
+
+
+def resolved_verification_ledger(decision: Decision) -> VerificationLedger | None:
+    """P1 — the ledger for a Decision, computed if `decide()` did not attach
+    one. `decide()` fills `decision.verification_ledger` for the normal path;
+    the operational-failure path in intercept.py (SourceUnavailable /
+    AmbiguousPolicyState) builds a Decision directly with no evidence
+    resolved — this reconstructs the all-UNAVAILABLE ledger from the facts
+    that decision *did* record, without that path having to import anything.
+    Returns None only when there is nothing to describe (no claims)."""
+    if decision.verification_ledger is not None:
+        return decision.verification_ledger
+    if not decision.claims:
+        return None
+    trace = decision.predicate_trace or {}
+    predicate_result = {k: v for k, v in trace.items() if type(v) is bool}
+    return build_verification_ledger(
+        decision.claims,
+        decision.evidence,
+        predicate_result,
+        clause_match=trace.get("clause_match"),
+        grounding_score=trace.get("grounding_score"),
+    )
 
 
 def idempotency_key_for(trace_id: str, action: ProposedAction) -> str:
@@ -252,6 +437,19 @@ def decide(
         if floor.rank > intervention.rank:
             intervention = floor
 
+    # P1 — the explicit claim lifecycle + verification-coverage ledger.
+    # Descriptive only: computed from the same facts the verdict used, it does
+    # not feed back into verdict or intervention (docs/verification-coverage.md).
+    ledger = build_verification_ledger(
+        claims,
+        evidence,
+        predicate_result,
+        clause_match=clause_match,
+        grounding_score=grounding_score,
+        grounding_threshold=grounding_threshold,
+        reliability_floor=reliability_floor,
+    )
+
     return Decision(
         trace_id=trace_id,
         manifest_id=manifest_id,
@@ -268,7 +466,13 @@ def decide(
             if verdict in {Verdict.UNVERIFIABLE, Verdict.SOURCE_UNRELIABLE}
             else "verified"
         ),
+        verification_ledger=ledger,
     )
 
 
-__all__ = ["decide", "idempotency_key_for"]
+__all__ = [
+    "decide",
+    "idempotency_key_for",
+    "build_verification_ledger",
+    "resolved_verification_ledger",
+]

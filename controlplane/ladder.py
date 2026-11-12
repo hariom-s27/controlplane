@@ -72,11 +72,30 @@ _LOAD_BEARING: dict[ClaimKind, bool] = {
 }
 
 
+# P1 — which tiers have an implemented authoritative check path. C1/C2 are
+# system-of-record reads and arithmetic; C3 is document entailment. C4
+# (weak-source consensus) has no resolver in this build, and C5 is
+# unverifiable by definition — so a C4/C5 claim is NOT verification-eligible
+# and never enters the coverage denominator. This is derived from the tier
+# rather than kept as a third table on purpose: unlike load-bearing-ness,
+# eligibility is not an independent policy axis — it is exactly "is there a
+# checker for this tier", which is a property of the tier itself. If a C4
+# resolver is ever added, widen this set in one place.
+_VERIFIABLE_TIERS: frozenset[Tier] = frozenset({Tier.C1, Tier.C2, Tier.C3})
+
+
 def classify(kind: ClaimKind) -> Tier:
     try:
         return _TIER[kind]
     except KeyError:
         raise KeyError(f"ladder.py has no tier for {kind!r} — every ClaimKind needs a row") from None
+
+
+def verification_eligible(kind: ClaimKind) -> bool:
+    """P1 — is there an authoritative way to check this ClaimKind at all?
+    True for C1/C2/C3, False for C4/C5. Raises (via classify) if the kind
+    has no ladder row, same as every other ladder lookup."""
+    return classify(kind) in _VERIFIABLE_TIERS
 
 
 def is_load_bearing(kind: ClaimKind) -> bool:
@@ -104,4 +123,4 @@ if _missing_tier or _missing_load_bearing:
     )
 
 
-__all__ = ["classify", "is_load_bearing", "classify_claims"]
+__all__ = ["classify", "verification_eligible", "is_load_bearing", "classify_claims"]

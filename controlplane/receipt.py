@@ -20,8 +20,9 @@ import uuid
 from pathlib import Path
 from typing import Any
 
+from controlplane.decide import resolved_verification_ledger
 from controlplane.registry.clock import now
-from controlplane.schema import Decision
+from controlplane.schema import Confidence, Decision, ModellingState
 
 ROOT = Path(__file__).resolve().parent.parent
 OPERATIONAL_TRAIL = ROOT / "decisions.jsonl"
@@ -46,6 +47,24 @@ def _canonical(obj: dict) -> bytes:
     return json.dumps(obj, sort_keys=True, separators=(",", ":"), default=str).encode()
 
 
+def _authoritative_lookup_empty_evidence(decision: Decision):
+    """P3-G — the first load-bearing claim's evidence with
+    `confidence == Confidence.NONE`, in claim order: the same claim
+    decide()'s main loop (decide.py:311-329) encounters first when it
+    appends the `reliability_floor` reason for evidence that isn't merely
+    unreliable but ABSENT (every resolver that emits Confidence.NONE also
+    emits Reliability.UNVERIFIED for it, e.g. orders.py:60-82). None if no
+    load-bearing claim has this evidence shape."""
+    evidence_by_claim = {e.claim_id: e for e in decision.evidence}
+    for claim in decision.claims:
+        if not claim.load_bearing:
+            continue
+        ev = evidence_by_claim.get(claim.id)
+        if ev is not None and ev.confidence == Confidence.NONE:
+            return ev
+    return None
+
+
 def _root_cause(decision: Decision) -> str | None:
     """Best-effort, human-and-machine-readable label for the first failing
     reason. Not exhaustive — picks the single most useful line for a
@@ -64,13 +83,75 @@ def _root_cause(decision: Decision) -> str | None:
         if r.passed is False and r.rule == "amount_sane":
             return "amount_exceeds_source_record"
         if r.passed is False and r.rule == "reliability_floor":
+            # P3-G: `reliability_floor` also fires when the authoritative
+            # lookup didn't just return unreliable evidence but returned
+            # NOTHING — no order record at all (orders.py:60-70). Labelling
+            # that "evidence below the reliability floor" misdescribes an
+            # absent record as bad-but-present data. Reuse the ledger's own
+            # existing name for exactly this evidence shape
+            # (decide.py:157, `_verify_one_claim` -> reason
+            # "authoritative_lookup_empty") rather than inventing a new
+            # root_cause value. Scoped to "no row found" only — a present
+            # row with a NULL field (orders.py:72-82) is a different,
+            # unaddressed precondition and keeps evidence_below_reliability_
+            # floor unchanged (test_missing_order_and_null_field_remain_
+            # distinct_unverified_evidence pins "no order found" vs.
+            # "is NULL" as the note-level distinction already established
+            # in this codebase).
+            ev = _authoritative_lookup_empty_evidence(decision)
+            if ev is not None and ev.note is not None and "no order found" in ev.note:
+                return "authoritative_lookup_empty"
             return "evidence_below_reliability_floor"
         if r.passed is False:
             return r.rule
     return None
 
 
+def _verification_rows(ledger) -> dict[str, Any]:
+    """P1 — {claim_id: verification} for the receipt's claims[] rows. Compact:
+    a plain status string in the common case (modelled, eligible, nothing extra
+    to say), a dict only when `modelling`/`eligible`/`reason` add information."""
+    if ledger is None:
+        return {}
+    out: dict[str, Any] = {}
+    for r in ledger.claims:
+        status = r.verification_status.value
+        extra = {}
+        if r.modelling_state is not ModellingState.MODELLED:
+            extra["modelling"] = r.modelling_state.value
+        if not r.verification_eligible:
+            extra["eligible"] = False
+        if r.reason and r.reason != status:  # a reason that merely restates the status adds nothing
+            extra["reason"] = r.reason
+        out[r.claim_id] = {"status": status, **extra} if extra else status
+    return out
+
+
+def _verification_coverage_block(ledger) -> dict[str, Any] | None:
+    """P1 — the compact, reconstructable coverage block (PART 5/7/9).
+
+    Only the numbers a reader cannot recompute from the per-claim `verification`
+    rows on `claims[]`: the ratio, its two operands, the denominator's name,
+    and the zero-denominator flag. The full per-status counters
+    (`contradicted` / `unverified` / `unavailable` / `unmodelled` / ...) are
+    reconstructable from those rows and are also kept verbatim in the
+    telemetry `coverage.verification_coverage` block and on the in-memory
+    `Decision.verification_ledger`."""
+    if ledger is None:
+        return None
+    cov = ledger.coverage
+    return {
+        "verified": cov.verified,
+        "eligible": cov.eligible,
+        "coverage": cov.value,
+        "coverage_basis": cov.basis,
+        "coverage_na": cov.n_a,
+    }
+
+
 def build_receipt(decision: Decision, action_dict: dict[str, Any], latency_ms: dict[str, float]) -> dict:
+    _ledger = resolved_verification_ledger(decision)
+    _vrows = _verification_rows(_ledger)
     receipt = {
         "receipt_id": str(uuid.uuid5(uuid.NAMESPACE_URL, decision.idempotency_key or decision.trace_id)),
         "trace_id": decision.trace_id,
@@ -84,7 +165,8 @@ def build_receipt(decision: Decision, action_dict: dict[str, Any], latency_ms: d
         },
         "claims": [
             {"kind": c.kind.value, "tier": c.tier.value if c.tier else None,
-             "asserted": c.asserted_value, "load_bearing": c.load_bearing}
+             "asserted": c.asserted_value, "load_bearing": c.load_bearing,
+             **({"verification": _vrows[c.id]} if c.id in _vrows else {})}
             for c in decision.claims
         ],
         "evidence": [
@@ -111,6 +193,11 @@ def build_receipt(decision: Decision, action_dict: dict[str, Any], latency_ms: d
         ],
         "root_cause": _root_cause(decision),
         "verification_state": decision.verification_state,
+        # P1 — scope of factual verification behind this action. Descriptive:
+        # `verification_state` (above) is the receipt-signature/verdict story;
+        # `verification_coverage` is how much of the load-bearing claim set
+        # was actually checked against authoritative evidence.
+        "verification_coverage": _verification_coverage_block(_ledger),
         "failure_context": (
             decision.failure_context.model_dump(exclude_none=True)
             if decision.failure_context is not None else None

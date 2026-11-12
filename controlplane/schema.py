@@ -116,6 +116,40 @@ class Compensability(str, Enum):
     NOT = "not"
 
 
+class ModellingState(str, Enum):
+    """P1 — did extraction produce a claim the engine could actually model?
+
+    A claim is MODELLED once it carries a ClaimKind and a tier (ladder.py
+    filled it in). It is UNMODELLED if classification could not place it —
+    `tier is None` after the classify step. An UNMODELLED claim is still
+    recorded, with this state, rather than silently dropped: PART 8's
+    invariant is MODELLED + UNMODELLED == EXTRACTED, and EXTRACTED is just
+    the count of claims that reached the ledger. Today's manifest-driven
+    pipeline builds one claim per binding and every one is MODELLED; the
+    non-zero UNMODELLED path exists so a future free-text claim miner cannot
+    make a claim disappear without leaving a trace.
+    """
+
+    MODELLED = "modelled"
+    UNMODELLED = "unmodelled"
+
+
+class VerificationStatus(str, Enum):
+    """P1 — the outcome of checking one claim against authoritative evidence.
+
+    RESOLVED != VERIFIED. A resolver returning a value is not verification;
+    only evidence that is present, above the reliability floor, and actually
+    *supports* the claim's check counts as VERIFIED. Everything else is one
+    of the other four, and none of them is VERIFIED.
+    """
+
+    VERIFIED = "verified"          # authoritative evidence supports the claim
+    CONTRADICTED = "contradicted"  # authoritative evidence refutes the claim
+    UNVERIFIED = "unverified"      # eligible, evidence present, no conclusive check ran
+    UNAVAILABLE = "unavailable"    # the authoritative fact could not be obtained
+    NOT_ELIGIBLE = "not_eligible"  # no authoritative check path exists (C4/C5, or unmodelled)
+
+
 class ClaimKind(str, Enum):
     """Every claim type the system knows how to check.
 
@@ -294,6 +328,68 @@ class FailureContext(BaseModel):
     detail: str | None = None
 
 
+class ClaimVerification(BaseModel):
+    """P1 — one row of the per-action verification ledger: what happened to
+    one claim on its way from EXTRACTED to a verification outcome.
+
+    Reuses identifiers/values already on the Claim and its Evidence; it does
+    not re-derive or duplicate the evidence payload (the receipt already
+    carries `evidence[]` in full). `evidence_ref` points back into it.
+    """
+
+    claim_id: str
+    kind: ClaimKind
+    subject: str
+    modelling_state: ModellingState
+    tier: Tier | None = None
+    resolver: str | None = None
+    load_bearing: bool = False
+    verification_eligible: bool = False
+    verification_status: VerificationStatus
+    asserted_value: Any | None = None
+    authoritative_source: str | None = None   # e.g. "orders.db"
+    evidence_ref: str | None = None           # the Evidence.claim_id it was checked against
+    observed_value: Any | None = None
+    reason: str | None = None                 # why it is not VERIFIED, when it is not
+
+
+class VerificationCoverage(BaseModel):
+    """P1 — verified load-bearing eligible claims / load-bearing eligible claims.
+
+    `basis` names the denominator population explicitly (PART 5): it is NOT
+    "every claim that should have existed", only the load-bearing claims that
+    had an authoritative check path. `value` is None (and `n_a` True) when the
+    denominator is zero — never reported as 1.0 (PART 7).
+    """
+
+    verified: int
+    eligible: int
+    value: float | None
+    basis: str = "load_bearing_verification_eligible_claims"
+    n_a: bool = False
+
+
+class VerificationLedger(BaseModel):
+    """P1 — the per-governed-action verification ledger (PART 4).
+
+    Counters first (cheap to assert invariants over), then the claim-level
+    rows. `coverage` is derived from the same rows, stored so a receipt reader
+    can recompute it and check it matches (PART 8 / PART 11 test 10).
+    """
+
+    claims_extracted: int
+    claims_modelled: int
+    claims_unmodelled: int
+    load_bearing_claims: int
+    verification_eligible_claims: int
+    verified_claims: int
+    contradicted_claims: int
+    unverified_claims: int
+    unavailable_claims: int
+    coverage: VerificationCoverage
+    claims: list[ClaimVerification] = Field(default_factory=list)
+
+
 class Decision(BaseModel):
     trace_id: str
     manifest_id: str
@@ -314,6 +410,13 @@ class Decision(BaseModel):
     verification_state: Literal["verified", "unverified"] = "verified"
     failure_context: FailureContext | None = None
     component_status: dict[str, Any] = Field(default_factory=dict)
+    # P1 — explicit claim lifecycle + verification coverage for this action.
+    # Descriptive/audit only: it does NOT drive verdict or intervention
+    # (docs/verification-coverage.md, PART 10). decide() attaches it on the
+    # normal path; for the operational-failure Decision built in intercept.py
+    # it stays None and decide.resolved_verification_ledger() reconstructs an
+    # all-UNAVAILABLE ledger from the claims that Decision does carry.
+    verification_ledger: VerificationLedger | None = None
 
     # --- coverage telemetry (S11 logger 1) ---
     # Per-tier claim COUNTS are descriptive telemetry and stay. The old
@@ -353,6 +456,8 @@ __all__ = [
     "Intervention",
     "Compensability",
     "ClaimKind",
+    "ModellingState",
+    "VerificationStatus",
     "SessionContext",
     "ToolCall",
     "ProposedAction",
@@ -361,6 +466,9 @@ __all__ = [
     "Reason",
     "CompensationPlan",
     "FailureContext",
+    "ClaimVerification",
+    "VerificationCoverage",
+    "VerificationLedger",
     "Decision",
     "utcnow",
 ]

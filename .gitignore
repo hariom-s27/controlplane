@@ -15,6 +15,12 @@ reports/*
 !reports/robustness.md
 !reports/latency.md
 !reports/tau2-bench.md
+!reports/verification-coverage.md
+!reports/manifest-claim-coverage.md
+!reports/extraction-completeness-v1.md
+!reports/extraction-completeness-v1.json
+!reports/foundational-requirement-coverage-v1.md
+!reports/foundational-requirement-coverage-v1.json
 
 # P05: the store replica is rebuilt at run start from the frozen stores.
 # The context fixtures ARE committed (synthetic, SHA-pinned).
