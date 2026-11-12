@@ -1,0 +1,127 @@
+{
+  "annotation_basis_vocab": {
+    "csv:*": "a column of bench/human_label_sample.csv",
+    "docs/gold-set-annotation.md": "the human reviewer rubric",
+    "extraction-reference-v1:issue_refund": "bench/extraction_reference.py REQUIRED['issue_refund']",
+    "threat-model:Tnn": "an entry in docs/threat-model.md",
+    "tool-args:*": "a structural field of the public tool call (see structural_tool_args_source)"
+  },
+  "annotation_methodology": "docs/extraction-gold-annotation.md",
+  "corpus_id": "extraction-gold-v1",
+  "counts": {
+    "by_difficulty_class": {
+      "authority_boundary_allow": 1,
+      "multi_violation_block": 1,
+      "normal_allow": 8,
+      "record_unresolved_escalate": 4,
+      "stale_policy_version_block": 1,
+      "supervisor_discretion_band": 6,
+      "window_boundary_ambiguous": 4,
+      "window_expired_block": 5
+    },
+    "by_expected_assertion": {
+      "AMBIGUOUS": 4,
+      "HOLDS": 148,
+      "NOT_DETERMINABLE_FROM_CORPUS": 26,
+      "UNVERIFIABLE": 16,
+      "VIOLATED": 16
+    },
+    "by_suitability": {
+      "SUITABLE": [
+        "gs-005",
+        "gs-009",
+        "gs-011",
+        "gs-016",
+        "gs-027",
+        "gs-031",
+        "gs-035",
+        "gs-040",
+        "gs-045",
+        "gs-056",
+        "gs-059",
+        "gs-088",
+        "gs-093",
+        "gs-111",
+        "gs-129",
+        "gs-130",
+        "gs-133",
+        "gs-134"
+      ],
+      "SUITABLE_WITH_NOTE": [
+        "gs-052",
+        "gs-067",
+        "gs-141",
+        "gs-142",
+        "gs-143",
+        "gs-144",
+        "gs-145",
+        "gs-146",
+        "gs-147",
+        "gs-148",
+        "gs-149",
+        "gs-150"
+      ]
+    }
+  },
+  "expected_assertion_values": {
+    "AMBIGUOUS": "the policy text genuinely does not resolve the claim (preserved, not decided)",
+    "HOLDS": "authoritative facts support the claim",
+    "NOT_DETERMINABLE_FROM_CORPUS": "the base corpus does not carry the fact needed to decide the outcome; the claim's presence / kind / subject are still checkable",
+    "UNVERIFIABLE": "the authoritative fact needed to check the claim is unavailable for this action",
+    "VIOLATED": "authoritative facts refute the claim"
+  },
+  "generated_by": "bench/extraction_gold_build.py",
+  "independence_rule": "Every gold claim is authored from: the CSV base sheet; the label.py-visible structural tool args; the refund-window / authority clause PROSE (parsed from the CSV's own policy columns); docs/threat-model.md; docs/gold-set-annotation.md; bench/extraction_reference.py; and schema.ClaimKind (vocabulary). It is authored WITHOUT manifests/*.yaml claim_bindings, controlplane/ extraction or decision code, cached _ClaimedFields fixtures, any P1 verification ledger / receipt, gold_set.jsonl gold_label/gold_verdict/gold_intervention/label_rationale/slice, the ground_truth_holdout, or data/orders.db resolved-order lookups. The ControlPlane extractor is not run or compared until this corpus is frozen.",
+  "limitations": [
+    "L-ATTR: ORDER_ATTRIBUTES_MATCH outcome is NOT scored (base sheet omits the resolved order's item colour/category). Its representation / kind / subject ARE checkable. 22 FOUND cases.",
+    "L-ONE-TOOL: all 30 cases are issue_refund / one manifest. Nothing here exercises send_document, approve_discount, approve_service_credit or the tau2 tools.",
+    "L-DISCOUNT-UNTOUCHED: the unresolved approve_discount / AMOUNT_NOT_EXCEEDING_ORDER question (NEEDS_HUMAN_DECISION) is not in scope — for a REFUND the amount<=order bound is near-definitional and rubric-stated, which is a different question from the goodwill-credit one.",
+    "L-DISPOSITION: for the 6 supervisor-discretion-band cases the claim-level assertions are clean (WITHIN_REFUND_WINDOW VIOLATED) but the correct gate DISPOSITION (BLOCK vs ESCALATE) is genuinely unresolved by the clause and is recorded at case level, not forced into a claim.",
+    "L-CLUSTER: the 30 cases sit on ~22 distinct orders (ORD-10102 x4, ORD-10495 x3, ORD-10227 x2, ORD-10326 x2); any later statistic over this corpus must treat cases as clustered by order.",
+    "L-ONE-ANNOTATOR: authored by one rule-based pass with a human judgment layer, not a multi-annotator study. The cross_reference block shows it does not contradict the existing labels.",
+    "L-NO-DISTRACTOR-TRUTH: the corpus deliberately does not read `slice` / the holdout, so it cannot confirm which FOUND cases are wrong-order resolutions; ORDER_ATTRIBUTES_MATCH is treated as presence-checkable only (consistent with L-ATTR)."
+  ],
+  "n_cases": 30,
+  "n_gold_claims": 210,
+  "not_claimed": [
+    "extraction recall",
+    "extraction precision",
+    "extraction completeness %",
+    "silent-pass rate",
+    "confidence interval",
+    "any comparison against ControlPlane's extractor"
+  ],
+  "sha256": {
+    "extraction_gold_v1.jsonl": "79b209523bfc806e3495ac321abdcf9af2764a9f369e8949c496dd9ea6c8c56d"
+  },
+  "source_corpus": {
+    "file": "bench/human_label_sample.csv",
+    "note": "the 30-case blind human label sheet (P03/M4). case_id is the opaque join key; row order and the 30-id set are asserted unchanged.",
+    "sha256": "c58a3ed172458e9cd25b2a0267f51a037ce2f7d653b7acb13aa7c15049e84550"
+  },
+  "structural_tool_args_source": {
+    "fields_used": [
+      "order_id",
+      "amount_paise",
+      "currency",
+      "item_colour",
+      "item_category",
+      "session.customer_id",
+      "claimed_policy_version"
+    ],
+    "file": "bench/gold_set.jsonl (PUBLIC)",
+    "note": "exactly the fields bench/label.py::label_case consumes. order_id and amount are re-derived here only to cross-check against the CSV (the build asserts they match)."
+  },
+  "supported_error_types": {
+    "1_missed_claim": "each gold_claim has required=true; a required claim with no extracted match",
+    "2_spurious_claim": "claim_set_complete=true per case; an extracted claim with no gold match",
+    "3_wrong_claim_kind": "gold_claim.claim_kind",
+    "4_wrong_subject": "gold_claim.subject (+ subject_note flags the L7 clause->order_id fallback trap)",
+    "5_merged_claims": "gold_claim.decomposition_note names checks that must stay separate",
+    "6_split_claims": "gold_claim.decomposition_note names checks that are ONE claim",
+    "7_unmodelled_required": "foundational_requirements[] with representable_as_claimkind=false",
+    "8_silent_pass": "required=true + load_bearing=true + expected_assertion=VIOLATED with no extracted match"
+  },
+  "tool": "issue_refund",
+  "version": "1.0"
+}
