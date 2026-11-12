@@ -261,6 +261,10 @@ def _run_dispatch(
             status = "BLOCKED"
         except Pending:
             status = "PENDING"
+    # D-M1-01: an ESCALATE is held in the review queue — dispatch_tool returns
+    # {"status": "pending", ...} instead of raising — so it is PENDING, not EXECUTED.
+    if isinstance(exec_result, dict) and exec_result.get("status") == "pending":
+        status = "PENDING"
 
     executed_this_call = len(_call_log) > calls_before
     receipt = captured[-1]["receipt"] if captured else None
@@ -391,12 +395,11 @@ def scenario_4_invalid_modify() -> ScenarioResult:
     result.ai_intent = f"send_document(recipient_id={args['recipient_id']!r}, doc_id={args['doc_id']!r})"
     result.notes.append(
         "DOC-9999 does not exist in entitlements.db. Both load-bearing claims resolve "
-        "to no evidence, so the verdict is UNVERIFIABLE. knowledge_assistant.yaml maps "
-        "UNVERIFIABLE to 'allow_with_caveat' (Intervention.MODIFY) — but the real "
-        "decide() never computes modified_args for this path, so it stays None. "
-        "controlplane/intercept.py::dispatch_tool() treats a non-dict modified_args as "
-        "an unresolved MODIFY and raises Pending — it never falls back to executing "
-        "the original arguments. This is the input being invalid, not the product."
+        "to no evidence, so the verdict is UNVERIFIABLE. Since D-M1-01, "
+        "knowledge_assistant.yaml maps UNVERIFIABLE to 'escalate' (allow_with_caveat / "
+        "MODIFY was removed): dispatch_tool() holds the call in the review queue (or "
+        "BLOCKs it once the escalation budget is exhausted) and never executes the "
+        "original arguments. This is the input being invalid, not the product."
     )
 
     status, exec_result, executed, receipt = _run_dispatch("demo-s4-invalid-modify", "EMP-4410", args)
@@ -422,13 +425,12 @@ def scenario_5_unsafe_modify() -> ScenarioResult:
         "EMP-0000 does not exist in entitlements.db's subjects table (DOC-1042 does exist — "
         "it is the same real document scenario 1 sends). With no recognized recipient, both "
         "entitlement claims resolve to evidence with confidence=NONE, so the verdict is "
-        "UNVERIFIABLE. knowledge_assistant.yaml maps UNVERIFIABLE to 'allow_with_caveat' "
-        "(Intervention.MODIFY) — but the real decide() never computes modified_args for this "
-        "path, so it stays None. controlplane/intercept.py::dispatch_tool() treats a non-dict "
-        "modified_args as an unresolved MODIFY and raises Pending — it never falls back to "
-        "executing the original arguments. This is the same unsafe-MODIFY safety refusal "
-        "scenario 4 exercises (an unresolved recipient here, instead of an unresolved "
-        "document) — no second governance rule, just the existing path with different input."
+        "UNVERIFIABLE. Since D-M1-01, knowledge_assistant.yaml maps UNVERIFIABLE to "
+        "'escalate' (allow_with_caveat / MODIFY was removed): dispatch_tool() holds the call "
+        "in the review queue (or BLOCKs it once the escalation budget is exhausted) and never "
+        "executes the original arguments. This is the same safety refusal scenario 4 "
+        "exercises (an unresolved recipient here, instead of an unresolved document) — no "
+        "second governance rule, just the existing path with different input."
     )
 
     status, exec_result, executed, receipt = _run_dispatch("demo-s5-unsafe-modify", "EMP-4410", args)

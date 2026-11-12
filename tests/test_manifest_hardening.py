@@ -20,6 +20,7 @@ import pytest
 import yaml
 
 from controlplane import manifest as cm
+from controlplane import receipt as receipt_module
 from controlplane.bindings import ManifestBindingError
 from controlplane.registry import RESOLVER_BY_NAME
 from controlplane.schema import ClaimKind
@@ -228,7 +229,9 @@ def test_lint_is_read_only_no_execution_no_writes():
     assert "import dispatch_tool" not in src and "dispatch_tool(" not in src
 
     watched = [
-        ROOT / "decisions.jsonl",
+        # D-M1-01: the trail is redirected per test (tests/conftest.py); watch
+        # that location, never the repo-root decisions.jsonl.
+        Path(receipt_module.OPERATIONAL_TRAIL),
         *sorted((ROOT / "manifests").glob("*.yaml")),
     ]
     before = {p: (p.read_bytes() if p.is_file() else None) for p in watched}

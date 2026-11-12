@@ -27,6 +27,8 @@ reports/*
 bench/fixtures/p05/_replica/
 decisions.jsonl
 decisions_privileged.jsonl
+# D-M1-01: the escalation review queue is runtime state, like the trails above.
+pending_actions.jsonl
 # SEB-1 Exp 3: rebuilt deterministically by bench/exp3_corpus.py from CP_SEED.
 # exp3_ground_truth.jsonl is held out from the checker by design (see
 # docs/experiment-audit.md); none of the three is hand-authored.

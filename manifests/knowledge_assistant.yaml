@@ -19,14 +19,14 @@ latency_budget_ms: 200                             # a chat answer, not a financ
 escalation_budget_pct: 5
 
 fail_posture:
-  tier_0: open                                     # informational retrieval may fail open
+  tier_0: escalate                                 # D-M1-01: outage holds for review, never executes
   tier_1: closed
   tier_2: closed
 
 reliability_floor: unverified                      # tolerates weaker sources than servicing does
 
 verdict_handling:
-  UNVERIFIABLE: allow_with_caveat                  # contrast: servicing.yaml escalates the same verdict
+  UNVERIFIABLE: escalate                           # D-M1-01: allow_with_caveat removed
   SOURCE_UNRELIABLE: escalate
 
 evidence_retention_days: 90

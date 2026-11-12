@@ -167,7 +167,7 @@ def _knowledge_unverifiable_decision() -> Decision:
         load_bearing=True,
     )
     manifest = load_manifest("knowledge_assistant")
-    return decide(
+    decision = decide(
         "knowledge-trace",
         manifest["manifest_id"],
         action,
@@ -176,6 +176,26 @@ def _knowledge_unverifiable_decision() -> Decision:
         {},
         manifest,
     )
+    # D-M1-01 (R4): decide() no longer produces MODIFY (allow_with_caveat was
+    # removed), so the dispatch-boundary MODIFY guards below are exercised with
+    # a MODIFY decision built directly from the real UNVERIFIABLE decision.
+    assert decision.intervention is Intervention.ESCALATE
+    return decision.model_copy(update={"intervention": Intervention.MODIFY})
+
+
+def test_knowledge_unverifiable_now_escalates_not_modify():
+    # D-M1-01 (R4): knowledge_assistant's UNVERIFIABLE handling is `escalate`.
+    action = ProposedAction(tool="send_document", recipient_id="EMP-4410", doc_id="DOC-2277", excerpt="x")
+    claim = Claim(id="DOC-2277:classification", kind=ClaimKind.DOC_CLASSIFICATION_PERMITTED,
+                  subject="DOC-2277", tier=Tier.C2, load_bearing=True)
+    manifest = load_manifest("knowledge_assistant")
+    decision = decide("knowledge-trace", manifest["manifest_id"], action, [claim], [], {}, manifest)
+    assert decision.verdict is Verdict.UNVERIFIABLE
+    assert decision.intervention is Intervention.ESCALATE
+    # even a hand-built dict carrying the removed value cannot yield MODIFY
+    legacy = {**manifest, "verdict_handling": {"UNVERIFIABLE": "allow_with_caveat"}}
+    assert decide("knowledge-trace", manifest["manifest_id"], action, [claim], [], {}, legacy).intervention \
+        is Intervention.ESCALATE
 
 
 def _mock_gate(monkeypatch, decision: Decision) -> None:
@@ -191,7 +211,7 @@ def test_modify_without_args_never_executes_original(monkeypatch):
     calls = []
     register_tool("cid_missing_modify", lambda **kwargs: calls.append(kwargs) or "sent")
     decision = _knowledge_unverifiable_decision()
-    assert decision.intervention is Intervention.MODIFY
+    assert decision.intervention is Intervention.MODIFY  # D-M1-01: built directly; decide() no longer emits MODIFY
     assert decision.modified_args is None
     _mock_gate(monkeypatch, decision)
 
@@ -404,7 +424,8 @@ def test_ambiguous_current_policy_rows_are_typed(tmp_path, monkeypatch):
 
 @pytest.mark.parametrize(
     ("posture", "expected_intervention"),
-    [("open", Intervention.ALLOW), ("closed", Intervention.BLOCK)],
+    # D-M1-01: `open` -> ALLOW was removed; `escalate` holds for review. `open` is now a config error (test below).
+    [("escalate", Intervention.ESCALATE), ("closed", Intervention.BLOCK)],
 )
 def test_gate_honors_configured_source_unavailability_posture(
     posture, expected_intervention, monkeypatch
@@ -437,6 +458,33 @@ def test_gate_honors_configured_source_unavailability_posture(
     assert decision.intervention is expected_intervention
     assert decision.root_cause == "authoritative_source_unavailable"
     assert decision.reasons[0].rule == "authoritative_source_available"
+
+
+def test_gate_refuses_removed_open_posture_even_when_injected_past_the_loader(monkeypatch):
+    # D-M1-01: a hand-built manifest dict that still says `open` (bypassing the
+    # loader's rejection) is a configuration error, never an ALLOW.
+    action = ProposedAction(tool="issue_refund", order_id="ORD-1", amount_paise=100)
+    manifest = load_manifest("servicing")
+    manifest["fail_posture"]["tier_2"] = "open"
+    monkeypatch.setenv("CP_MANIFEST", "servicing")
+    monkeypatch.setattr("controlplane.intercept.extract_action", lambda **_kwargs: action)
+    monkeypatch.setattr("controlplane.intercept.load_manifest", lambda _name: manifest)
+    monkeypatch.setattr(
+        "controlplane.intercept.resolve_bindings",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            SourceUnavailable(source="orders.db", operation="connect")
+        ),
+    )
+    monkeypatch.setattr("controlplane.intercept.record", lambda *_args, **_kwargs: {"receipt": {}})
+
+    with pytest.raises(ValueError, match="D-M1-01"):
+        _run_gate(
+            "issue_refund",
+            {"order_id": "ORD-1", "amount_paise": 100},
+            SessionContext(trace_id="trace"),
+            "",
+            [],
+        )
 
 
 def test_gate_blocks_ambiguous_policy_state(monkeypatch):

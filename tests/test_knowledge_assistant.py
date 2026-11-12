@@ -150,7 +150,7 @@ def test_existing_cross_tenant_dispatch_remains_blocked(entitlements_database, m
     assert receipts[0].intervention is Intervention.BLOCK
 
 
-def test_knowledge_source_outage_uses_configured_open_posture(monkeypatch):
+def test_knowledge_source_outage_uses_configured_escalate_posture(monkeypatch):
     args, session, calls, receipts = _dispatch_send(
         monkeypatch,
         trace_id="t-source-outage",
@@ -165,10 +165,11 @@ def test_knowledge_source_outage_uses_configured_open_posture(monkeypatch):
         ),
     )
 
-    assert dispatch_tool("send_document", args, session) == {"status": "sent"}
-    assert calls == [args]
+    result = dispatch_tool("send_document", args, session)
+    assert result["status"] == "pending"  # D-M1-01: tier_0 posture is now `escalate` (was `open` -> executed)
+    assert calls == []  # D-M1-01: an unavailable source never lets the action execute
     assert receipts[0].verdict is Verdict.UNVERIFIABLE
-    assert receipts[0].intervention is Intervention.ALLOW
+    assert receipts[0].intervention is Intervention.ESCALATE  # D-M1-01: was ALLOW under the removed `open` posture
     assert receipts[0].root_cause == "authoritative_source_unavailable"
 
 

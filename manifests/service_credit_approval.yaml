@@ -25,7 +25,7 @@ latency_budget_ms: 400
 escalation_budget_pct: 3
 
 fail_posture:
-  tier_0: open
+  tier_0: escalate
   tier_1: closed                                    # financial approval: exhausted budget BLOCKS
   tier_2: closed
 

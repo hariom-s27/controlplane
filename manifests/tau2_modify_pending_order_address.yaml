@@ -20,7 +20,7 @@ compensation:
 
 risk_tier_default: 1               # order not yet fulfilled/shipped, no financial impact
 fail_posture:
-  tier_0: open
+  tier_0: escalate
   tier_1: closed
   tier_2: closed
 

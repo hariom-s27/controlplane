@@ -323,7 +323,9 @@ class FailureContext(BaseModel):
     stage: str
     source: str | None = None
     risk_tier: int | None = None
-    fail_posture: Literal["open", "closed"] | None = None
+    # D-M1-01: "open" stays readable only so receipts written before the
+    # decision still parse; no manifest can configure it any more.
+    fail_posture: Literal["open", "closed", "escalate"] | None = None
     posture_outcome: str | None = None
     detail: str | None = None
 

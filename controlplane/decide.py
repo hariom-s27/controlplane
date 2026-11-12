@@ -82,6 +82,19 @@ _RELIABILITY_RANK: dict[Reliability, int] = {
 _VERIFIABLE_TIERS = (Tier.C1, Tier.C2, Tier.C3)
 _COVERAGE_BASIS = "load_bearing_verification_eligible_claims"
 
+# D-M1-01 (R3): the C3 grounding check's state, supplied by the caller (the
+# I/O boundary in intercept.py knows whether grounding was configured and
+# whether it ran). "off" = deliberately not configured: the check is not
+# modelled and the verdict is unchanged. Anything else without a score is a
+# failed required check and must not count as passed.
+_GROUNDING_OFF = "off"
+
+
+def _c3_state(grounding_score: float | None, grounding_state: str) -> str:
+    if grounding_score is not None:
+        return "scored"
+    return _GROUNDING_OFF if grounding_state == _GROUNDING_OFF else "failed"
+
 
 def _claim_check_outcome(
     claim: Claim,
@@ -122,6 +135,7 @@ def _verify_one_claim(
     grounding_score: float | None,
     grounding_threshold: float,
     floor_rank: int,
+    grounding_state: str = _GROUNDING_OFF,
 ) -> ClaimVerification:
     modelled = claim.tier is not None
     eligible = modelled and claim.tier in _VERIFIABLE_TIERS
@@ -164,6 +178,18 @@ def _verify_one_claim(
     row.observed_value = observed if isinstance(observed, (str, int, float, bool)) or observed is None else str(observed)
 
     if not rule_ran:
+        if claim.kind is ClaimKind.CLAUSE_SEMANTICS_MATCH:
+            # D-M1-01 (R3): say WHY the C3 check did not run. Off by
+            # configuration stays MODELLED + eligible + UNVERIFIED (coverage
+            # still counts it against us); grounding on but failed is
+            # UNAVAILABLE, matching decide()'s UNVERIFIABLE.
+            if _c3_state(grounding_score, grounding_state) == _GROUNDING_OFF:
+                row.verification_status = VerificationStatus.UNVERIFIED
+                row.reason = "c3_off_by_configuration"
+            else:
+                row.verification_status = VerificationStatus.UNAVAILABLE
+                row.reason = "c3_checker_failed"
+            return row
         row.verification_status = VerificationStatus.UNVERIFIED
         row.reason = "no_conclusive_check_ran"
         return row
@@ -188,6 +214,7 @@ def build_verification_ledger(
     grounding_score: float | None = None,
     grounding_threshold: float = 0.5,
     reliability_floor: Reliability = Reliability.CORROBORATED,
+    grounding_state: str = _GROUNDING_OFF,
 ) -> VerificationLedger:
     """P1 — the per-action verification ledger. Pure. Every claim that reaches
     here is recorded with an explicit modelling state and verification status;
@@ -200,6 +227,7 @@ def build_verification_ledger(
         _verify_one_claim(
             c, evidence_by_claim.get(c.id), predicate_result,
             clause_match, grounding_score, grounding_threshold, floor_rank,
+            grounding_state,
         )
         for c in claims
     ]
@@ -275,8 +303,10 @@ def decide(
     clause_match: bool | None = None,
     grounding_score: float | None = None,
     grounding_threshold: float = 0.5,
+    grounding_state: str = _GROUNDING_OFF,
 ) -> Decision:
     evidence_by_claim = {e.claim_id: e for e in evidence}
+    c3_state = _c3_state(grounding_score, grounding_state)
     reasons: list[Reason] = []
 
     reliability_floor = Reliability(manifest.get("reliability_floor", "corroborated"))
@@ -366,9 +396,28 @@ def decide(
                 continue
             violated = passed is False
             rule_name, expected, observed = predicate_field, True, passed
-        elif claim.kind is ClaimKind.POLICY_CLAUSE_CURRENT and clause_match is not None:
+        elif claim.kind is ClaimKind.POLICY_CLAUSE_CURRENT and clause_match is None:
+            # D-M1-01 (R3): a required check whose input is missing never
+            # counts as passed — formerly this claim was skipped silently.
+            unverifiable = True
+            reasons.append(
+                Reason(rule="clause_current_available", expected="boolean", observed=None,
+                       passed=False, policy_version=manifest_id)
+            )
+            continue
+        elif claim.kind is ClaimKind.POLICY_CLAUSE_CURRENT:
             violated = clause_match is False
             rule_name, expected, observed = "clause_current", claim.asserted_value, (ev.value if ev else None)
+        elif claim.kind is ClaimKind.CLAUSE_SEMANTICS_MATCH and c3_state == "failed":
+            # D-M1-01 (R3): grounding was ON but produced no score (import
+            # error, timeout, no clause text): UNVERIFIABLE, not passed. A C1/C2
+            # hard contradiction from another claim still wins the verdict.
+            unverifiable = True
+            reasons.append(
+                Reason(rule="clause_semantics_match_available", expected="grounding score",
+                       observed=None, passed=False, policy_version=manifest_id)
+            )
+            continue
         elif claim.kind is ClaimKind.CLAUSE_SEMANTICS_MATCH and grounding_score is not None:
             # C3, moderate confidence per D3: a low score here is real
             # evidence of a problem, but never certainty the way a failed
@@ -409,7 +458,6 @@ def decide(
         verdict = Verdict.VERIFIED
 
     comp = compensation_for(manifest)
-    verdict_handling = manifest.get("verdict_handling", {})
 
     def _intervention_for(v: Verdict, c3_only: bool) -> Intervention:
         if v is Verdict.VERIFIED:
@@ -423,8 +471,11 @@ def decide(
             return Intervention.ESCALATE
         if v is Verdict.CONTRADICTED:
             return Intervention.BLOCK
-        handling = verdict_handling.get(v.value, "escalate")
-        return Intervention.MODIFY if handling == "allow_with_caveat" else Intervention.ESCALATE
+        # D-M1-01 (R4): UNVERIFIABLE / SOURCE_UNRELIABLE always escalate.
+        # verdict_handling's only accepted value is "escalate"; the former
+        # "allow_with_caveat" -> MODIFY mapping is gone, so no verdict_handling
+        # value (even in a hand-built manifest dict) can yield MODIFY here.
+        return Intervention.ESCALATE
 
     intervention = _intervention_for(verdict, c3_contradiction and not hard_contradiction)
 
@@ -448,6 +499,7 @@ def decide(
         grounding_score=grounding_score,
         grounding_threshold=grounding_threshold,
         reliability_floor=reliability_floor,
+        grounding_state=grounding_state,
     )
 
     return Decision(

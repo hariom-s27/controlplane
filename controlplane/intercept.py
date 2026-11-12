@@ -87,9 +87,14 @@ def _operational_decision(
     key = idempotency_key_override or idempotency_key_for(session.trace_id, action)
 
     if isinstance(failure, SourceUnavailable):
+        # D-M1-01: an unavailable authoritative source never lets the action
+        # execute. "closed" BLOCKs; "escalate" holds it for review (ESCALATE ->
+        # pending_actions, BLOCK once the escalation budget is exhausted — see
+        # dispatch_tool). The former "open" posture is rejected at load time.
         risk_tier, posture = active_fail_posture(manifest)
-        intervention = Intervention.ALLOW if posture == "open" else Intervention.BLOCK
-        outcome = "permitted" if posture == "open" else "blocked"
+        escalate = posture == "escalate"
+        intervention = Intervention.ESCALATE if escalate else Intervention.BLOCK
+        outcome = "escalated" if escalate else "blocked"
         return Decision(
             trace_id=session.trace_id,
             manifest_id=manifest["manifest_id"],
@@ -122,7 +127,7 @@ def _operational_decision(
                     "source": failure.source,
                     "operation": failure.operation,
                 },
-                "execution": {"status": "permitted" if posture == "open" else "blocked"},
+                "execution": {"status": "held" if escalate else "blocked"},
             },
         )
 
@@ -242,30 +247,37 @@ def _run_gate(
 
             clause_match = clause_matches_claim(claim, e)
 
+    # D-M1-01 (R3): distinguish grounding deliberately OFF by configuration
+    # ("off": the C3 check is not modelled, verdict unchanged) from grounding
+    # ON but failed ("failed": ImportError, timeout, no clause text to ground,
+    # no score). decide() turns "failed" into UNVERIFIABLE for a load-bearing
+    # CLAUSE_SEMANTICS_MATCH claim; a C1/C2 hard contradiction still wins.
+    # Non-timeout grounding exceptions remain loud (P08).
     grounding_score = None
-    if os.environ.get("CP_GROUNDING", "off") == "on":
+    grounding_state = "off"
+    csm_resolved = [(claim, e) for claim, e in resolved if claim.kind is ClaimKind.CLAUSE_SEMANTICS_MATCH]
+    if os.environ.get("CP_GROUNDING", "off") == "on" and csm_resolved:
         t0 = time.perf_counter()
-        try:
-            from controlplane import ground
+        if not action.claimed_clause_text:
+            component_status["C3"] = {"status": "unavailable", "reason": "no_clause_text"}
+        else:
+            try:
+                from controlplane import ground
 
-            for claim, e in resolved:
-                if claim.kind is ClaimKind.CLAUSE_SEMANTICS_MATCH and action.claimed_clause_text:
+                for claim, e in csm_resolved:
                     grounding_score = ground.score(premise=str(e.value), hypothesis=action.claimed_clause_text)
-        except ImportError:
-            pass  # torch/transformers not installed — decide() treats this as "no C3 signal"
-        except TimeoutError:
-            # P08: C3 is optional coverage. Its timeout must not erase the
-            # C1/C2 decision; unrelated grounding exceptions remain loud.
-            component_status["C3"] = {
-                "status": "unavailable",
-                "reason": "timeout",
-            }
+            except ImportError:
+                component_status["C3"] = {"status": "unavailable", "reason": "import_error"}
+            except TimeoutError:
+                component_status["C3"] = {"status": "unavailable", "reason": "timeout"}
         ground_ms = round((time.perf_counter() - t0) * 1000, 2)
+        latency_ms["ground"] = ground_ms
         if grounding_score is not None:
-            latency_ms["ground"] = ground_ms
+            grounding_state = "scored"
             component_status["C3"] = {"status": "available"}
-        elif "C3" in component_status:
-            latency_ms["ground"] = ground_ms
+        else:
+            grounding_state = "failed"
+            component_status.setdefault("C3", {"status": "unavailable", "reason": "no_score"})
 
     t0 = time.perf_counter()
     decision = decide(
@@ -278,6 +290,7 @@ def _run_gate(
         manifest=manifest,
         clause_match=clause_match,
         grounding_score=grounding_score,
+        grounding_state=grounding_state,
     )
     latency_ms["decide"] = round((time.perf_counter() - t0) * 1000, 2)
 
@@ -333,22 +346,12 @@ def _execute_governed_once(
     name: str,
     session: SessionContext,
 ) -> Any:
+    # D-M1-01: defence in depth. A decision raised because an authoritative
+    # source was unavailable must never reach execution, whatever produced it.
+    if decision.failure_context is not None and decision.failure_context.kind == "source_unavailable":
+        raise Blocked(decision)
     key = decision.idempotency_key or _fallback_execution_key(name, call_args, session)
     outcome = execute_once(key, lambda: impl(**call_args))
-    if (
-        not outcome.replayed
-        and decision.failure_context is not None
-        and decision.failure_context.kind == "source_unavailable"
-    ):
-        completed = decision.model_copy(deep=True)
-        completed.failure_context = completed.failure_context.model_copy(
-            update={"posture_outcome": "executed"}
-        )
-        completed.component_status = {
-            **completed.component_status,
-            "execution": {"status": "executed"},
-        }
-        record(completed, {"tool": name, **call_args}, {})
     if outcome.replayed:
         replay = decision.model_copy(deep=True)
         replay.idempotency_key = key
@@ -418,14 +421,14 @@ def dispatch_tool(
     if decision.intervention is Intervention.ESCALATE:
         manifest = _active_manifest()
         if escalation_budget_exhausted(decision, manifest):
-            risk_tier, posture = active_fail_posture(manifest)
+            # D-M1-01 (R2): an exhausted escalation budget always BLOCKs. The
+            # configured posture is recorded for the audit trail but never
+            # consulted, so no configuration can turn this into execution.
+            risk_tier = manifest.get("risk_tier_default")
+            posture = (manifest.get("fail_posture") or {}).get(f"tier_{risk_tier}")
             record_budget_exhaustion(
                 decision, receipt, risk_tier=risk_tier, fail_posture=posture
             )
-            if posture == "open":
-                return _execute_governed_once(
-                    impl=impl, call_args=args, decision=decision, name=name, session=session
-                )
             raise Blocked(decision)
         queued = enqueue_pending(decision, receipt)
         return {"status": "pending", "queue_id": queued["queue_id"], "trace_id": decision.trace_id}

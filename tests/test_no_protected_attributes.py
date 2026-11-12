@@ -91,6 +91,9 @@ def test_decide_signature_takes_no_protected_attribute_parameter():
         "trace_id", "manifest_id", "action", "claims", "evidence",
         "predicate_result", "manifest", "clause_match", "grounding_score",
         "grounding_threshold",
+        # D-M1-01: C3 pipeline state ("off" / "scored" / "failed"), not a
+        # personal attribute; still checked by the protected-token loop below.
+        "grounding_state",
     }
     unexpected = set(params) - expected
     assert not unexpected, f"decide() grew unexpected parameter(s): {unexpected}"

@@ -76,7 +76,7 @@ def test_contradiction_scenario_works():
 def test_invalid_modify_prevents_execution_with_zero_calls():
     r = demo.scenario_4_invalid_modify()
     assert r.verdict == "UNVERIFIABLE"
-    assert r.intervention == "MODIFY"
+    assert r.intervention == "ESCALATE"  # D-M1-01 (R4): allow_with_caveat/MODIFY removed; UNVERIFIABLE escalates
     assert r.call_count == "0"
     assert "not executed" in r.execution_result
     assert r.receipt_verified is True
@@ -86,7 +86,7 @@ def test_unsafe_modify_prevents_execution_with_zero_calls():
     r = demo.scenario_5_unsafe_modify()
     assert r.available is True
     assert r.verdict == "UNVERIFIABLE"
-    assert r.intervention == "MODIFY"
+    assert r.intervention == "ESCALATE"  # D-M1-01 (R4): allow_with_caveat/MODIFY removed; UNVERIFIABLE escalates
     assert r.call_count == "0"
     assert "not executed" in r.execution_result
     assert r.receipt_verified is True

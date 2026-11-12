@@ -38,7 +38,7 @@ compensation:
 
 risk_tier_default: 2               # cancels a live order + moves money
 fail_posture:
-  tier_0: open
+  tier_0: escalate
   tier_1: closed
   tier_2: closed                   # exhausted escalation budget BLOCKS, matches manifests/servicing.yaml
 

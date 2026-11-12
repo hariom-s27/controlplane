@@ -61,7 +61,7 @@ def test_escalation_budget_exhausted_after_more_than_two_in_rolling_hundred(tmp_
     ) is True
 
 
-def test_budget_exhausted_uses_open_posture_for_tier_zero(monkeypatch):
+def test_budget_exhausted_blocks_even_with_legacy_open_posture_for_tier_zero(monkeypatch):
     decision = _decision(compensability="fully")
     receipt = {"trace_id": decision.trace_id, "verdict": decision.verdict.value}
     monkeypatch.setattr("controlplane.intercept._run_gate", lambda *a, **k: (decision, {}, receipt))
@@ -69,12 +69,15 @@ def test_budget_exhausted_uses_open_posture_for_tier_zero(monkeypatch):
     monkeypatch.setattr("controlplane.intercept._active_manifest", lambda: {
         "risk_tier_default": 0, "fail_posture": {"tier_0": "open"}
     })
-    monkeypatch.setattr("controlplane.intercept.record_budget_exhaustion", lambda *a, **k: {})
-    register_tool("budget_open", lambda **kwargs: "executed")
+    events = []
+    monkeypatch.setattr("controlplane.intercept.record_budget_exhaustion",
+                        lambda *a, **k: events.append(k) or {})
+    register_tool("budget_open", lambda **kwargs: pytest.fail("held action executed"))
 
-    result = dispatch_tool("budget_open", {}, SessionContext(trace_id="t", gate_enabled=True))
-
-    assert result == "executed"
+    # D-M1-01 (R2): an exhausted budget always BLOCKs; no posture (even a hand-built `open`) executes (was "executed").
+    with pytest.raises(Blocked):
+        dispatch_tool("budget_open", {}, SessionContext(trace_id="t", gate_enabled=True))
+    assert events == [{"risk_tier": 0, "fail_posture": "open"}]  # D-M1-01: posture recorded, never consulted
 
 
 def test_budget_exhausted_uses_closed_posture_for_tier_two(monkeypatch):

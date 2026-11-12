@@ -232,7 +232,7 @@ def test_p08_record_unavailable_servicing_honours_closed_posture(
         OrdersResolver().resolve(claim, SessionContext(trace_id="p08-source-type"))
 
 
-def test_p08_record_unavailable_knowledge_honours_open_posture_and_marks_unverified(
+def test_p08_record_unavailable_knowledge_honours_escalate_posture_and_marks_unverified(
     isolated_runtime, monkeypatch: pytest.MonkeyPatch
 ):
     entitlements_db = _copy_store(isolated_runtime["root"], "entitlements.db")
@@ -262,18 +262,21 @@ def test_p08_record_unavailable_knowledge_honours_open_posture_and_marks_unverif
         ),
     )
 
-    assert result == {"executed": True}
-    assert executions == [_args(action)]
+    assert result["status"] == "pending"  # D-M1-01: outage is held for review, not executed (was {"executed": True})
+    assert executions == []  # D-M1-01: an unavailable source never lets the action execute
+    queued = [json.loads(line) for line in isolated_runtime["pending"].read_text(encoding="utf-8").splitlines()]
+    assert len(queued) == 1 and queued[0]["queue_id"] == result["queue_id"]  # D-M1-01: held in pending_actions
     receipt = _receipt_from(_latest_envelope(isolated_runtime["trail"]))
     _assert_signed(receipt)
+    assert receipt["intervention"] == "ESCALATE"  # D-M1-01: was ALLOW under the removed `open` posture
     _assert_failure_context(
         receipt,
         kind="source_unavailable",
         stage="resolve",
         source="entitlements.db",
         risk_tier=0,
-        fail_posture="open",
-        posture_outcome="executed",
+        fail_posture="escalate",  # D-M1-01: `open` was migrated to `escalate`
+        posture_outcome="escalated",  # D-M1-01: was "executed"
     )
     assert receipt["action"]["compensability"] == "partially"
 
@@ -448,7 +451,7 @@ def test_p08_two_current_policy_rows_fail_closed_and_log_data_quality(
 # ---------------------------------------------------------------------------
 
 
-def test_p08_grounding_timeout_degrades_to_c1_c2_and_marks_c3_unavailable(
+def test_p08_grounding_timeout_is_unverifiable_and_marks_c3_unavailable(
     isolated_runtime, monkeypatch: pytest.MonkeyPatch
 ):
     orders_db = _copy_store(isolated_runtime["root"], "orders.db")
@@ -474,8 +477,11 @@ def test_p08_grounding_timeout_degrades_to_c1_c2_and_marks_c3_unavailable(
         [],
     )
 
-    assert decision.verdict is Verdict.VERIFIED
-    assert decision.intervention is Intervention.ALLOW
+    assert decision.verdict is Verdict.UNVERIFIABLE  # D-M1-01 (R3): grounding ON but failed is not a pass (was VERIFIED)
+    assert decision.intervention is Intervention.ESCALATE  # D-M1-01: servicing escalates UNVERIFIABLE (was ALLOW)
+    assert any(  # D-M1-01: the failed C3 check is an explicit reason, not a silent skip
+        r.rule == "clause_semantics_match_available" and r.passed is False for r in decision.reasons
+    )
     assert decision.predicate_trace["grounding_score"] is None
     assert decision.component_status["C3"] == {"status": "unavailable", "reason": "timeout"}
     assert receipt["component_status"]["C3"] == {"status": "unavailable", "reason": "timeout"}

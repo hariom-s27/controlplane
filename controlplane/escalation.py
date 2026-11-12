@@ -67,8 +67,8 @@ def record_budget_exhaustion(
     decision: Decision,
     receipt: dict,
     *,
-    risk_tier: int,
-    fail_posture: str,
+    risk_tier: int | None,
+    fail_posture: str | None,
     trail_path: Path = OPERATIONAL_TRAIL,
 ) -> dict:
     """Persist the policy fallback applied when no escalation slot remains."""
@@ -79,7 +79,7 @@ def record_budget_exhaustion(
         "manifest_id": decision.manifest_id,
         "risk_tier": risk_tier,
         "fail_posture": fail_posture,
-        "outcome": "executed" if fail_posture == "open" else "blocked",
+        "outcome": "blocked",  # D-M1-01 (R2): an exhausted budget always BLOCKs
         "receipt_id": receipt.get("receipt_id"),
     }
     trail_path.parent.mkdir(parents=True, exist_ok=True)

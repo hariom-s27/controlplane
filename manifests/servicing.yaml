@@ -24,7 +24,7 @@ latency_budget_ms: 800
 escalation_budget_pct: 2
 
 fail_posture:
-  tier_0: open
+  tier_0: escalate
   tier_1: closed
   tier_2: closed                                   # high-risk refund: exhausted budget BLOCKS
 

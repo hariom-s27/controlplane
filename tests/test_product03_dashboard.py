@@ -467,7 +467,7 @@ def test_unsafe_modify_scenario_is_refused_with_zero_calls():
     body = _run("knowledge_assistant-v1", 5)
     assert body["status"] == "OK"
     assert body["verdict"] == "UNVERIFIABLE"
-    assert body["intervention"] == "MODIFY"
+    assert body["intervention"] == "ESCALATE"  # D-M1-01 (R4): allow_with_caveat/MODIFY removed; UNVERIFIABLE escalates
     assert body["execution_state"] == "REFUSED"
     assert body["call_count"] == "0"
     assert body["receipt_verification"] == "VERIFIED"

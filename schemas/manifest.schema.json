@@ -49,19 +49,21 @@
       "type": "object",
       "additionalProperties": false,
       "required": ["tier_0", "tier_1", "tier_2"],
+      "description": "D-M1-01: outcome when an authoritative source is unavailable. 'closed' = BLOCK; 'escalate' = hold for review (BLOCK once the escalation budget is exhausted). 'open' (execute) was removed; no value executes the action.",
       "properties": {
-        "tier_0": { "enum": ["open", "closed"] },
-        "tier_1": { "enum": ["open", "closed"] },
-        "tier_2": { "enum": ["open", "closed"] }
+        "tier_0": { "enum": ["closed", "escalate"] },
+        "tier_1": { "enum": ["closed", "escalate"] },
+        "tier_2": { "enum": ["closed", "escalate"] }
       }
     },
     "reliability_floor": { "enum": ["corroborated", "inferred", "unverified"] },
     "verdict_handling": {
       "type": "object",
       "additionalProperties": false,
+      "description": "D-M1-01: 'allow_with_caveat' was removed; an UNVERIFIABLE or SOURCE_UNRELIABLE verdict always escalates (subject to compensability).",
       "properties": {
-        "UNVERIFIABLE": { "enum": ["escalate", "allow_with_caveat"] },
-        "SOURCE_UNRELIABLE": { "enum": ["escalate", "allow_with_caveat"] }
+        "UNVERIFIABLE": { "enum": ["escalate"] },
+        "SOURCE_UNRELIABLE": { "enum": ["escalate"] }
       }
     },
     "predicate_payload": {

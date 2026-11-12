@@ -34,7 +34,14 @@ SCHEMA_PATH = ROOT / "schemas" / "manifest.schema.json"
 
 _VALID_CLAIM_KINDS = {k.name for k in ClaimKind}
 _VALID_COMPENSABILITY = {"fully", "partially", "not"}
-_VALID_FAIL_POSTURES = {"open", "closed"}
+# D-M1-01: "open" (execute on an unavailable source) was removed. "closed"
+# BLOCKs; "escalate" holds the action for review and BLOCKs once the
+# escalation budget is exhausted. Neither ever executes the action.
+_VALID_FAIL_POSTURES = {"closed", "escalate"}
+_D_M1_01 = (
+    "was removed by decision D-M1-01 (docs/decisions/D-M1-01-fail-closed.md): "
+    "the gate never executes an action whose evidence is missing, unavailable or failed"
+)
 SUPPORTED_SCHEMA_VERSIONS = {1}
 
 _json_schema_cache: dict | None = None
@@ -69,6 +76,16 @@ def _validate(data: dict, name: str) -> None:
     if version not in SUPPORTED_SCHEMA_VERSIONS:
         fail(f"unsupported schema_version {version!r} "
              f"(supported: {sorted(SUPPORTED_SCHEMA_VERSIONS)})")
+
+    # D-M1-01: name the removed values explicitly, before the generic
+    # structural error, so a manifest author sees why and what to use instead.
+    for tier, value in (data.get("fail_posture") or {}).items():
+        if value == "open":
+            fail(f"'fail_posture.{tier}: open' {_D_M1_01}; use 'closed' (BLOCK) "
+                 "or 'escalate' (hold for review, BLOCK when the budget is exhausted)")
+    for verdict, value in (data.get("verdict_handling") or {}).items():
+        if value == "allow_with_caveat":
+            fail(f"'verdict_handling.{verdict}: allow_with_caveat' {_D_M1_01}; use 'escalate'")
 
     _validate_structural(data, name)
 
@@ -136,6 +153,8 @@ def active_fail_posture(manifest: dict) -> tuple[int, str]:
 
     risk_tier = int(manifest["risk_tier_default"])
     posture = manifest["fail_posture"][f"tier_{risk_tier}"]
+    if posture == "open":
+        raise ValueError(f"fail posture 'open' for tier_{risk_tier} {_D_M1_01}")
     if posture not in _VALID_FAIL_POSTURES:
         raise ValueError(f"unsupported fail posture {posture!r} for tier_{risk_tier}")
     return risk_tier, posture
