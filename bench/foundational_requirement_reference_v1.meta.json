@@ -1,0 +1,56 @@
+{
+  "reference_id": "foundational-requirement-reference-v1",
+  "task": "P3-E",
+  "purpose": "Independent reference population of candidate 'foundational requirements' for the governed tools, used to falsify or validate the P3-D recommendation that foundational requirements deserve a separate architectural layer AND to test whether a single foundational-requirement coverage percentage is a valid measurement.",
+  "frozen": true,
+  "sha256": {
+    "foundational_requirement_reference_v1.jsonl": "9a8f18b04726d6dd96f5634b2e9addc560b79f53a2312a1dae0dd433a49cadfa"
+  },
+  "n_requirements": 6,
+  "requirement_classes": {
+    "FOUNDATIONAL_REQUIREMENT": ["issue_refund::order_record_resolves", "issue_refund::order_record_fields_complete", "tau2_retail_order_action::independent_user_authentication"],
+    "ORDINARY_CLAIM": ["issue_refund::currency_integrity"],
+    "ACTION_VALIDITY_CHECK": ["issue_refund::refund_amount_well_formed"],
+    "UNCLEAR": ["tau2_retail_order_action::order_ownership_established"]
+  },
+  "definition_of_foundational_requirement": "A condition that (a) must hold before an action's claim-level verification is meaningful or possible, (b) is not an agent-attributable value-checkable assertion, (c) is evaluated on whether verification is possible rather than by comparing an asserted value to evidence, and (d) can make a set of downstream claims unevaluable at once. Operationally: a candidate is FOUNDATIONAL_REQUIREMENT only if the boundary_test answers are (agent_can_assert_value=false, evaluated_by_value_comparison=false, uses_normal_evidence_resolver=false, attributable_to_agent_assertion=false, gates_multiple_downstream_claims=true, prerequisite_for_interpreting_action=true). A candidate that can be asserted and is checked by value comparison is an ORDINARY_CLAIM missing a ClaimKind. A candidate that is a structural property of the tool call needing no evidence is an ACTION_VALIDITY_CHECK.",
+  "independence_rule": "Every requirement definition and every per-case state is authored ONLY from: docs/threat-model.md (threat ids); policy prose (the refund / authority clauses); the tool argument schema (ProposedAction structural fields); docs/gold-set-annotation.md (the human reviewer rubric); bench/label.py (an independent re-derivation of the refund rules that imports nothing from controlplane.decide / predicates / ladder / ground); bench/human_label_sample.csv (record_lookup_status); bench/gold_set.jsonl (public tool-call args); and data/orders.db (system-of-record fixture cross-check). It is authored WITHOUT: ControlPlane extraction output (build_claims / classify_claims), the P1 verification ledger, any receipt, decide() output, cached _ClaimedFields fixtures, existing verification coverage, or bench/extraction_gold_v1.jsonl foundational_requirements[]. P3-A UNREPRESENTABLE_REQUIRED and P3-B foundational_requirements[] were read only AFTER classification, as a second-annotator cross-check (recorded in reports/foundational-requirement-coverage-v1.md), never as an input.",
+  "cross_check_against_prior_authorings": {
+    "P3-A_bench_extraction_reference_UNREPRESENTABLE_REQUIRED": {
+      "issue_refund": ["currency_integrity"],
+      "note": "P3-A does NOT list order_record_resolves for any tool. P3-E classifies P3-A's currency_integrity as ORDINARY_CLAIM, not foundational."
+    },
+    "P3-B_extraction_gold_v1_foundational_requirements": {
+      "issue_refund": ["order_record_resolves (SATISFIED if FOUND else VIOLATED)", "currency_integrity (DORMANT for all 30)"],
+      "note": "P3-B's per-case order_record_resolves status is a 1:1 recode of record_lookup_status (extraction_gold_build.py:672-692). P3-E's per_case for that requirement agrees case-for-case but records determinability = DETERMINABLE_BUT_DEGENERATE for exactly this reason."
+    }
+  },
+  "per_case_corpus": {
+    "source": "bench/human_label_sample.csv",
+    "sha256": "c58a3ed172458e9cd25b2a0267f51a037ce2f7d653b7acb13aa7c15049e84550",
+    "n_cases": 30,
+    "tool": "issue_refund",
+    "record_lookup_status": {"FOUND": 26, "NO_MATCH": 4},
+    "no_match_case_ids": ["gs-129", "gs-130", "gs-133", "gs-134"]
+  },
+  "state_vocabularies": {
+    "requirement_state": ["SATISFIED", "VIOLATED", "NOT_ESTABLISHED", "NOT_APPLICABLE"],
+    "evidence_state": ["AVAILABLE", "UNAVAILABLE", "CONTRADICTORY", "NOT_REQUIRED"],
+    "note": "Two axes are kept because missing evidence != violated requirement (task section 14). BUT for order_record_resolves the two axes partly collapse: the requirement IS a statement about whether evidence could be obtained. And the current runtime cannot represent VIOLATED vs NOT_ESTABLISHED at all - see the .jsonl notes field."
+  },
+  "not_claimed": [
+    "a foundational-requirement coverage percentage",
+    "that the candidate requirement set is complete",
+    "any comparison against ControlPlane's runtime behaviour as a pass/fail of ControlPlane",
+    "a confidence interval",
+    "that measuring this population is a substitute for P1 verification coverage"
+  ],
+  "limitations": [
+    "L-ENUMERATION: the candidate set is a lower bound. P3-A never enumerated order_record_resolves for any tool; P3-B found it for issue_refund only, by construction. Absence of a foundational requirement from this list does not prove none exists.",
+    "L-ONE-TOOL-EXERCISED: only issue_refund has a per-case corpus. currency_integrity, order_record_fields_complete and refund_amount_well_formed are all DEGENERATE on that corpus (no variation, or a 1:1 recode of one construction parameter). tau2 requirements are NOT_ASSESSABLE.",
+    "L-DEGENERATE-STATUS: order_record_resolves per-case state is a deterministic function of one corpus construction parameter (record_lookup_status); see docs/retired-figures.md item 2 for the precedent this matches.",
+    "L-STATUS-JUDGEMENT: whether a missing record is VIOLATED or NOT_ESTABLISHED is a judgement call (P3-B says VIOLATED; bench/label.py + docs/gold-set-annotation.md imply NOT_ESTABLISHED / UNVERIFIABLE). The frozen reference records VIOLATED with the alternative attached in alt_reading.",
+    "L-RUNTIME-COLLAPSE: the current runtime (decide.py, receipt.py, orders.py) cannot represent the requirement_state x evidence_state matrix; a missing row, a NULL field and an unreadable source all collapse to Confidence.NONE -> SOURCE_UNRELIABLE."
+  ],
+  "reproduction": "The reference is static, hand-authored data. bench/foundational_requirement_coverage.py re-hashes it on every run and aborts on drift. bench/foundational_requirement_coverage.py --check verifies the committed reports match."
+}

@@ -1,0 +1,79 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://controlplane/bench/foundational_requirement_reference_v1.schema.json",
+  "title": "P3-E independent foundational-requirement reference record",
+  "description": "One JSON object per line of bench/foundational_requirement_reference_v1.jsonl. Each line is ONE candidate 'foundational requirement' for one governed tool (or tool family), independently classified against a reproducible boundary test, with — where the frozen P3-B issue_refund corpus can exercise it — a per-case expected requirement-state / evidence-state table. This file is a REFERENCE authored from policy prose, tool argument schema, docs/threat-model.md, docs/gold-set-annotation.md and bench/label.py (an independent re-derivation of the refund rules). It is NOT derived from ControlPlane extraction output, the P1 verification ledger, any receipt, decide() output, cached _ClaimedFields, or existing verification coverage. It is FROZEN by sha256 before any measurement (see the .meta.json).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "requirement_id", "tool_family", "tool", "requirement_name", "requirement_class",
+    "required", "load_bearing", "boundary_test", "downstream_claims_gated",
+    "expected_requirement_state_rule", "expected_evidence_state_rule",
+    "authoritative_basis", "evidence_basis", "determinability", "rationale", "notes"
+  ],
+  "properties": {
+    "requirement_id": {"type": "string", "pattern": "^[a-z0-9_]+::[a-z0-9_]+$", "description": "<tool_or_family>::<requirement_name>"},
+    "tool_family": {"enum": ["customer_servicing", "goodwill_credit", "knowledge_assistant", "tau2_retail_order_action"]},
+    "tool": {"type": "string", "description": "a specific governed tool, or '<family>' when the requirement is family-wide"},
+    "requirement_name": {"type": "string", "pattern": "^[a-z0-9_]+$"},
+    "requirement_class": {
+      "enum": ["FOUNDATIONAL_REQUIREMENT", "ORDINARY_CLAIM", "ACTION_VALIDITY_CHECK", "UNCLEAR"],
+      "description": "the P3-E classification, decided by the boundary_test below — NOT by the requirement's name and NOT by whether P3-A/P3-B previously filed it under foundational_requirements[]"
+    },
+    "required": {"type": "boolean", "description": "a correct verifier of this tool must account for this condition"},
+    "load_bearing": {"type": ["boolean", "null"], "description": "the action's safety materially depends on this condition; null when not applicable (e.g. a pure structural-validity check)"},
+    "boundary_test": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "task P3-E section 12 — the formal claim vs precondition vs action-validity boundary test. Each answer is a fact about how the condition is (or would be) evaluated, cited in evidence_basis.",
+      "required": ["agent_can_assert_value", "evaluated_by_value_comparison", "uses_normal_evidence_resolver", "attributable_to_agent_assertion", "gates_multiple_downstream_claims", "prerequisite_for_interpreting_action"],
+      "properties": {
+        "agent_can_assert_value": {"type": "boolean"},
+        "evaluated_by_value_comparison": {"type": "boolean"},
+        "uses_normal_evidence_resolver": {"type": "boolean"},
+        "attributable_to_agent_assertion": {"type": "boolean"},
+        "gates_multiple_downstream_claims": {"type": "boolean"},
+        "prerequisite_for_interpreting_action": {"type": "boolean"}
+      }
+    },
+    "downstream_claims_gated": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "ClaimKind names whose verification becomes impossible/meaningless if this requirement is not met. Empty for ORDINARY_CLAIM / ACTION_VALIDITY_CHECK. Counted ONCE per requirement, never once per downstream claim."
+    },
+    "expected_requirement_state_rule": {"type": "string", "description": "the reproducible rule mapping observable facts -> {SATISFIED, VIOLATED, NOT_ESTABLISHED, NOT_APPLICABLE}"},
+    "expected_evidence_state_rule": {"type": "string", "description": "the reproducible rule mapping observable facts -> {AVAILABLE, UNAVAILABLE, CONTRADICTORY, NOT_REQUIRED}"},
+    "authoritative_basis": {
+      "type": "array", "minItems": 1,
+      "items": {"type": "string"},
+      "description": "where the REQUIREMENT comes from: policy prose, a threat-model threat id, an action-semantics statement, a tool-arg-schema field, or a repo doc. Never a manifest claim_binding, never controlplane/ code behaviour."
+    },
+    "evidence_basis": {
+      "type": "array", "minItems": 1,
+      "items": {"type": "string"},
+      "description": "where the per-case STATE is read from: a human_label_sample.csv column, a gold_set.jsonl tool-call arg, a data/orders.db fixture cross-check, or bench/label.py. Never the P1 ledger / receipt / decide() output."
+    },
+    "determinability": {
+      "enum": ["DETERMINABLE", "DETERMINABLE_BUT_DEGENERATE", "NOT_ASSESSABLE"],
+      "description": "DETERMINABLE: an independent observer can fix the per-case state from the cited evidence, and the state varies with something other than one corpus construction parameter. DETERMINABLE_BUT_DEGENERATE: the per-case state is fixable but is a 1:1 recode of a single corpus construction parameter (task section 21 — denominator/identity concern). NOT_ASSESSABLE: no evidence channel exists in the integration as built (task section 16 — conceptually representable != runtime assessable)."
+    },
+    "rationale": {"type": "string", "minLength": 1},
+    "notes": {"type": "string", "minLength": 1},
+    "per_case": {
+      "type": "array",
+      "description": "present only for requirements the frozen 30-case P3-B issue_refund corpus can exercise. One entry per case_id in bench/human_label_sample.csv.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["case_id", "requirement_state", "evidence_state", "basis"],
+        "properties": {
+          "case_id": {"type": "string", "pattern": "^gs-[0-9]{3}$"},
+          "requirement_state": {"enum": ["SATISFIED", "VIOLATED", "NOT_ESTABLISHED", "NOT_APPLICABLE"]},
+          "evidence_state": {"enum": ["AVAILABLE", "UNAVAILABLE", "CONTRADICTORY", "NOT_REQUIRED"]},
+          "basis": {"type": "string", "minLength": 1},
+          "alt_reading": {"type": "string", "description": "a defensible alternative state a different independent annotator would assign, when one exists — task section 21 test D (status corruption / judgement sensitivity)"}
+        }
+      }
+    }
+  }
+}

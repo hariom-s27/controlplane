@@ -1,0 +1,731 @@
+{
+  "boundary_test_results": [
+    {
+      "boundary_test": {
+        "agent_can_assert_value": false,
+        "attributable_to_agent_assertion": false,
+        "evaluated_by_value_comparison": false,
+        "gates_multiple_downstream_claims": true,
+        "prerequisite_for_interpreting_action": true,
+        "uses_normal_evidence_resolver": false
+      },
+      "determinability": "DETERMINABLE_BUT_DEGENERATE",
+      "downstream_claims_gated_count": 4,
+      "load_bearing": true,
+      "one_line": "order_record_resolves fails every test for being a Claim (schema.",
+      "requirement_class": "FOUNDATIONAL_REQUIREMENT",
+      "requirement_id": "issue_refund::order_record_resolves"
+    },
+    {
+      "boundary_test": {
+        "agent_can_assert_value": true,
+        "attributable_to_agent_assertion": true,
+        "evaluated_by_value_comparison": true,
+        "gates_multiple_downstream_claims": false,
+        "prerequisite_for_interpreting_action": false,
+        "uses_normal_evidence_resolver": true
+      },
+      "determinability": "DETERMINABLE_BUT_DEGENERATE",
+      "downstream_claims_gated_count": 0,
+      "load_bearing": true,
+      "one_line": "currency_integrity is NOT structurally foundational.",
+      "requirement_class": "ORDINARY_CLAIM",
+      "requirement_id": "issue_refund::currency_integrity"
+    },
+    {
+      "boundary_test": {
+        "agent_can_assert_value": false,
+        "attributable_to_agent_assertion": false,
+        "evaluated_by_value_comparison": false,
+        "gates_multiple_downstream_claims": true,
+        "prerequisite_for_interpreting_action": true,
+        "uses_normal_evidence_resolver": false
+      },
+      "determinability": "DETERMINABLE_BUT_DEGENERATE",
+      "downstream_claims_gated_count": 4,
+      "load_bearing": true,
+      "one_line": "A row that exists but cannot carry the decision is presuppositional in the same way a missing row is \u2014 you cannot verify ownership if customer_id is NULL.",
+      "requirement_class": "FOUNDATIONAL_REQUIREMENT",
+      "requirement_id": "issue_refund::order_record_fields_complete"
+    },
+    {
+      "boundary_test": {
+        "agent_can_assert_value": true,
+        "attributable_to_agent_assertion": true,
+        "evaluated_by_value_comparison": false,
+        "gates_multiple_downstream_claims": false,
+        "prerequisite_for_interpreting_action": true,
+        "uses_normal_evidence_resolver": false
+      },
+      "determinability": "DETERMINABLE_BUT_DEGENERATE",
+      "downstream_claims_gated_count": 0,
+      "load_bearing": true,
+      "one_line": "Included to make the action-validity boundary explicit (task section 18).",
+      "requirement_class": "ACTION_VALIDITY_CHECK",
+      "requirement_id": "issue_refund::refund_amount_well_formed"
+    },
+    {
+      "boundary_test": {
+        "agent_can_assert_value": false,
+        "attributable_to_agent_assertion": false,
+        "evaluated_by_value_comparison": false,
+        "gates_multiple_downstream_claims": true,
+        "prerequisite_for_interpreting_action": true,
+        "uses_normal_evidence_resolver": false
+      },
+      "determinability": "NOT_ASSESSABLE",
+      "downstream_claims_gated_count": 2,
+      "load_bearing": true,
+      "one_line": "Conceptually a genuine foundational precondition (the actor must be who they claim to be before any order action is meaningful), but NOT runtime assessable: no evidence channel exists in the tau2 integration.",
+      "requirement_class": "FOUNDATIONAL_REQUIREMENT",
+      "requirement_id": "tau2_retail_order_action::independent_user_authentication"
+    },
+    {
+      "boundary_test": {
+        "agent_can_assert_value": true,
+        "attributable_to_agent_assertion": true,
+        "evaluated_by_value_comparison": true,
+        "gates_multiple_downstream_claims": false,
+        "prerequisite_for_interpreting_action": true,
+        "uses_normal_evidence_resolver": true
+      },
+      "determinability": "NOT_ASSESSABLE",
+      "downstream_claims_gated_count": 0,
+      "load_bearing": true,
+      "one_line": "This is a REPRESENTABLE claim (it has a ClaimKind) that is merely UNBOUND in the tau2 integration.",
+      "requirement_class": "UNCLEAR",
+      "requirement_id": "tau2_retail_order_action::order_ownership_established"
+    }
+  ],
+  "candidate_metric_validity": {
+    "candidate_definition": "satisfied load-bearing foundational preconditions / required load-bearing foundational preconditions (NOT_APPLICABLE excluded from the denominator)",
+    "frozen_breakdown": {
+      "coverage": 0.928571,
+      "coverage_na": false,
+      "denominator_excludes_not_applicable": 56,
+      "n_requirements": 2,
+      "observations": 60,
+      "requirements_counted": [
+        "issue_refund::order_record_fields_complete",
+        "issue_refund::order_record_resolves"
+      ],
+      "satisfied": 52,
+      "state_distribution": {
+        "NOT_APPLICABLE": 4,
+        "SATISFIED": 52,
+        "VIOLATED": 4
+      }
+    },
+    "frozen_value": null,
+    "frozen_value_note": "N/A - zero requirements are non-degenerately assessable. Every FOUNDATIONAL_REQUIREMENT is either DETERMINABLE_BUT_DEGENERATE or NOT_ASSESSABLE, so there is no honest aggregate to report.",
+    "p3d_section12_alternative_form": {
+      "definition": "required foundational preconditions with a KNOWN status / required foundational preconditions",
+      "value": 0.666667,
+      "verdict": "also invalid - it measures how many requirements the reference author managed to assess (fixed by the authoring), not anything about ControlPlane. Same failure mode as the retired coverage_ratio (docs/retired-figures.md item 5)."
+    },
+    "reasons": [
+      "R1 DEGENERATE: the only assessable load-bearing foundational requirement with any variation (order_record_resolves) has a per-case state that is a 1:1 recode of one corpus construction parameter (record_lookup_status). The aggregate value equals 1 - (record-unresolved slice fraction) by construction and cannot fail for a reason not baked into corpus sampling. This is the pattern docs/retired-figures.md item 2 retired.",
+      "R2 UNEXERCISABLE HEADLINE EXAMPLE: currency_integrity - the second requirement P3-D leans on - is DORMANT on 30/30 cases (every tool call and every orders.db row is INR) and is ORDINARY_CLAIM-shaped by the boundary test, not foundational.",
+      "R3 NON-COMPARABLE ACROSS TOOLS: issue_refund has 1 assessable requirement; tau2 has 0 assessable; send_document has 0. '100% (1/1)' and 'N/A (0/0)' are not the same kind of quantity.",
+      "R4 DENOMINATOR NOT INDEPENDENTLY ENUMERABLE: P3-A never listed order_record_resolves; P3-B found it for issue_refund only, by construction. The candidate set is an open lower bound, so the denominator is not a fixed population.",
+      "R5 MANIPULABLE: gaming tests B (remove the failing requirement -> 100%/N/A) and D (VIOLATED -> SATISFIED -> 100%) both move the metric with no change to case safety, and D is a defensible re-reading rather than an adversarial edit.",
+      "R6 CATEGORY INCOHERENT: the 6 candidates split across FOUNDATIONAL_REQUIREMENT (3, one of them NOT_ASSESSABLE), ORDINARY_CLAIM (1), ACTION_VALIDITY_CHECK (1), UNCLEAR (1). A single ratio would average over structurally different things."
+    ],
+    "value_if_computed_anyway": {
+      "note": "these two differ (86.7% vs 92.9%) only because the second requirement is always-satisfied - that gap IS the denominator-sensitivity problem, not a measurement.",
+      "single_requirement_order_record_resolves": 0.866667,
+      "two_assessable_foundational_requirements": 0.928571
+    },
+    "verdict": "INVALID",
+    "what_is_valid_instead": "A deterministic per-requirement observability report (per_requirement_observability above) plus a per-case causal annotation on P1 unavailability (p1_x_foundational_matrix.per_case). Neither is a percentage."
+  },
+  "carried_forward_unchanged": [
+    "approve_discount / AMOUNT_NOT_EXCEEDING_ORDER = NEEDS_HUMAN_DECISION",
+    "tau2 / ORDER_BELONGS_TO_CUSTOMER = REQUIRED_BUT_UNREPRESENTABLE",
+    "refund day-7 inclusion = AMBIGUOUS",
+    "gs-145..150 post-window disposition = BLOCK|ESCALATE unresolved"
+  ],
+  "cross_tool_comparability": {
+    "by_family": {
+      "customer_servicing": {
+        "assessable": [
+          "issue_refund::order_record_resolves",
+          "issue_refund::order_record_fields_complete"
+        ],
+        "foundational": [
+          "issue_refund::order_record_resolves",
+          "issue_refund::order_record_fields_complete"
+        ],
+        "not_assessable": [],
+        "other_class": [
+          "issue_refund::currency_integrity (ORDINARY_CLAIM)",
+          "issue_refund::refund_amount_well_formed (ACTION_VALIDITY_CHECK)"
+        ]
+      },
+      "tau2_retail_order_action": {
+        "assessable": [],
+        "foundational": [
+          "tau2_retail_order_action::independent_user_authentication"
+        ],
+        "not_assessable": [
+          "tau2_retail_order_action::independent_user_authentication"
+        ],
+        "other_class": [
+          "tau2_retail_order_action::order_ownership_established (UNCLEAR)"
+        ]
+      }
+    },
+    "finding": "issue_refund has 1 assessable load-bearing foundational requirement; the tau2 family has 0 assessable (1 NOT_ASSESSABLE + 1 already-counted-by-P3-A binding gap); send_document has none. A percentage of '100% (1/1)' for issue_refund and 'N/A (0/0)' for tau2 and send_document are not comparable quantities - they do not answer the same question and cannot be ranked.",
+    "send_document_negative_control": "bench/extraction_reference.py UNREPRESENTABLE_REQUIRED has NO entry for send_document; P3-D section 16 confirms its two required kinds are both bound and representable. A foundational-coverage % for send_document is 0/0 = N/A."
+  },
+  "definition_of_foundational_requirement": "A condition that (a) must hold before an action's claim-level verification is meaningful or possible, (b) is not an agent-attributable value-checkable assertion, (c) is evaluated on whether verification is possible rather than by comparing an asserted value to evidence, and (d) can make a set of downstream claims unevaluable at once. Operationally: a candidate is FOUNDATIONAL_REQUIREMENT only if the boundary_test answers are (agent_can_assert_value=false, evaluated_by_value_comparison=false, uses_normal_evidence_resolver=false, attributable_to_agent_assertion=false, gates_multiple_downstream_claims=true, prerequisite_for_interpreting_action=true). A candidate that can be asserted and is checked by value comparison is an ORDINARY_CLAIM missing a ClaimKind. A candidate that is a structural property of the tool call needing no evidence is an ACTION_VALIDITY_CHECK.",
+  "degeneracy_proof": {
+    "candidate_coverage_equals_1_minus_slice_fraction": 0.866667,
+    "construction_parameter_source": "bench/extraction_gold_v1.meta.json counts.by_difficulty_class.record_unresolved_escalate = 4",
+    "n_cases": 30,
+    "n_record_unresolved": 4,
+    "per_case_state_is_bit_identical_to_record_lookup_status": true,
+    "precedent": "docs/retired-figures.md item 2 (order_id cross-validation): 'the detector recomputed that same boolean from the same fields ... an identity, not a measurement. The 75% baseline was 1 - P(wrong resolution) read straight off the generator's coin flips.'",
+    "requirement": "issue_refund::order_record_resolves",
+    "slice_fraction_is_a_corpus_construction_parameter": true,
+    "verdict": "DEGENERATE - the metric cannot fail for any reason not baked into how the 30 cases were sampled; it measures corpus composition, not ControlPlane."
+  },
+  "disposition": "COMPLETE - ARCHITECTURE VALID (descriptive-only, as P3-D Option B) BUT SINGLE COVERAGE PERCENTAGE INVALID",
+  "frozen_clock": "2026-08-14",
+  "frozen_p3b_gold_sha256_untouched": "79b209523bfc806e3495ac321abdcf9af2764a9f369e8949c496dd9ea6c8c56d",
+  "frozen_reference_sha256": "9a8f18b04726d6dd96f5634b2e9addc560b79f53a2312a1dae0dd433a49cadfa",
+  "metric_gaming_tests": [
+    {
+      "action": "add issue_refund::order_record_fields_complete (SATISFIED on all 26 FOUND, NOT_APPLICABLE on 4) to a pool that was just {order_record_resolves}",
+      "after": 0.928571,
+      "before": 0.866667,
+      "finding": "the aggregate % moves purely because the denominator grew with an always-satisfied check - denominator-sensitive.",
+      "metric_changed": true,
+      "should_case_safety_have_changed": false,
+      "test": "A_add_required_requirement"
+    },
+    {
+      "action": "drop issue_refund::order_record_resolves from the frozen pool",
+      "after": 1.0,
+      "before": 0.928571,
+      "finding": "removing the only requirement that is ever VIOLATED makes the metric read 100%/N/A - pure denominator manipulation, and nothing stops a manifest author doing it.",
+      "metric_changed": true,
+      "should_case_safety_have_changed": false,
+      "test": "B_remove_the_failing_requirement"
+    },
+    {
+      "action": "append a second copy of issue_refund::order_record_resolves",
+      "after": 0.928571,
+      "before": 0.928571,
+      "finding": "the metric dedupes by requirement_id so the ratio is unchanged - counting-once works - but a naive implementation that counted per row would halve the score.",
+      "metric_changed": false,
+      "n_requirements_after": 2,
+      "n_requirements_before": 2,
+      "should_case_safety_have_changed": false,
+      "test": "C_duplicate_a_requirement"
+    },
+    {
+      "action": "flip order_record_resolves gs-129/130/133/134 from VIOLATED to SATISFIED",
+      "after": 1.0,
+      "before": 0.928571,
+      "finding": "status corruption inflates the metric directly to 1.0; and because VIOLATED-vs-NOT_ESTABLISHED is itself a judgement call (P3-B says VIOLATED, bench/label.py implies NOT_ESTABLISHED), this is not even an adversarial edit - it is a defensible re-reading.",
+      "metric_changed": true,
+      "should_case_safety_have_changed": false,
+      "test": "D_status_corruption"
+    },
+    {
+      "action": "reclassify currency_integrity as foundational (as P3-A/P3-B do), then flip its 4 NOT_ESTABLISHED to SATISFIED",
+      "after": 0.953488,
+      "before": 0.906977,
+      "finding": "relabelling 'evidence unavailable' as 'requirement satisfied' inflates the metric; the two-axis model is supposed to prevent this but nothing enforces the axis separation.",
+      "metric_changed": true,
+      "should_case_safety_have_changed": false,
+      "test": "E_unavailable_evidence_relabelled_satisfied"
+    },
+    {
+      "action": "remove one ClaimKind from order_record_resolves.downstream_claims_gated (4 -> 3)",
+      "after": 0.928571,
+      "before": 0.928571,
+      "finding": "no change - the requirement is counted once regardless of how many claims it gates. Correct behaviour, and the reason task section 22 forbids weighting by downstream-claim count.",
+      "metric_changed": false,
+      "should_case_safety_have_changed": false,
+      "test": "F_drop_downstream_dependency"
+    }
+  ],
+  "n_requirements": 6,
+  "p1_x_foundational_matrix": {
+    "cells": {
+      "P1<100 & FR!=SAT": {
+        "case_ids": [
+          "gs-129",
+          "gs-130",
+          "gs-133",
+          "gs-134"
+        ],
+        "n": 4
+      },
+      "P1<100 & FR=SAT": {
+        "case_ids": [
+          "gs-005",
+          "gs-009",
+          "gs-011",
+          "gs-016",
+          "gs-027",
+          "gs-031",
+          "gs-035",
+          "gs-040",
+          "gs-045",
+          "gs-052",
+          "gs-056",
+          "gs-059",
+          "gs-067",
+          "gs-088",
+          "gs-093",
+          "gs-111",
+          "gs-141",
+          "gs-142",
+          "gs-143",
+          "gs-144",
+          "gs-145",
+          "gs-146",
+          "gs-147",
+          "gs-148",
+          "gs-149",
+          "gs-150"
+        ],
+        "n": 26
+      },
+      "P1=100 & FR!=SAT": {
+        "case_ids": [],
+        "n": 0
+      },
+      "P1=100 & FR=SAT": {
+        "case_ids": [],
+        "n": 0
+      }
+    },
+    "interpretation": {
+      "P1<100 & FR!=SAT": "the 4 missing-record cases. P1 is ~29% AND the record precondition failed. The foundational line explains WHY 4 of the 5 unverified claims are unverified - a per-case causal annotation, not a coverage number.",
+      "P1<100 & FR=SAT": "some modelled claims were not verified for a reason unrelated to the record precondition (here: C3 CLAUSE_SEMANTICS_MATCH is UNVERIFIED with grounding off, or a genuine contradiction on a window/authority claim). The foundational layer adds nothing on these cases.",
+      "P1=100 & FR!=SAT": "did not occur in this corpus and CANNOT for issue_refund: a missing record forces >=4 of 7 load-bearing claims to UNAVAILABLE, so P1 cannot reach 100%. This is why the P3-C silent-pass count is 0 realized.",
+      "P1=100 & FR=SAT": "the modelled load-bearing claim set was fully verified AND the record precondition held. NOT demonstrated: unmodelled claims (P3-A), assertion-value accuracy, record correctness, C3 semantics."
+    },
+    "per_case": [
+      {
+        "case_id": "gs-005",
+        "foundational_evidence_state": "AVAILABLE",
+        "foundational_order_record_resolves": "SATISFIED",
+        "p1_coverage": 0.857143,
+        "p1_intervention": "ALLOW",
+        "p1_unavailable_claim_kinds": [],
+        "p1_verified_eligible": "6/7"
+      },
+      {
+        "case_id": "gs-009",
+        "foundational_evidence_state": "AVAILABLE",
+        "foundational_order_record_resolves": "SATISFIED",
+        "p1_coverage": 0.857143,
+        "p1_intervention": "ALLOW",
+        "p1_unavailable_claim_kinds": [],
+        "p1_verified_eligible": "6/7"
+      },
+      {
+        "case_id": "gs-011",
+        "foundational_evidence_state": "AVAILABLE",
+        "foundational_order_record_resolves": "SATISFIED",
+        "p1_coverage": 0.857143,
+        "p1_intervention": "ALLOW",
+        "p1_unavailable_claim_kinds": [],
+        "p1_verified_eligible": "6/7"
+      },
+      {
+        "case_id": "gs-016",
+        "foundational_evidence_state": "AVAILABLE",
+        "foundational_order_record_resolves": "SATISFIED",
+        "p1_coverage": 0.857143,
+        "p1_intervention": "ALLOW",
+        "p1_unavailable_claim_kinds": [],
+        "p1_verified_eligible": "6/7"
+      },
+      {
+        "case_id": "gs-027",
+        "foundational_evidence_state": "AVAILABLE",
+        "foundational_order_record_resolves": "SATISFIED",
+        "p1_coverage": 0.857143,
+        "p1_intervention": "ALLOW",
+        "p1_unavailable_claim_kinds": [],
+        "p1_verified_eligible": "6/7"
+      },
+      {
+        "case_id": "gs-031",
+        "foundational_evidence_state": "AVAILABLE",
+        "foundational_order_record_resolves": "SATISFIED",
+        "p1_coverage": 0.857143,
+        "p1_intervention": "ALLOW",
+        "p1_unavailable_claim_kinds": [],
+        "p1_verified_eligible": "6/7"
+      },
+      {
+        "case_id": "gs-035",
+        "foundational_evidence_state": "AVAILABLE",
+        "foundational_order_record_resolves": "SATISFIED",
+        "p1_coverage": 0.857143,
+        "p1_intervention": "ALLOW",
+        "p1_unavailable_claim_kinds": [],
+        "p1_verified_eligible": "6/7"
+      },
+      {
+        "case_id": "gs-040",
+        "foundational_evidence_state": "AVAILABLE",
+        "foundational_order_record_resolves": "SATISFIED",
+        "p1_coverage": 0.857143,
+        "p1_intervention": "ALLOW",
+        "p1_unavailable_claim_kinds": [],
+        "p1_verified_eligible": "6/7"
+      },
+      {
+        "case_id": "gs-045",
+        "foundational_evidence_state": "AVAILABLE",
+        "foundational_order_record_resolves": "SATISFIED",
+        "p1_coverage": 0.857143,
+        "p1_intervention": "ALLOW",
+        "p1_unavailable_claim_kinds": [],
+        "p1_verified_eligible": "6/7"
+      },
+      {
+        "case_id": "gs-052",
+        "foundational_evidence_state": "AVAILABLE",
+        "foundational_order_record_resolves": "SATISFIED",
+        "p1_coverage": 0.571429,
+        "p1_intervention": "BLOCK",
+        "p1_unavailable_claim_kinds": [],
+        "p1_verified_eligible": "4/7"
+      },
+      {
+        "case_id": "gs-056",
+        "foundational_evidence_state": "AVAILABLE",
+        "foundational_order_record_resolves": "SATISFIED",
+        "p1_coverage": 0.571429,
+        "p1_intervention": "BLOCK",
+        "p1_unavailable_claim_kinds": [],
+        "p1_verified_eligible": "4/7"
+      },
+      {
+        "case_id": "gs-059",
+        "foundational_evidence_state": "AVAILABLE",
+        "foundational_order_record_resolves": "SATISFIED",
+        "p1_coverage": 0.571429,
+        "p1_intervention": "BLOCK",
+        "p1_unavailable_claim_kinds": [],
+        "p1_verified_eligible": "4/7"
+      },
+      {
+        "case_id": "gs-067",
+        "foundational_evidence_state": "AVAILABLE",
+        "foundational_order_record_resolves": "SATISFIED",
+        "p1_coverage": 0.571429,
+        "p1_intervention": "BLOCK",
+        "p1_unavailable_claim_kinds": [],
+        "p1_verified_eligible": "4/7"
+      },
+      {
+        "case_id": "gs-088",
+        "foundational_evidence_state": "AVAILABLE",
+        "foundational_order_record_resolves": "SATISFIED",
+        "p1_coverage": 0.571429,
+        "p1_intervention": "BLOCK",
+        "p1_unavailable_claim_kinds": [],
+        "p1_verified_eligible": "4/7"
+      },
+      {
+        "case_id": "gs-093",
+        "foundational_evidence_state": "AVAILABLE",
+        "foundational_order_record_resolves": "SATISFIED",
+        "p1_coverage": 0.571429,
+        "p1_intervention": "BLOCK",
+        "p1_unavailable_claim_kinds": [],
+        "p1_verified_eligible": "4/7"
+      },
+      {
+        "case_id": "gs-111",
+        "foundational_evidence_state": "AVAILABLE",
+        "foundational_order_record_resolves": "SATISFIED",
+        "p1_coverage": 0.714286,
+        "p1_intervention": "BLOCK",
+        "p1_unavailable_claim_kinds": [],
+        "p1_verified_eligible": "5/7"
+      },
+      {
+        "case_id": "gs-129",
+        "foundational_evidence_state": "UNAVAILABLE",
+        "foundational_order_record_resolves": "VIOLATED",
+        "p1_coverage": 0.285714,
+        "p1_intervention": "ESCALATE",
+        "p1_unavailable_claim_kinds": [
+          "amount_not_exceeding_order",
+          "order_attributes_match",
+          "order_belongs_to_customer",
+          "within_refund_window"
+        ],
+        "p1_verified_eligible": "2/7"
+      },
+      {
+        "case_id": "gs-130",
+        "foundational_evidence_state": "UNAVAILABLE",
+        "foundational_order_record_resolves": "VIOLATED",
+        "p1_coverage": 0.285714,
+        "p1_intervention": "ESCALATE",
+        "p1_unavailable_claim_kinds": [
+          "amount_not_exceeding_order",
+          "order_attributes_match",
+          "order_belongs_to_customer",
+          "within_refund_window"
+        ],
+        "p1_verified_eligible": "2/7"
+      },
+      {
+        "case_id": "gs-133",
+        "foundational_evidence_state": "UNAVAILABLE",
+        "foundational_order_record_resolves": "VIOLATED",
+        "p1_coverage": 0.285714,
+        "p1_intervention": "ESCALATE",
+        "p1_unavailable_claim_kinds": [
+          "amount_not_exceeding_order",
+          "order_attributes_match",
+          "order_belongs_to_customer",
+          "within_refund_window"
+        ],
+        "p1_verified_eligible": "2/7"
+      },
+      {
+        "case_id": "gs-134",
+        "foundational_evidence_state": "UNAVAILABLE",
+        "foundational_order_record_resolves": "VIOLATED",
+        "p1_coverage": 0.285714,
+        "p1_intervention": "ESCALATE",
+        "p1_unavailable_claim_kinds": [
+          "amount_not_exceeding_order",
+          "order_attributes_match",
+          "order_belongs_to_customer",
+          "within_refund_window"
+        ],
+        "p1_verified_eligible": "2/7"
+      },
+      {
+        "case_id": "gs-141",
+        "foundational_evidence_state": "AVAILABLE",
+        "foundational_order_record_resolves": "SATISFIED",
+        "p1_coverage": 0.857143,
+        "p1_intervention": "ALLOW",
+        "p1_unavailable_claim_kinds": [],
+        "p1_verified_eligible": "6/7"
+      },
+      {
+        "case_id": "gs-142",
+        "foundational_evidence_state": "AVAILABLE",
+        "foundational_order_record_resolves": "SATISFIED",
+        "p1_coverage": 0.857143,
+        "p1_intervention": "ALLOW",
+        "p1_unavailable_claim_kinds": [],
+        "p1_verified_eligible": "6/7"
+      },
+      {
+        "case_id": "gs-143",
+        "foundational_evidence_state": "AVAILABLE",
+        "foundational_order_record_resolves": "SATISFIED",
+        "p1_coverage": 0.857143,
+        "p1_intervention": "ALLOW",
+        "p1_unavailable_claim_kinds": [],
+        "p1_verified_eligible": "6/7"
+      },
+      {
+        "case_id": "gs-144",
+        "foundational_evidence_state": "AVAILABLE",
+        "foundational_order_record_resolves": "SATISFIED",
+        "p1_coverage": 0.857143,
+        "p1_intervention": "ALLOW",
+        "p1_unavailable_claim_kinds": [],
+        "p1_verified_eligible": "6/7"
+      },
+      {
+        "case_id": "gs-145",
+        "foundational_evidence_state": "AVAILABLE",
+        "foundational_order_record_resolves": "SATISFIED",
+        "p1_coverage": 0.714286,
+        "p1_intervention": "BLOCK",
+        "p1_unavailable_claim_kinds": [],
+        "p1_verified_eligible": "5/7"
+      },
+      {
+        "case_id": "gs-146",
+        "foundational_evidence_state": "AVAILABLE",
+        "foundational_order_record_resolves": "SATISFIED",
+        "p1_coverage": 0.714286,
+        "p1_intervention": "BLOCK",
+        "p1_unavailable_claim_kinds": [],
+        "p1_verified_eligible": "5/7"
+      },
+      {
+        "case_id": "gs-147",
+        "foundational_evidence_state": "AVAILABLE",
+        "foundational_order_record_resolves": "SATISFIED",
+        "p1_coverage": 0.714286,
+        "p1_intervention": "BLOCK",
+        "p1_unavailable_claim_kinds": [],
+        "p1_verified_eligible": "5/7"
+      },
+      {
+        "case_id": "gs-148",
+        "foundational_evidence_state": "AVAILABLE",
+        "foundational_order_record_resolves": "SATISFIED",
+        "p1_coverage": 0.714286,
+        "p1_intervention": "BLOCK",
+        "p1_unavailable_claim_kinds": [],
+        "p1_verified_eligible": "5/7"
+      },
+      {
+        "case_id": "gs-149",
+        "foundational_evidence_state": "AVAILABLE",
+        "foundational_order_record_resolves": "SATISFIED",
+        "p1_coverage": 0.714286,
+        "p1_intervention": "BLOCK",
+        "p1_unavailable_claim_kinds": [],
+        "p1_verified_eligible": "5/7"
+      },
+      {
+        "case_id": "gs-150",
+        "foundational_evidence_state": "AVAILABLE",
+        "foundational_order_record_resolves": "SATISFIED",
+        "p1_coverage": 0.714286,
+        "p1_intervention": "BLOCK",
+        "p1_unavailable_claim_kinds": [],
+        "p1_verified_eligible": "5/7"
+      }
+    ]
+  },
+  "per_requirement_observability": [
+    {
+      "alt_reading_present_on_any_case": true,
+      "counted_in_candidate_metric": true,
+      "determinability": "DETERMINABLE_BUT_DEGENERATE",
+      "evidence_state_distribution": {
+        "AVAILABLE": 26,
+        "UNAVAILABLE": 4
+      },
+      "has_any_variation": true,
+      "load_bearing": true,
+      "n_cases_observed": 30,
+      "required": true,
+      "requirement_class": "FOUNDATIONAL_REQUIREMENT",
+      "requirement_id": "issue_refund::order_record_resolves",
+      "requirement_state_distribution": {
+        "SATISFIED": 26,
+        "VIOLATED": 4
+      }
+    },
+    {
+      "alt_reading_present_on_any_case": true,
+      "counted_in_candidate_metric": false,
+      "determinability": "DETERMINABLE_BUT_DEGENERATE",
+      "evidence_state_distribution": {
+        "AVAILABLE": 26,
+        "UNAVAILABLE": 4
+      },
+      "has_any_variation": true,
+      "load_bearing": true,
+      "n_cases_observed": 30,
+      "required": true,
+      "requirement_class": "ORDINARY_CLAIM",
+      "requirement_id": "issue_refund::currency_integrity",
+      "requirement_state_distribution": {
+        "NOT_ESTABLISHED": 4,
+        "SATISFIED": 26
+      }
+    },
+    {
+      "alt_reading_present_on_any_case": false,
+      "counted_in_candidate_metric": true,
+      "determinability": "DETERMINABLE_BUT_DEGENERATE",
+      "evidence_state_distribution": {
+        "AVAILABLE": 26,
+        "NOT_REQUIRED": 4
+      },
+      "has_any_variation": true,
+      "load_bearing": true,
+      "n_cases_observed": 30,
+      "required": true,
+      "requirement_class": "FOUNDATIONAL_REQUIREMENT",
+      "requirement_id": "issue_refund::order_record_fields_complete",
+      "requirement_state_distribution": {
+        "NOT_APPLICABLE": 4,
+        "SATISFIED": 26
+      }
+    },
+    {
+      "alt_reading_present_on_any_case": false,
+      "counted_in_candidate_metric": false,
+      "determinability": "DETERMINABLE_BUT_DEGENERATE",
+      "evidence_state_distribution": {
+        "AVAILABLE": 30
+      },
+      "has_any_variation": false,
+      "load_bearing": true,
+      "n_cases_observed": 30,
+      "required": true,
+      "requirement_class": "ACTION_VALIDITY_CHECK",
+      "requirement_id": "issue_refund::refund_amount_well_formed",
+      "requirement_state_distribution": {
+        "SATISFIED": 30
+      }
+    },
+    {
+      "alt_reading_present_on_any_case": false,
+      "counted_in_candidate_metric": false,
+      "determinability": "NOT_ASSESSABLE",
+      "evidence_state_distribution": {},
+      "has_any_variation": false,
+      "load_bearing": true,
+      "n_cases_observed": 0,
+      "required": true,
+      "requirement_class": "FOUNDATIONAL_REQUIREMENT",
+      "requirement_id": "tau2_retail_order_action::independent_user_authentication",
+      "requirement_state_distribution": {}
+    },
+    {
+      "alt_reading_present_on_any_case": false,
+      "counted_in_candidate_metric": false,
+      "determinability": "NOT_ASSESSABLE",
+      "evidence_state_distribution": {},
+      "has_any_variation": false,
+      "load_bearing": true,
+      "n_cases_observed": 0,
+      "required": true,
+      "requirement_class": "UNCLEAR",
+      "requirement_id": "tau2_retail_order_action::order_ownership_established",
+      "requirement_state_distribution": {}
+    }
+  ],
+  "reproduction_command": "python bench/foundational_requirement_coverage.py --write",
+  "second_annotator_cross_check": {
+    "P3A_lists_order_record_resolves": false,
+    "P3B_currency_integrity": "DORMANT for all 30 - agrees the check is unexercised; P3-E additionally reclassifies it ORDINARY_CLAIM",
+    "P3B_order_record_resolves_status_rule": "SATISFIED if record_lookup_status==FOUND else VIOLATED (extraction_gold_build.py:672-692) - agrees case-for-case with the frozen reference",
+    "P3E_agreement_with_P3B_on_order_record_resolves_per_case": true,
+    "note": "P3-A UNREPRESENTABLE_REQUIRED and P3-B foundational_requirements[] were read only AFTER classification."
+  },
+  "silent_pass": {
+    "does_the_foundational_layer_expose_the_gap_more_clearly_than_p1_alone": "MARGINALLY. P1's per-case ledger already shows 4 claims as UNAVAILABLE with reason 'authoritative_lookup_empty'. The foundational layer names the single shared cause ('order_record_resolves: VIOLATED') instead of leaving it as an inference from 4 rows plus a receipt verdict (SOURCE_UNRELIABLE) and root_cause (evidence_below_reliability_floor) that both point at 'bad data' rather than 'absent record'. That is a per-case audit-trail improvement, not a coverage metric, and it does not change the 0 realized count.",
+    "matches_p3c": true,
+    "realized_opportunity_case_ids": [],
+    "realized_opportunity_count": 0,
+    "structural_gap_case_ids": [
+      "gs-129",
+      "gs-130",
+      "gs-133",
+      "gs-134"
+    ],
+    "structural_gap_count": 4
+  },
+  "task": "P3E_FOUNDATIONAL_REQUIREMENT_COVERAGE",
+  "what_this_is": "Falsification of the P3-D separate-foundational-layer recommendation and of a candidate foundational-requirement coverage percentage, over a frozen independently authored reference and the frozen 30-case P3-B issue_refund corpus. Deterministic; no model, no network."
+}
