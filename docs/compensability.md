@@ -35,9 +35,9 @@ loudly rather than defaulting to a guess about how reversible it is.
    action gets through some other way, not a license to proceed on a known
    contradiction.
 4. **UNVERIFIABLE / SOURCE_UNRELIABLE** fall back to the manifest's
-   `verdict_handling` entry for that verdict (`escalate` or
-   `allow_with_caveat`, which becomes MODIFY), or its `fail_posture` for
-   the action's compensability class if the manifest doesn't specify.
+   `verdict_handling` entry for that verdict, which since D-M1-01 is
+   always `escalate` (`allow_with_caveat` / MODIFY was removed): they
+   ESCALATE unless compensability is `not`, which BLOCKs.
 5. **MODIFY is subtractive or additive only** — redact, caveat, constrain.
    Never substitutive: rewriting a wrong conclusion into a right one would
    require a better model than the one being checked (D8).

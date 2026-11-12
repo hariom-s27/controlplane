@@ -24,9 +24,9 @@ reference to a `claimed_*` field, or a missing predicate graph fails
 | `window_days` | int / null | inclusive day window for a `WITHIN_REFUND_WINDOW` claim |
 | `authority_ceiling_paise` | int | ceiling for an `AMOUNT_WITHIN_AUTHORITY` claim |
 | `reliability_floor` | str | evidence below this → SOURCE_UNRELIABLE (D36) |
-| `verdict_handling` | map | per-verdict intervention: `escalate` or `allow_with_caveat` |
-| `fail_posture` | map | `{tier_0, tier_1, tier_2}` → `open`/`closed` when the escalation budget is exhausted |
-| `risk_tier_default`, `latency_budget_ms`, `escalation_budget_pct`, `evidence_retention_days` | | policy metadata; `risk_tier_default` selects the exhausted-budget fail posture and `escalation_budget_pct` is enforced statefully at `dispatch_tool` |
+| `verdict_handling` | map | per-verdict intervention: `escalate` (the only value; `allow_with_caveat` was removed by D-M1-01) |
+| `fail_posture` | map | `{tier_0, tier_1, tier_2}` → `closed` (BLOCK) or `escalate` (hold for review) when an authoritative source is unavailable. `open` was removed by D-M1-01; an exhausted escalation budget always BLOCKs |
+| `risk_tier_default`, `latency_budget_ms`, `escalation_budget_pct`, `evidence_retention_days` | | policy metadata; `risk_tier_default` selects the source-outage fail posture and `escalation_budget_pct` is enforced statefully at `dispatch_tool` |
 | `predicate_payload` | map | static scaffolding the graph reads that is not backed by a claim: `{<dotted path>: <reference>}` |
 | `claim_bindings` | list | **the evidence bindings** — see below |
 
@@ -92,7 +92,7 @@ manifest. `clock.today` is the frozen demo clock.
 | `authority_ceiling_paise` | 2,500,000 | 0 | 500,000 |
 | `compensability` | fully | partially | partially |
 | `reliability_floor` | corroborated | unverified | corroborated |
-| `UNVERIFIABLE` handling | escalate | allow_with_caveat | escalate |
+| `UNVERIFIABLE` handling | escalate | escalate | escalate |
 | bindings | 7 (order + policy + attrs) | 3 (entitlement + pii) | 3 (order + authority) |
 | predicate graph | `graphs/servicing.json` | `graphs/knowledge_assistant.json` | `graphs/discount_approval.json` |
 | new `controlplane/` code | — | — | **0 lines** |

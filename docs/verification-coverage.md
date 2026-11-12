@@ -155,8 +155,10 @@ validate the measurement; a promotion path can come later.
   is true. The ≈10.6% wrong-record crossover in `reports/robustness.md`
   still applies.
 - **C3 coverage depends on `CP_GROUNDING`.** With grounding off (the
-  default), a `CLAUSE_SEMANTICS_MATCH` claim is `UNVERIFIED`, not `VERIFIED`
-  — honestly reflected in the number.
+  default), a `CLAUSE_SEMANTICS_MATCH` claim is `UNVERIFIED`, not `VERIFIED`,
+  with reason `c3_off_by_configuration` — honestly reflected in the number.
+  With grounding on but failed (import error, timeout, no clause text) it is
+  `UNAVAILABLE` (`c3_checker_failed`) and the verdict is UNVERIFIABLE (D-M1-01).
 - **Receipt size.** The block plus per-claim `verification` strings add a
   measured ≈400 B median to the signed receipt (`bench/receipt_size.py`,
   n=120 across all three manifests: median 2,282 B → 2,696 B, p95 3,763 B →

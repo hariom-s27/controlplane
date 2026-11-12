@@ -24,6 +24,7 @@ hardcoded case split.
 | M3 | Policy equivalence | Two claims the policy treats identically get identical verdicts. |
 | M4 | Idempotence | The same action re-submitted unchanged → same verdict, same receipt modulo timestamp and id. |
 | M5 | Source-degradation monotonicity | Swap in a staler or lower-reliability source → the verdict must never become more permissive. It may become SOURCE_UNRELIABLE or ESCALATE; never ALLOW where it was BLOCK. |
+| M6 | Fail closed on missing evidence (D-M1-01) | If any load-bearing evidence is missing, unavailable or failed (source outage, no evidence, empty lookup, unavailable predicate, missing clause match, grounding on but failed, exhausted escalation budget), the intervention is never ALLOW and the tool is never executed — for every manifest, tier, posture and budget. |
 
 Implemented in `tests/test_invariants.py` with `hypothesis`, generating
 randomized (but load-bearing-fact-only) scenarios — never protected
@@ -98,7 +99,7 @@ caller-level controls such as the escalation budget are labelled separately.
 | `latency_budget_exceeded` | manifest: latency_budget_ms | **uncatchable** | `decide()` is pure, has no latency input |
 | `escalation_budget_exceeded` | manifest: escalation_budget_pct | **dispatch boundary** | enforced statefully by `dispatch_tool`; intentionally outside pure `decide()` mutation tests |
 | `evidence_retention_violated` | manifest: evidence_retention_days | **uncatchable** | a storage policy, not a decision-time one |
-| `risk_tier_bumped` | manifest: risk_tier_default | outside this decide-only harness | `dispatch_tool()` uses risk tier to select fail posture when the escalation budget is exhausted |
+| `risk_tier_bumped` | manifest: risk_tier_default | outside this decide-only harness | `dispatch_tool()` uses risk tier to select the source-outage fail posture (`closed` or `escalate`); an exhausted escalation budget always BLOCKs (D-M1-01) |
 
 `tests/test_mutation.py` runs every operator the same number of times
 against independently varied base scenarios (seeded), so the score is a

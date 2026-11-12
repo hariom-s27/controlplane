@@ -138,9 +138,10 @@ or **structurally absent / unreadable**. P08 exercises every branch
 - An authoritative store that is offline or unreadable at decision time —
   raised as a typed `SourceUnavailable`, then routed by the active
   manifest's tier-specific fail posture: servicing (`orders.db`, tier 2)
-  fails **closed** and does not execute; the knowledge assistant
-  (`entitlements.db`, tier 0) fails **open** and executes with the receipt
-  marked `verification_state="unverified"`.
+  fails **closed** (BLOCK); the knowledge assistant (`entitlements.db`,
+  tier 0) **escalates** — the action is held for review, and BLOCKed once
+  the escalation budget is exhausted. Neither executes (D-M1-01; the former
+  fail-open posture was removed).
 - Two policy rows both marked current — raised as typed
   `AmbiguousPolicyState`, fails **closed**, emits a data-quality telemetry
   event, and never silently picks a row.

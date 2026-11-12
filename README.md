@@ -503,8 +503,8 @@ thing in the repo.)*
   the action in `pending_actions.jsonl`; `make review` presents the receipt
   without its verdict, accepts APPROVE/BLOCK, then reveals the verdict and
   records agreement. The rolling 100-decision budget comes from the active
-  manifest's `escalation_budget_pct`; when exhausted, `risk_tier_default`
-  selects that tier's fail-open or fail-closed posture. The exhaustion outcome
+  manifest's `escalation_budget_pct`; when exhausted, the action is BLOCKed —
+  always, whatever the configured posture (D-M1-01). The exhaustion outcome
   is persisted. `decide()` remains pure.
 - **Logger 2 (extraction accuracy under noise, the SEB-1 sweep) is an
   honest stub**, not a measured number. SEB-1's harness

@@ -155,7 +155,9 @@ every shipped manifest, rejected if absent or unsupported. See
 resolver selection, predicate graph reference, the policy/configuration
 fields the schema exposes (window, ceiling, reliability floor, verdict
 handling, latency/escalation budgets), and fail-posture/compensation
-configuration.
+configuration. Since D-M1-01 no configurable value executes an action whose
+evidence is missing, unavailable or failed (`fail_posture` is `closed` or
+`escalate`; `verdict_handling` is `escalate`).
 
 **What is not manifest-driven:** resolver implementation code, arbitrary
 Python execution, arbitrary SQL, arbitrary imports, and Zen executable
