@@ -14,6 +14,7 @@ written down because CLAUDE.md says it has already cost an afternoon once.
 from __future__ import annotations
 
 import json
+import logging
 import os
 from datetime import date
 from pathlib import Path
@@ -29,6 +30,13 @@ from controlplane.schema import Claim, ClaimKind, ProposedAction
 ROOT = Path(__file__).resolve().parent.parent
 FIXTURES = ROOT / "data" / "fixtures" / "extract"
 FIXTURES.mkdir(parents=True, exist_ok=True)
+
+# P3-A: the extraction-failure fallback below is safe (all-None routes to
+# UNVERIFIABLE downstream) but must not be silent — docs/threat-model.md T32
+# names "provider failure and extraction failure can collapse to the same
+# result". One structured event on the shared data-quality channel makes the
+# failure observable without changing the fallback or any verdict.
+_LOG = logging.getLogger("controlplane.data_quality")
 
 EXTRACT_PROMPT = (
     "You are extracting structured claims from an agent's "
@@ -152,10 +160,30 @@ def extract_action(
 
         try:
             claimed = call_with_key_fallback("FEATHERLESS_API_KEY", _call)
-        except Exception:
+        except Exception as exc:
             # S4's "what breaks": a model that can't hold the schema after
             # max_retries. All-None claimed_* routes to UNVERIFIABLE
             # downstream, the safe direction — never guess instead.
+            #
+            # P3-A: record that extraction failed here, so it is not
+            # indistinguishable from "the agent asserted nothing". This does
+            # NOT change the fallback, the return value, or verification
+            # coverage — it is one log line on the data-quality channel.
+            _LOG.warning(
+                "extraction_failure %s",
+                json.dumps(
+                    {
+                        "event": "extraction_failure",
+                        "stage": "extract",
+                        "tool": tool,
+                        "cache_key": f.stem,
+                        "error_type": type(exc).__name__,
+                        "max_retries": 2,
+                        "fallback": "all_none_claimed_fields",
+                    },
+                    sort_keys=True,
+                ),
+            )
             claimed = _ClaimedFields(
                 claimed_delivered_at=None,
                 claimed_policy_version=None,
