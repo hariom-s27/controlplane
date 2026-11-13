@@ -5,7 +5,8 @@ paths are tracked, and (kind fast / slow) its value is recomputed from committed
 files and must match exactly. kind ci is checked for presence only.
 
 Slow claims (recompute > ~5 s: the P04 baseline table and the P08 wrong-record
-sweep) run in the normal suite; their test ids start with "slow:". No recompute
+sweep) run in the normal suite; their tests carry the `slow` marker (pytest.ini)
+and ids starting with "slow:", so `-m "not slow"` skips them locally. No recompute
 measures latency: the baseline recompute stubs the per-call timer.
 """
 
@@ -258,7 +259,10 @@ RECOMPUTE = {
         "e1_old_p50", "e1_old_p50_runs", "e1_old_p99", "e1_old_p99_runs")},
 }
 
-RECOMPUTED = [c for c in CLAIMS if c.get("kind") in ("fast", "slow")]
+RECOMPUTED = [
+    pytest.param(c, id=_pid(c), marks=[pytest.mark.slow] if c.get("kind") == "slow" else [])
+    for c in CLAIMS if c.get("kind") in ("fast", "slow")
+]
 
 
 # --------------------------------------------------------------------------
@@ -295,12 +299,13 @@ def test_claim_evidence_is_tracked(claim):
     assert not untracked, f"{claim['id']}: evidence not tracked: {untracked}"
 
 
-@pytest.mark.parametrize("claim", RECOMPUTED, ids=_pid)
+@pytest.mark.parametrize("claim", RECOMPUTED)
 def test_claim_value_is_recomputed(claim):
     got = RECOMPUTE[claim["recompute"]]()
     assert got == str(claim["value"]), f"{claim['id']}: recomputed {got!r}, registry says {claim['value']!r}"
 
 
+@pytest.mark.slow
 def test_slow_p04_reports_and_per_case_file_match_recompute():
     """bench/baselines.py --check, in-process: the committed baselines.md,
     summary.json['p04_baselines'] and bench/results/baselines-per-case-c240d87.jsonl

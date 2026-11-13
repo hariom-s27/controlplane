@@ -11,17 +11,26 @@ name: ci
 #   suites, the P02 use-case-agnostic engine regression check, a
 #   deterministic offline demo smoke test, and a dashboard import / GET-/
 #   smoke test.
-# - full-suite: the whole test suite (`python -m pytest tests/ -q`) on
+# - full-suite: the whole test suite (`python -m pytest tests/`) on
 #   Ubuntu with Python 3.12 and 3.14 and on Windows with Python 3.14
 #   (P05 V15). This workflow adds no skips. tests/test_ground.py skips
 #   itself through pytest.importorskip("torch"): torch is not in
-#   requirements.txt, and the HHEM grounding model it needs is a ~600 MB
-#   download (CP_GROUNDING is off by default). Any other skip is the
-#   suite's own pre-existing condition.
+#   requirements.txt, and the HHEM grounding model it needs is a large
+#   download (CP_GROUNDING is off by default). Every skipped test id must be
+#   listed, with a reason, in tests/ci_allowed_skips.txt (P05b Y15).
+#   Two independent counts are compared (P05b Y21): junit.xml, and pytest's
+#   own terminal-reporter counts written by the opt-in hook in
+#   tests/conftest.py (active only when CP_CI_COUNTS_FILE is set).
 # - secret-scan: gitleaks v8.30.1 over the full history of the checked-out
 #   commit, with the repository's .gitleaks.toml and .gitleaksignore (45
 #   reviewed matches in history already public in v1.0-round2, listed by
 #   commit; P05 V18b). Any new match fails the job.
+# - ci-ok: one gate over every job above (P05b Y15). It fails unless every
+#   needed job's result is "success"; skipped or cancelled counts as failure.
+#
+# Runners are pinned images, not -latest (P05b Y14). Each test job writes
+# its provenance (runner label, image, image version, python -VV, sha256 of
+# the sorted `pip freeze`) to the job summary.
 
 on:
   push:
@@ -40,7 +49,7 @@ concurrency:
 
 jobs:
   product-smoke:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 15  # P06a W9
     strategy:
       fail-fast: false
@@ -71,23 +80,51 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
 
+      # P05b Y14: provenance of this job's environment.
+      - name: Provenance
+        shell: python
+        env:
+          CI_LABEL: ubuntu-26.04
+          CI_JOB: product-smoke (${{ matrix.python-version }})
+        run: |
+          import hashlib, os, subprocess, sys
+          freeze = subprocess.run([sys.executable, "-m", "pip", "freeze"], capture_output=True, text=True, check=True).stdout
+          pkgs = sorted(line.strip() for line in freeze.splitlines() if line.strip())
+          digest = hashlib.sha256(("\n".join(pkgs) + "\n").encode("utf-8")).hexdigest()
+          vv = subprocess.run([sys.executable, "-VV"], capture_output=True, text=True, check=True).stdout.strip()
+          rows = [
+              ("job", os.environ["CI_JOB"]),
+              ("runs-on label", os.environ["CI_LABEL"]),
+              ("runner image (ImageOS)", os.environ.get("ImageOS", "unknown")),
+              ("runner image version (ImageVersion)", os.environ.get("ImageVersion", "unknown")),
+              ("python -VV", vv),
+              ("sha256 of sorted pip freeze", digest),
+              ("installed distributions", str(len(pkgs))),
+          ]
+          text = "| provenance | value |\n|---|---|\n" + "".join(f"| {k} | {v} |\n" for k, v in rows)
+          print(text, end="")
+          out = os.environ.get("GITHUB_STEP_SUMMARY")
+          if out:
+              with open(out, "a", encoding="utf-8") as f:
+                  f.write(text + "\n")
+
       - name: Build deterministic SQLite stores
         run: python data/build_db.py
 
       - name: Product-01 tests (judge demo)
-        run: python -m pytest tests/test_judge_demo.py -q
+        run: python -m pytest tests/test_judge_demo.py
 
       - name: Product-02 tests (judge presentation / decision inspector)
-        run: python -m pytest tests/test_product02_judge_presentation.py -q
+        run: python -m pytest tests/test_product02_judge_presentation.py
 
       - name: Product-03 tests (dashboard)
-        run: python -m pytest tests/test_product03_dashboard.py -q
+        run: python -m pytest tests/test_product03_dashboard.py
 
       - name: Product-04A tests (dashboard hardening)
-        run: python -m pytest tests/test_product04a_hardening.py -q
+        run: python -m pytest tests/test_product04a_hardening.py
 
       - name: Engine must stay use-case-agnostic (P02 regression gate)
-        run: python -m pytest tests/test_engine_is_use_case_agnostic.py -q
+        run: python -m pytest tests/test_engine_is_use_case_agnostic.py
 
       - name: Deterministic offline demo smoke test
         run: python -m scripts.judge_demo
@@ -110,11 +147,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
+          - os: ubuntu-26.04
             python-version: "3.12"
-          - os: ubuntu-latest
+          - os: ubuntu-26.04
             python-version: "3.14"
-          - os: windows-latest
+          - os: windows-2025
             python-version: "3.14"
     env:
       CP_MODE: fixture
@@ -140,49 +177,115 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -r requirements.txt
 
+      # P05b Y14: provenance of this job's environment.
+      - name: Provenance
+        shell: python
+        env:
+          CI_LABEL: ${{ matrix.os }}
+          CI_JOB: full-suite (${{ matrix.os }}, ${{ matrix.python-version }})
+        run: |
+          import hashlib, os, subprocess, sys
+          freeze = subprocess.run([sys.executable, "-m", "pip", "freeze"], capture_output=True, text=True, check=True).stdout
+          pkgs = sorted(line.strip() for line in freeze.splitlines() if line.strip())
+          digest = hashlib.sha256(("\n".join(pkgs) + "\n").encode("utf-8")).hexdigest()
+          vv = subprocess.run([sys.executable, "-VV"], capture_output=True, text=True, check=True).stdout.strip()
+          rows = [
+              ("job", os.environ["CI_JOB"]),
+              ("runs-on label", os.environ["CI_LABEL"]),
+              ("runner image (ImageOS)", os.environ.get("ImageOS", "unknown")),
+              ("runner image version (ImageVersion)", os.environ.get("ImageVersion", "unknown")),
+              ("python -VV", vv),
+              ("sha256 of sorted pip freeze", digest),
+              ("installed distributions", str(len(pkgs))),
+          ]
+          text = "| provenance | value |\n|---|---|\n" + "".join(f"| {k} | {v} |\n" for k, v in rows)
+          print(text, end="")
+          out = os.environ.get("GITHUB_STEP_SUMMARY")
+          if out:
+              with open(out, "a", encoding="utf-8") as f:
+                  f.write(text + "\n")
+
       - name: Build deterministic SQLite stores (CP_SEED, CP_DEMO_DATE from env)
         run: python data/build_db.py
 
+      # pytest.ini supplies -q once, so pytest's own totals line is printed.
+      # CP_CI_COUNTS_FILE turns on the counts hook in tests/conftest.py.
       - name: Full test suite
-        run: python -m pytest tests/ -q --junitxml=junit.xml
+        env:
+          CP_CI_COUNTS_FILE: ci_counts.json
+        run: python -m pytest tests/ --junitxml=junit.xml
 
-      # P06a W10: report only. pytest's exit code above decides pass/fail;
-      # this step always exits 0 and never changes the job result.
+      # P05b Y15/Y21: fails the job if junit.xml is missing, unreadable or has
+      # 0 tests, if the hook's counts file is missing, if the two counts
+      # differ, or if a skipped test id is not in tests/ci_allowed_skips.txt.
       - name: Test summary
         if: always()
         shell: python
         env:
           CI_OS: ${{ matrix.os }}
           CI_PY: ${{ matrix.python-version }}
+          CP_CI_COUNTS_FILE: ci_counts.json
         run: |
-          import os
+          import json, os, sys
           import xml.etree.ElementTree as ET
 
-          def counts(path):
-              root = ET.parse(path).getroot()
-              suites = [root] if root.tag == "testsuite" else root.iter("testsuite")
-              t = {"tests": 0, "failures": 0, "errors": 0, "skipped": 0}
-              for s in suites:
-                  for k in t:
-                      t[k] += int(s.get(k, 0))
-              t["passed"] = t["tests"] - t["failures"] - t["errors"] - t["skipped"]
-              return t
-
+          KEYS = ("passed", "failed", "errors", "skipped")
           label = f"{os.environ.get('CI_OS', '?')} / Python {os.environ.get('CI_PY', '?')}"
-          head = "| job | passed | failed | errors | skipped |\n|---|---|---|---|---|\n"
+          problems = []
+
+          junit = None
           try:
-              c = counts("junit.xml")
-              row = f"| {label} | {c['passed']} | {c['failures']} | {c['errors']} | {c['skipped']} |\n"
+              root = ET.parse("junit.xml").getroot()
+              suites = [root] if root.tag == "testsuite" else list(root.iter("testsuite"))
+              t = {k: sum(int(s.get(k, 0)) for s in suites) for k in ("tests", "failures", "errors", "skipped")}
+              junit = {"passed": t["tests"] - t["failures"] - t["errors"] - t["skipped"],
+                       "failed": t["failures"], "errors": t["errors"], "skipped": t["skipped"]}
+              if t["tests"] == 0:
+                  problems.append("junit.xml has 0 tests")
           except Exception as exc:
-              row = f"| {label} | junit.xml missing or unreadable ({type(exc).__name__}) | | | |\n"
-          print(head + row, end="")
+              problems.append(f"junit.xml missing or unreadable ({type(exc).__name__})")
+
+          hook = None
+          counts_path = os.environ.get("CP_CI_COUNTS_FILE", "ci_counts.json")
+          try:
+              with open(counts_path, encoding="utf-8") as f:
+                  hook = json.load(f)
+          except Exception as exc:
+              problems.append(f"{counts_path} missing or unreadable ({type(exc).__name__})")
+
+          if junit is not None and hook is not None and any(junit[k] != hook.get(k) for k in KEYS):
+              problems.append("junit.xml counts differ from pytest's own counts")
+
+          allowed = set()
+          with open("tests/ci_allowed_skips.txt", encoding="utf-8") as f:
+              for line in f:
+                  entry = line.split("#", 1)[0].strip()
+                  if entry:
+                      allowed.add(entry)
+          if hook is not None:
+              unexpected = sorted(set(hook.get("skipped_ids", [])) - allowed)
+              if unexpected:
+                  problems.append("skipped test id(s) not in tests/ci_allowed_skips.txt: " + ", ".join(unexpected))
+
+          def row(name, c):
+              if c is None:
+                  return f"| {name} | missing | | | |\n"
+              return f"| {name} | " + " | ".join(str(c.get(k)) for k in KEYS) + " |\n"
+
+          text = (f"### Test counts — {label}\n\n| source | passed | failed | errors | skipped |\n|---|---|---|---|---|\n"
+                  + row("junit.xml", junit) + row("pytest terminal reporter (hook)", hook) + "\n")
+          if hook is not None and hook.get("skipped_ids"):
+              text += "Skipped ids: " + ", ".join(hook["skipped_ids"]) + "\n\n"
+          text += "".join(f"- FAIL: {p}\n" for p in problems) if problems else "Both counts equal; every skip is allowlisted.\n"
+          print(text, end="")
           out = os.environ.get("GITHUB_STEP_SUMMARY")
           if out:
               with open(out, "a", encoding="utf-8") as f:
-                  f.write(head + row)
+                  f.write(text + "\n")
+          sys.exit(1 if problems else 0)
 
   secret-scan:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 15  # P06a W9
     env:
       GITLEAKS_VERSION: "8.30.1"
@@ -207,3 +310,26 @@ jobs:
 
       - name: Scan full history of HEAD
         run: '"$RUNNER_TEMP/gitleaks-bin/gitleaks" git --redact --config .gitleaks.toml --log-opts=HEAD .'
+
+  # P05b Y15: the single required check. Fails unless every needed job
+  # succeeded; skipped or cancelled is a failure, not a pass.
+  ci-ok:
+    if: always()
+    needs: [product-smoke, full-suite, secret-scan]
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    steps:
+      - name: Every job succeeded
+        shell: python3 {0}
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          import json, os, sys
+          needs = json.loads(os.environ["NEEDS"])
+          for name in sorted(needs):
+              print(f"{name}: {needs[name].get('result')}")
+          bad = sorted(name for name, job in needs.items() if job.get("result") != "success")
+          if not needs or bad:
+              print("ci-ok FAILED: not successful: " + (", ".join(bad) or "no jobs"))
+              sys.exit(1)
+          print("ci-ok: every needed job succeeded")

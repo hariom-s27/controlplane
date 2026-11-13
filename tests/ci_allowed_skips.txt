@@ -1,0 +1,8 @@
+# Skipped test ids allowed in the CI full-suite run (P05b Y15).
+# One pytest node id per line, each with a reason. The "Test summary" step in
+# .github/workflows/ci.yml fails the job if a skipped id is not listed here.
+
+# torch is not in requirements.txt (optional HHEM grounding, large download),
+# so pytest.importorskip("torch") at module level skips the whole module at
+# collection: one skip, reported under the module's node id.
+tests/test_ground.py

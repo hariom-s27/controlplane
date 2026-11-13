@@ -24,6 +24,8 @@ is a separate refactor, out of scope for D-M1-01.)
 
 from __future__ import annotations
 
+import json
+import os
 import sys
 from pathlib import Path
 
@@ -97,3 +99,52 @@ def _repo_root_runtime_files_untouched():
     after = _snapshot()
     changed = [str(p.name) for p in _REPO_ROOT_RUNTIME_FILES if before[p] != after[p]]
     assert not changed, f"a test created or modified repo-root runtime file(s): {changed}"
+
+
+# --------------------------------------------------------------------------
+# P05b Y21: opt-in CI counts hook. Active ONLY when CP_CI_COUNTS_FILE is set;
+# otherwise it returns at once and writes nothing. It writes pytest's own
+# counts, taken from the terminal reporter's stats (which include
+# collection-level skips and errors), so CI can compare them with junit.xml.
+# Category rules, chosen to agree with junit.xml by construction:
+#   passed  = "passed" + "xpassed"     (junit counts an xpass as a pass),
+#             minus tests whose call passed but whose teardown errored: junit
+#             keeps one testcase for such a test and counts it as an error
+#             (_pytest/junitxml.py, cnt_double_fail_tests)
+#   failed  = "failed"                 (a failure in the test call)
+#   errors  = "error"                  (setup/teardown errors, collection errors)
+#   skipped = "skipped" + "xfailed"    (per-test and collection skips; junit
+#                                       reports an xfail as skipped)
+# --------------------------------------------------------------------------
+
+
+@pytest.hookimpl(trylast=True)
+def pytest_sessionfinish(session, exitstatus):
+    path = os.environ.get("CP_CI_COUNTS_FILE")
+    if not path:
+        return
+    reporter = session.config.pluginmanager.get_plugin("terminalreporter")
+    stats = reporter.stats if reporter is not None else {}
+
+    def n(*keys):
+        return sum(len(stats.get(k, [])) for k in keys)
+
+    skipped_reports = stats.get("skipped", []) + stats.get("xfailed", [])
+    teardown_errors = {r.nodeid for r in stats.get("error", []) if getattr(r, "when", None) == "teardown"}
+    passed_then_teardown_error = sum(
+        1 for r in stats.get("passed", []) + stats.get("xpassed", [])
+        if getattr(r, "when", None) == "call" and r.nodeid in teardown_errors
+    )
+    counts = {
+        "passed": n("passed", "xpassed") - passed_then_teardown_error,
+        "failed": n("failed"),
+        "errors": n("error"),
+        "skipped": n("skipped", "xfailed"),
+        "skipped_ids": sorted({getattr(r, "nodeid", "") for r in skipped_reports}),
+        "source": "terminalreporter.stats",
+        "pytest": pytest.__version__,
+        "exitstatus": int(exitstatus),
+    }
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(counts, f, indent=2, sort_keys=True)
+        f.write("\n")
