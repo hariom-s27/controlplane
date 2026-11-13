@@ -1,5 +1,7 @@
 # Session Log — P08 Completion & Freeze Audit, P09 Latency Profile
 
+> **Historical record (last changed 2026-08-31).** This file records work as of that date and is not maintained. Numbers, file paths and status statements in it are not current claims; current numbers are in `docs/claims.yaml` (checked by `tests/test_claims.py`) and corrections to frozen reports are in `docs/errata.md`.
+
 **Repository:** `phase 2/controlplanestarter/controlplane` (ControlPlane — Accenture Innovation Challenge 2026, Round 2)
 **Scope of this file:** everything requested and completed in this chat session, in order. Written so the work can be reviewed on GitHub without replaying the conversation.
 **Status of underlying work:** all described below is implemented in the working tree and verified by the test runs and hash checks quoted in this file. Nothing here is a projection or a plan — every number quoted was measured in this session.

@@ -1,5 +1,7 @@
 # Claim corrections — P11 R2 audit
 
+> **Historical record (last changed 2026-09-01).** This file records work as of that date and is not maintained. Numbers, file paths and status statements in it are not current claims; current numbers are in `docs/claims.yaml` (checked by `tests/test_claims.py`) and corrections to frozen reports are in `docs/errata.md`.
+
 **Scope.** Repository-wide claim-discipline pass over the P10 R2 base
 `68eeb90a82774e986a9d75c3b6ca6a382bf64cde` (parent
 `4ef58129649019e688e5db564f78df9169d686c3`), public baseline

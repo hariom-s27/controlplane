@@ -1,5 +1,7 @@
 # P3-F — Read-Only Causal Precondition Annotation: Design Gate
 
+> **Historical record (last changed 2026-11-13).** This file records work as of that date and is not maintained. Numbers, file paths and status statements in it are not current claims; current numbers are in `docs/claims.yaml` (checked by `tests/test_claims.py`) and corrections to frozen reports are in `docs/errata.md`.
+
 **Task:** P3-F READ-ONLY CAUSAL PRECONDITION ANNOTATION DESIGN GATE
 **Predecessor:** P3-E (`reports/foundational-requirement-coverage-v1.md`) — frozen, not modified.
 **Repository HEAD:** `5b82915bf3d5be089c046f99b2d1b6b9133a34f0` (`v1.0-round2`).

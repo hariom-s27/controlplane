@@ -1,5 +1,7 @@
 # ControlPlane Plan Package `_2` — Final Reconciliation Report
 
+> **Historical record (last changed 2026-08-31).** This file records work as of that date and is not maintained. Numbers, file paths and status statements in it are not current claims; current numbers are in `docs/claims.yaml` (checked by `tests/test_claims.py`) and corrections to frozen reports are in `docs/errata.md`.
+
 **Date:** 2026-08-31
 **Mode:** strict read-only forensic plan audit. No repository files were edited, no commits made, no `fetch`/`pull`/`push`, no tests or experiments run, no `R05` prompt executed. All repository claims rest on `git show`/`git diff`/`git log`/`git ls-remote` against **committed objects only**. The worktree's uncommitted P06-C2 changes and `reports/tau2-bench.md` were identified by name only (`git status --short`) and not read further, in case a live tau2-bench run was still in flight there.
 

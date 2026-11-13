@@ -1,5 +1,7 @@
 # Related work
 
+> **Historical record (last changed 2026-09-01).** This file records work as of that date and is not maintained. Numbers, file paths and status statements in it are not current claims; current numbers are in `docs/claims.yaml` (checked by `tests/test_claims.py`) and corrections to frozen reports are in `docs/errata.md`.
+
 ## Pre-execution enforcement
 
 **AEGIS.** Yuan, Su, and Zhao's *AEGIS: No Tool Call Left Unchecked — A Pre-Execution Firewall and Audit Layer for AI Agents* ([arXiv:2603.12621v1](https://arxiv.org/abs/2603.12621), 2026-03-13) interposes a firewall on the tool-execution path, performs composable policy validation, escalates high-risk calls to human approval, and produces an Ed25519-signed, SHA-256 hash-chained audit trail. It overlaps ControlPlane on interception, composable policy checks, and intervention. AEGIS's audit integrity is stronger than ControlPlane's: ControlPlane's decision receipt is HMAC-authenticated with a shared secret and is not hash-chained across entries (`docs/threat-model.md` T24). ControlPlane's receipt design is not presented here as a differentiator from AEGIS. The colliding identifier `2603.16938` names an unrelated paper and is not used for these claims.

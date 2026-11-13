@@ -1,5 +1,7 @@
 # M4 chat handoff — human-agreement sample, instrument repair, pass 1 + pass 2
 
+> **Historical record (last changed 2026-08-31).** This file records work as of that date and is not maintained. Numbers, file paths and status statements in it are not current claims; current numbers are in `docs/claims.yaml` (checked by `tests/test_claims.py`) and corrections to frozen reports are in `docs/errata.md`.
+
 Generated from the project conversation covering task **M4** (P03 human-label
 validation) end to end: building the blind sample, fixing a BOM bug, auditing
 the first labeling pass, and repairing the annotation instrument. This is a

@@ -1,5 +1,7 @@
 # ControlPlane.ai — Round 2 BUILD SPEC
 
+> **Historical record (last changed 2026-08-30).** This file records work as of that date and is not maintained. Numbers, file paths and status statements in it are not current claims; current numbers are in `docs/claims.yaml` (checked by `tests/test_claims.py`) and corrections to frozen reports are in `docs/errata.md`. Superseded where it conflicts with `docs/decisions/D-M1-01-fail-closed.md` (2026-11-13): `fail_posture: open`, fail-open behaviour and `allow_with_caveat` were removed.
+
 **Compiled 27 Aug 2026 · Deadline ~6 Sep (10 days) · 2–3 people, full days**
 Companion to `controlplane-round2-runbook.md`. Web version: https://claude.ai/code/artifact/5c949be1-5623-41f8-b460-43c8bfc5d8b4
 The Runbook's §02 ("Block 0") is captured verbatim in-repo at `docs/round2-runbook-block0.md` — including the OC-curve reformulation P07 Fix 7 needs.

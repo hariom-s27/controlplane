@@ -1,5 +1,7 @@
 # P07 chat handoff and GitHub audit
 
+> **Historical record (last changed 2026-09-02).** This file records work as of that date and is not maintained. Numbers, file paths and status statements in it are not current claims; current numbers are in `docs/claims.yaml` (checked by `tests/test_claims.py`) and corrections to frozen reports are in `docs/errata.md`.
+
 Generated from the project conversation on 2026-08-31. This is a repository-facing handoff, not a dump of hidden system instructions or credentials. The open `.env` was deliberately not read or copied.
 
 ## Why this file exists

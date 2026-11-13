@@ -1,5 +1,7 @@
 # The independent per-action extraction gold corpus (task P3-B)
 
+> **Historical record (last changed 2026-11-13).** This file records work as of that date and is not maintained. Numbers, file paths and status statements in it are not current claims; current numbers are in `docs/claims.yaml` (checked by `tests/test_claims.py`) and corrections to frozen reports are in `docs/errata.md`.
+
 `bench/extraction_gold_v1.jsonl` — for each of the 30 proposed `issue_refund`
 actions in `bench/human_label_sample.csv`, the set of load-bearing checks a
 **correct verifier of that action must represent**: the `ClaimKind`, the

@@ -1,5 +1,7 @@
 # Session log — P01, P02, P07 Fix 7
 
+> **Historical record (last changed 2026-09-02).** This file records work as of that date and is not maintained. Numbers, file paths and status statements in it are not current claims; current numbers are in `docs/claims.yaml` (checked by `tests/test_claims.py`) and corrections to frozen reports are in `docs/errata.md`.
+
 Summary of the work done in this chat session, written so it can be committed
 and pushed to GitHub alongside the code changes it describes. Covers three
 pieces of work, in the order they happened. Other task files (P03–P06, P08)

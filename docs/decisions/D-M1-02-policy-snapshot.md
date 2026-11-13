@@ -1,5 +1,7 @@
 # D-M1-02 — Policy snapshot: validate the manifest once per content change
 
+> **Decision record (last changed 2026-11-13).** This file records work as of that date and is not maintained. Numbers, file paths and status statements in it are not current claims; current numbers are in `docs/claims.yaml` (checked by `tests/test_claims.py`) and corrections to frozen reports are in `docs/errata.md`.
+
 **Status:** accepted · **Branch:** m1-fail-closed · **Changes:** `controlplane/manifest.py` only
 
 ## Why

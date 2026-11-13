@@ -1,5 +1,7 @@
 # P05 methodology audit — evidence-source ablation (A1–A5)
 
+> **Historical record (last changed 2026-08-30).** This file records work as of that date and is not maintained. Numbers, file paths and status statements in it are not current claims; current numbers are in `docs/claims.yaml` (checked by `tests/test_claims.py`) and corrections to frozen reports are in `docs/errata.md`.
+
 **Conclusion up front: no concrete methodology defect was found in the
 current implementation. No repair was made. No experiment was rerun.** This
 document records the audit that reached that conclusion, independently, from

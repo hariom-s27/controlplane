@@ -1,5 +1,7 @@
 # Round 2 Runbook — §02 (verbatim excerpt)
 
+> **Historical record (last changed 2026-08-30).** This file records work as of that date and is not maintained. Numbers, file paths and status statements in it are not current claims; current numbers are in `docs/claims.yaml` (checked by `tests/test_claims.py`) and corrections to frozen reports are in `docs/errata.md`.
+
 **Why this file exists.** `docs/ROADMAP.md` is the "Build Spec", a *companion to*
 `controlplane-round2-runbook.md`. The Runbook itself was never committed to this
 repo, so its **§02 reformulation** — the text P07 Fix 7 requires to replace the

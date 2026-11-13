@@ -1,5 +1,7 @@
 # P04 prior-art clarification — AEGIS's 500-benign-call FPR is not a ranking against ours
 
+> **Historical record (last changed 2026-08-30).** This file records work as of that date and is not maintained. Numbers, file paths and status statements in it are not current claims; current numbers are in `docs/claims.yaml` (checked by `tests/test_claims.py`) and corrections to frozen reports are in `docs/errata.md`.
+
 **Status of this document: preventive, not corrective.** A full-repository
 search (`grep -rn "AEGIS" reports/ docs/ bench/`) found no existing claim in
 this repository comparing our P04 false-positive rate to AEGIS's. AEGIS is
