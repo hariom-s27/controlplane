@@ -8,33 +8,25 @@ external validation, and the judge dashboard's own scope boundaries.
 
 ## Known test-suite state
 
-Full-suite result, measured now on this exact tree (`python -m pytest
-tests/`, JUnit-XML counts): **498 collected, 496 passed, 1 failed, 1
-skipped, 2 warnings.**
+The full suite (`python -m pytest tests/`) runs in CI on every push, on
+Linux and Windows (see `README.md`, "Continuous integration"). Test counts
+are quoted only together with the CI run they come from; this file holds
+none, because counts change with every commit.
 
-- **The 1 skipped test** is `tests/test_ground.py`, guarded by
-  `pytest.importorskip("torch")`. Grounding (S8, `CP_GROUNDING`) is optional
-  and default-off — see `README.md`'s Honest limitations, "S8 grounding" —
-  and is not required by the base fixture demo. This skip is
-  environment-dependent: `torch` is deliberately not in `requirements.txt`
-  (it's a ~2GB+ CPU wheel with its own install command, documented inline
-  next to the commented-out line), so whether this test runs or skips
-  depends on whether a given machine has installed it manually, not on the
-  platform (Windows/Linux/macOS all behave the same way given the same
-  optional-dependency state).
-- **The 1 failure** is the known P06 archival-integrity/provenance check
-  (`tests/test_tau2_c2_controlplane_side.py::test_post_p02_integrity_record_accounts_for_one_authorized_change`),
-  comparing a historical snapshot/manifest state
-  (`docs/p06-post-p02-integrity.sha256`) against the repository as it exists
-  today, after later legitimate changes to that state. The mismatch is
-  preserved as an explicit record of what changed and why — see the
-  `AUTHORIZED_CHANGE` row in that file — rather than silently regenerated or
-  rewritten to hide the diff. This is an archival-record discrepancy, not a
-  product runtime failure, and it is deliberately left unrepaired here.
-- **The focused product/release suite is green**: the Product-01 through
-  04A test suites and the P02 use-case-agnostic engine regression gate
-  (`tests/test_engine_is_use_case_agnostic.py`) pass, matching the scope the
-  CI workflow runs (see `README.md`'s "Continuous integration" section).
+- **The grounding tests skip without `torch`.** `tests/test_ground.py` calls
+  `pytest.importorskip("torch")` at module level, so the module is reported
+  as one skip when `torch` is absent. Grounding (S8, `CP_GROUNDING`) is
+  optional and default-off, and `torch` is deliberately not in
+  `requirements.txt` (it needs its own CPU-wheel install command, documented
+  next to the commented-out line). Whether the module runs depends on
+  whether a machine has installed `torch`, not on the operating system.
+- **The old archival-integrity check is replaced.** The test that used to
+  fail here
+  (`tests/test_tau2_c2_controlplane_side.py::test_post_p02_integrity_record_accounts_for_one_authorized_change`)
+  no longer exists. Since commit `3b536d8` the integrity record is
+  `docs/m1-integrity-v2.sha256`, checked by `tests/test_integrity_v2.py`;
+  the v1 record `docs/p06-post-p02-integrity.sha256` is kept unchanged as
+  history (see `docs/m1-integrity-v2.md`).
 - **Public fixture-mode demo behaviour has been independently verified** —
   see the Live demo section of `README.md`.
 - **The two human-label-sheet hashes** pinned in
@@ -48,8 +40,8 @@ skipped, 2 warnings.**
   Windows, Linux and macOS instead of depending on which platform last
   checked the files out.
 
-This is the actual, current state, reported as-is: not "all tests pass," and
-not "zero skipped tests."
+This is reported as-is: CI runs without `torch`, so the grounding module is
+a skip there, never a pass.
 
 ## Public demo scope
 
@@ -60,23 +52,21 @@ not "zero skipped tests."
 - Optional grounding (S8, HHEM-2.1-Open) is not part of the base demo path
   and is not exercised by the public demo.
 - The demo should not be read as evidence of production-scale performance —
-  see "Measured results" and "External validation — tau²-bench post-mortem"
-  in `README.md` for what is and is not measured.
+  see "Measured results" and "Where it fails" in `README.md` for what is and
+  is not measured.
 
-## External validation is incomplete
+## There is no external validation
 
 Every quantitative result in `README.md` ("Measured results") and
-`reports/baselines.md`/`reports/robustness.md`/`reports/latency.md` is our
-own internal evidence — a single synthetic gold set (`bench/gold_set.jsonl`,
-150 cases, single retail-servicing domain). The one attempt at validation
-outside our own gold set, on the third-party `sierra-research/tau2-bench`
-benchmark (`reports/tau2-bench.md`, P06), has only its governance-free
-baseline (C1) complete; the actual ControlPlane-vs-baseline comparison (C2,
-fresh policy; C3, stale policy) is not yet built or run. Until C2/C3 land,
-no claim here should be read as externally validated, and the B4/B5 result
-should not be read as generalizing beyond the evaluated failure mode
-(retrieval staleness) on this gold set. See `reports/README.md` for the
-full accounting.
+`reports/baselines.md`/`reports/robustness.md` is our own internal evidence —
+a single synthetic gold set (`bench/gold_set.jsonl`, single retail-servicing
+domain), plus one latency evidence pack measured on one laptop. The attempt
+at validation on the third-party `sierra-research/tau2-bench` benchmark is
+retired as evidence: no tool call reached the gate, and the runs are not in
+this repository (`docs/errata.md`). No claim here should be read as
+externally validated, and the B4/B5 result should not be read as
+generalizing beyond the evaluated failure mode (retrieval staleness) on this
+gold set.
 
 ## We inherit the system of record's errors
 
@@ -92,27 +82,28 @@ P08 measures where this becomes the dominant failure mode. The experiment
 (`bench/failure_injection.py`, scenario 1; full method and curve in
 `reports/robustness.md`) corrupts a growing, deterministically-chosen prefix
 of `orders.db` delivery-date records so each flip crosses the seven-day
-boundary, runs the real gate over the 140 non-ambiguous P03 gold cases at
-each of 21 fixed corruption rates, and compares binary-direction accuracy
-against the frozen P04 B4 TraceGrounded baseline (123/140 = 0.8786).
+boundary, runs the real gate over the non-ambiguous P03 gold cases at each
+rate of a fixed grid, and compares binary-direction accuracy against the
+frozen P04 B4 TraceGrounded baseline (B4 right on 123/140 cases).
+Recompute: `python bench/failure_injection.py`; both numbers below are in
+`docs/claims.yaml`.
 
 - **Crossover: ≈10.6%** (`reports/summary.json['p08_robustness']
   ['record_error_crossover']`). At roughly one date-bearing record in ten
   wrong, ControlPlane's accuracy on the gold set drops below what a
   trace-grounded checker achieves without touching the record at all. Cluster
-  bootstrap over public source-order ids: median 10.6%, 95% interval
-  [10.6%, 44.7%].
+  bootstrap over public source-order ids: 95% interval [10.6%, 44.7%].
 - Below that rate, live-record grounding is still ahead. Above it, the
   record's own error rate is the thing to fix — no verifier architecture
   helps.
-- The curve is steep near the crossover because the 140 gold cases sit on
-  only 85 distinct date-bearing orders, so a single corrupted record can
-  flip several cases. The crossover is therefore a property of *this gold
-  set's* order reuse, not a universal constant; the method, not the number,
-  is the transferable part.
-- Context: a USPS OIG audit found `delivered_at` scan errors around 2.45%,
-  well under the crossover. Reused, cached, or manually-entered fields are
-  routinely worse.
+- The curve is steep near the crossover because the gold cases sit on far
+  fewer distinct date-bearing orders than there are cases, so a single
+  corrupted record can flip several cases. The crossover is therefore a
+  property of *this gold set's* order reuse, not a universal constant; the
+  method, not the number, is the transferable part.
+- Context: real carrier scan-error rates are an external question. A USPS
+  OIG audit is the usual reference; this repository does not hold that
+  source, so no external rate is quoted here.
 
 The honest one-liner for the pitch: *we do not claim to catch a wrong
 record; we claim to be exactly as right as the record, and here is the rate
@@ -176,10 +167,9 @@ single in-flight slot is the whole demo's session boundary, correct for one
 judge looking at one screen, and would need real multi-tenant isolation
 before it could serve more than that. `CP_MODE=fixture` by default: every
 scenario replays a committed LLM-response fixture, never a live model call.
-See `reports/README.md` for the separate, load-bearing concurrency finding
-(P09, section H) about the underlying gate itself under a worker pool —
-that is a different measurement from the dashboard's single-slot design
-described here.
+The earlier P09 measurement of the gate under a worker pool
+(`reports/latency.md`, section H) is retired with the rest of that report's
+timing figures (`docs/errata.md`); nothing here measures concurrent load.
 
 **The signed receipt does not contain what happened after the decision.**
 `receipt_verification` (`VERIFIED`/`TAMPERED`/`VERIFICATION ERROR`/
@@ -246,9 +236,9 @@ What replaces the probe:
 ### On the statistical-power point, if a probe is ever run for real
 
 The four-fifths rule is a ratio test commonly misused as a difference test.
-On constructed tables it **falsely fails ~56%** of the time at n=30 with a
-30% base rate and zero true bias, and **misses a real 10-point gap ~84%** of
-the time at n=1,000 with a 50% base rate. Any real bias probe must report
+On small samples it can fail often when there is no true difference, and
+miss a real gap on large ones; no simulation of this is committed here, so
+no rates are quoted. Any real bias probe must report
 the minimum detectable effect alongside the p-value: a null result you can
 quantify is a result; a null result you cannot quantify is nothing.
 

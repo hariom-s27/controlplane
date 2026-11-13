@@ -83,7 +83,10 @@ CLAIMS and the registry produces FACTS, and they never come from the same
 place.** `session.<attr>` reads `SessionContext`. `manifest.<key>` reads the
 manifest. `clock.today` is the frozen demo clock.
 
-## Worked example — the three shipped manifests
+## Worked example — three shipped manifests
+
+Values below are read from `manifests/*.yaml`; the rows with numbers are in
+`docs/claims.yaml`.
 
 | | servicing | knowledge_assistant | discount_approval |
 |---|---|---|---|
@@ -94,8 +97,8 @@ manifest. `clock.today` is the frozen demo clock.
 | `reliability_floor` | corroborated | unverified | corroborated |
 | `UNVERIFIABLE` handling | escalate | escalate | escalate |
 | bindings | 7 (order + policy + attrs) | 3 (entitlement + pii) | 3 (order + authority) |
-| predicate graph | `graphs/servicing.json` | `graphs/knowledge_assistant.json` | `graphs/discount_approval.json` |
-| new `controlplane/` code | — | — | **0 lines** |
+| predicate graph | `manifests/graphs/servicing.json` | `manifests/graphs/knowledge_assistant.json` | `manifests/graphs/discount_approval.json` |
+| new `controlplane/` code | — | — | **none** (`tests/test_engine_is_use_case_agnostic.py`) |
 
 ## P02 hardening: schema, lint, cross-contract checks
 

@@ -38,7 +38,7 @@ an unmapped claim becomes an explicit `UNMODELLED` row, not a gap. See
 ### Load-bearing / eligibility / verification status
 
 - **load-bearing** — would the action be wrong if this claim were false?
-  (1–3 per action; `controlplane/ladder.py::_LOAD_BEARING`.)
+  (a small set per action, fixed in `controlplane/ladder.py::_LOAD_BEARING`.)
 - **verification-eligible** — is there an authoritative way to check this
   ClaimKind at all? True for tiers C1/C2/C3, false for C4 (no consensus
   resolver in this build) and C5 (unverifiable by definition).
@@ -103,8 +103,8 @@ rows, and are also kept verbatim on the in-memory
 ### What it is *not*
 
 - Not a probability that the action is correct. Coverage says how much was
-  checked, not how likely the checks are right. (C3 entailment SOTA is 77.4%,
-  not certainty; a VERIFIED C1/C2 claim can still sit on a wrong-but-
+  checked, not how likely the checks are right. (A C3 entailment check is a
+  model judgement, not certainty; a VERIFIED C1/C2 claim can still sit on a wrong-but-
   well-formed record — see `docs/limitations.md`.)
 - Not a risk-coverage curve. `bench/verification_coverage_bench.py` validates
   that the *number* is computed correctly for known claim mixes; it does not
@@ -152,19 +152,16 @@ validate the measurement; a promotion path can come later.
   free-text claim miner exists; until then it is structurally `0`.
 - **`VERIFIED` inherits the record's own errors.** Coverage measures whether
   a claim was checked against the system of record, not whether that record
-  is true. The ≈10.6% wrong-record crossover in `reports/robustness.md`
-  still applies.
+  is true. The wrong-record crossover in `reports/robustness.md` (README,
+  "Measured results") still applies.
 - **C3 coverage depends on `CP_GROUNDING`.** With grounding off (the
   default), a `CLAUSE_SEMANTICS_MATCH` claim is `UNVERIFIED`, not `VERIFIED`,
   with reason `c3_off_by_configuration` — honestly reflected in the number.
   With grounding on but failed (import error, timeout, no clause text) it is
   `UNAVAILABLE` (`c3_checker_failed`) and the verdict is UNVERIFIABLE (D-M1-01).
-- **Receipt size.** The block plus per-claim `verification` strings add a
-  measured ≈400 B median to the signed receipt (`bench/receipt_size.py`,
-  n=120 across all three manifests: median 2,282 B → 2,696 B, p95 3,763 B →
-  4,793 B). The receipt was already over its ≈2 KB design target
-  (`docs/limitations.md`); this is a further, documented increase, kept
-  because the block is load-bearing audit evidence. The per-claim form is a
-  bare status string except where more must be said, and the receipt block
-  drops every counter recomputable from the rows. The minimal single-claim
-  receipt stays under 2 KB.
+- **Receipt size.** The block plus per-claim `verification` strings make the
+  signed receipt larger. No size is quoted: the earlier published sizes are
+  withdrawn (`docs/errata.md`). The increase is kept because the block is
+  load-bearing audit evidence. The per-claim form is a bare status string
+  except where more must be said, and the receipt block drops every counter
+  recomputable from the rows.

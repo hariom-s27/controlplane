@@ -753,7 +753,7 @@ Reasons, in priority order:
   4. `gs-145–150` post-window disposition = `BLOCK | ESCALATE` unresolved
 - **`docs/p06-post-p02-integrity.sha256`** and the known P06 test failure
   (`tests/test_tau2_c2_controlplane_side.py::test_post_p02_integrity_record_
-  accounts_for_one_authorized_change`) — untouched, stale hash, unrelated.
+  accounts_for_one_authorized_change`) — untouched, stale hash, unrelated (since replaced by `tests/test_integrity_v2.py`, commit `3b536d8`).
 - **Whether a failed precondition should ever `BLOCK`** — a policy question,
   deliberately left open (§21).
 

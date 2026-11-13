@@ -81,7 +81,15 @@ def _p04() -> dict:
         m = report["mcnemar_b4_vs_b5"]
         rows = B.per_case_rows()
         stale = report["gold_set"]["slice_distribution"]["stale_policy_context"]
+        s5 = report["systems"]["B5_ControlPlane"]["per_slice"]["stale_policy_context"]
+        s4 = report["systems"]["B4_TraceGrounded"]["per_slice"]["stale_policy_context"]
+        flag = {"BLOCK", "ESCALATE", "MODIFY"}
+        non_amb = [r for r in rows if r["slice"] != "ambiguous_under_policy"]
+        b4_right = sum((r["B4_TraceGrounded"] in flag) == (r["gold_label"] != "ALLOW") for r in non_amb)
         values = {
+            "stale_b5": f"{s5['correct_direction']} of the {s5['n']}",
+            "stale_b4": f"{s4['correct_direction']} of {s4['n']}",
+            "b4_correct_over_n": f"{b4_right}/{len(non_amb)}",
             "b5_accuracy": f"{m['accuracy_b5'] * 100:.1f}%",
             "b4_accuracy": f"{m['accuracy_b4'] * 100:.1f}%",
             "accuracy_diff_points": f"{m['accuracy_diff_b5_minus_b4'] * 100:.1f}",
@@ -89,8 +97,8 @@ def _p04() -> dict:
             "diff_ci": "[{:.1f}%, {:.1f}%]".format(*(x * 100 for x in m["diff_95ci_cluster_bootstrap"])),
             "n_discordant": str(m["n_discordant"]),
             "n_discordant_stale": str(sum(d["slice"] == "stale_policy_context" for d in m["discordant_cases"])),
-            "stale_slice_block_over_n": f"{stale['gold_labels'].get('BLOCK', 0)}/{stale['n']}",
         }
+        assert stale["n"] == s5["n"] == s4["n"]
         problems = B.check(report)  # mutates report's latency fields; values read above
         return {"values": values, "problems": problems, "rows": rows}
     finally:
@@ -129,10 +137,69 @@ def _exp3() -> dict:
             "accuracy_without": f"{r['accuracy_without_attributes_check']:.3f}"}
 
 
-def _mutation_score() -> str:
+@functools.lru_cache(maxsize=None)
+def _mutation() -> dict:
     from bench import mutation as M
 
-    return f"{M.run_mutation_testing()['mutation_score']:.2f}"
+    return M.run_mutation_testing()
+
+
+@functools.lru_cache(maxsize=None)
+def _latency_pack() -> dict:
+    """Run the pack's own summariser in --check mode (stdlib only; it reads the
+    committed run files, times nothing and writes nothing), then read its
+    summary.json. A failing --check fails every latency claim."""
+    pack = ROOT / "bench" / "results" / "latency-m1-356ec58"
+    proc = subprocess.run([sys.executable, "-I", "-B", "summarise.py", "--check"], cwd=pack,
+                          capture_output=True, text=True, encoding="utf-8")
+    assert proc.returncode == 0, f"summarise.py --check failed:\n{proc.stdout}\n{proc.stderr}"
+    summary = json.loads((pack / "summary.json").read_text(encoding="utf-8"))
+    e1 = {c["condition"]: c for c in summary["conditions"] if c["phase"] == "E1"}
+    m = re.search(r"n=(\d+) timed calls after (\d+) warm-up", summary["workload"])
+    n, warm = int(m.group(1)), int(m.group(2))
+    conc = {r["concurrency"] for r in summary["runs"]}
+    assert len(conc) == 1
+    runs = {c["runs"] for c in summary["conditions"]}
+    assert len(runs) == 1
+
+    def ms(x):
+        return f"{x:.2f} ms"
+
+    def lst(xs):
+        return ", ".join(f"{x:.2f}" for x in xs)
+
+    return {
+        "n": f"{n:,}", "warmup": str(warm), "cycles": str(n // _gold_n()), "concurrency": str(conc.pop()),
+        "runs_per_condition": str(runs.pop()),
+        "e1_new_p50": ms(e1["new"]["median_p50_ms"]), "e1_new_p50_runs": lst(e1["new"]["p50_ms_by_round"]),
+        "e1_new_p99": ms(e1["new"]["median_p99_ms"]), "e1_new_p99_runs": lst(e1["new"]["p99_ms_by_round"]),
+        "e1_old_p50": ms(e1["old"]["median_p50_ms"]), "e1_old_p50_runs": lst(e1["old"]["p50_ms_by_round"]),
+        "e1_old_p99": ms(e1["old"]["median_p99_ms"]), "e1_old_p99_runs": lst(e1["old"]["p99_ms_by_round"]),
+    }
+
+
+def _gold_n() -> int:
+    lines = (ROOT / "bench" / "gold_set.jsonl").read_text(encoding="utf-8").splitlines()
+    return sum(1 for line in lines if line.strip())
+
+
+def _manifest(name: str) -> dict:
+    return yaml.safe_load((ROOT / "manifests" / f"{name}.yaml").read_text(encoding="utf-8"))
+
+
+def _clause_window(version: str) -> str:
+    data = json.loads((ROOT / "data" / "seed" / "clauses.json").read_text(encoding="utf-8"))
+    clause = next(c for c in data["clauses"] if c["policy_id"] == "refund_window" and c["version"] == version)
+    return f"{int(clause['window_days'])}-day"
+
+
+def _rupees(paise: int) -> str:
+    return f"₹{paise // 100:,}"
+
+
+def _retired_count() -> str:
+    text = (ROOT / "docs" / "retired-figures.md").read_text(encoding="utf-8")
+    return str(len(re.findall(r"^## \d+\. ", text, flags=re.M)))
 
 
 def _negative_control() -> str:
@@ -155,17 +222,40 @@ def _demo_date() -> date:
 RECOMPUTE = {
     **{f"p04.{k}": (lambda k=k: _p04()["values"][k]) for k in (
         "b5_accuracy", "b4_accuracy", "accuracy_diff_points", "mcnemar_p", "diff_ci",
-        "n_discordant", "n_discordant_stale", "stale_slice_block_over_n")},
+        "n_discordant", "n_discordant_stale", "stale_b5", "stale_b4", "b4_correct_over_n")},
     "p08.crossover": lambda: _p08()["crossover"],
     "p08.crossover_ci": lambda: _p08()["crossover_ci"],
     "exp3.accuracy_with": lambda: _exp3()["accuracy_with"],
     "exp3.accuracy_without": lambda: _exp3()["accuracy_without"],
-    "mutation.score": _mutation_score,
+    "mutation.score": lambda: f"{_mutation()['mutation_score']:.2f}",
+    "mutation.catchable_of_n": lambda: f"{len(_mutation()['catchable_operators'])} of {_mutation()['n_operators']}",
     "negctl.proposed_over_runs": _negative_control,
-    "seed.ord88461_amount": lambda: f"₹{_seed_order('ORD-88461')['amount_paise'] // 100:,}",
+    "gold.n_cases": lambda: str(_gold_n()),
+    "gold.n_non_ambiguous": lambda: str(sum(
+        json.loads(line)["slice"] != "ambiguous_under_policy"
+        for line in (ROOT / "bench" / "gold_set.jsonl").read_text(encoding="utf-8").splitlines() if line.strip())),
+    "seed.ord88461_amount": lambda: _rupees(_seed_order("ORD-88461")["amount_paise"]),
+    "seed.ord90233_amount": lambda: _rupees(_seed_order("ORD-90233")["amount_paise"]),
     "seed.ord88461_days_elapsed": lambda: str(
         (_demo_date() - date.fromisoformat(_seed_order("ORD-88461")["delivered_at"])).days),
-    "manifest.servicing_window": lambda: f"{yaml.safe_load((ROOT / 'manifests' / 'servicing.yaml').read_text(encoding='utf-8'))['window_days']} days",
+    "manifest.servicing_window": lambda: f"{_manifest('servicing')['window_days']} days",
+    "manifest.servicing_window_dash": lambda: f"{_manifest('servicing')['window_days']}-day",
+    "manifest.discount_window": lambda: f"{_manifest('discount_approval')['window_days']}-day",
+    "manifest.discount_ceiling": lambda: f"INR {_manifest('discount_approval')['authority_ceiling_paise'] // 100:,}",
+    "manifest.table_window": lambda: "{} | {} | {}".format(*(
+        "—" if _manifest(m).get("window_days") is None else _manifest(m)["window_days"]
+        for m in ("servicing", "knowledge_assistant", "discount_approval"))),
+    "manifest.table_ceiling": lambda: " | ".join(
+        f"{_manifest(m)['authority_ceiling_paise']:,}" for m in ("servicing", "knowledge_assistant", "discount_approval")),
+    "manifest.table_bindings": lambda: "{} (order + policy + attrs) | {} (entitlement + pii) | {} (order + authority)".format(
+        *(len(_manifest(m)["claim_bindings"]) for m in ("servicing", "knowledge_assistant", "discount_approval"))),
+    "clause.v38_window": lambda: _clause_window("v3.8"),
+    "clause.v42_window": lambda: _clause_window("v4.2"),
+    "retired.count": _retired_count,
+    **{f"lat.{k}": (lambda k=k: _latency_pack()[k]) for k in (
+        "n", "warmup", "cycles", "concurrency", "runs_per_condition",
+        "e1_new_p50", "e1_new_p50_runs", "e1_new_p99", "e1_new_p99_runs",
+        "e1_old_p50", "e1_old_p50_runs", "e1_old_p99", "e1_old_p99_runs")},
 }
 
 RECOMPUTED = [c for c in CLAIMS if c.get("kind") in ("fast", "slow")]

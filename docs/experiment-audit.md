@@ -18,7 +18,7 @@ File-name note: `docs/ROADMAP.md` planned these as `bench/exp3_orderid.py`,
 `bench/exp5_confusion.py`, `bench/mutation.py`,
 `controlplane/responsibility/bias_probe.py`. They shipped as
 `bench/seb1_exp3_cross_validation.py`, `bench/seb1_exp5_confusion_matrix.py`,
-`controlplane/mutation.py`, `controlplane/bias_probe.py`.
+`controlplane/mutation.py` (now `bench/mutation.py`), `controlplane/bias_probe.py` (deleted).
 
 Line numbers below are against the **pre-fix** versions of those files (the
 state that produced the retired numbers), recoverable from git history. The
@@ -138,7 +138,7 @@ checker's independence from the ground-truth file is asserted in
 
 ## MUTATION SCORE (reported: 1.000, all six operators at 1.000)
 
-**File:** `controlplane/mutation.py`
+**File:** `controlplane/mutation.py` (now `bench/mutation.py`)
 
 ### The exact lines that make it circular
 

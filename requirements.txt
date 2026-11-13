@@ -1,7 +1,8 @@
 # ControlPlane — Round 2 prototype
-# Every dependency is MIT or Apache-2.0. Licence hygiene is graded because
-# Round 2 requires a public repo. Two exclusions were made deliberately,
-# BEFORE we knew a public repo was required:
+# Each dependency's licence is noted next to it (MIT, Apache-2.0, BSD,
+# PSF-style, MPL-2.0). Licence hygiene is graded because Round 2 requires a
+# public repo. Two exclusions were made deliberately, BEFORE we knew a public
+# repo was required:
 #   Bespoke-MiniCheck-7B  CC BY-NC   (non-commercial)
 #   SDV                   BUSL-1.1   (source-available, not open source)
 
@@ -12,7 +13,9 @@ openai>=1.40            # MIT   — OpenAI-compatible client, pointed at Feather
 
 # --- extraction, needed from S4 ---
 instructor>=1.5         # MIT   — structured output. USE Mode.JSON, NOT Mode.TOOLS.
-dateparser>=1.2         # BSD   — HARD dependency, not optional: SEB-1 is wrong without it
+dateparser>=1.2         # BSD   — imported only as a presence check by bench/report.py,
+                        #         bench/seb1_exp3_cross_validation.py and
+                        #         bench/seb1_exp5_confusion_matrix.py; no code calls it
 
 # --- rules, needed from S7 ---
 zen-engine>=0.30        # MIT   — in-process DMN/JDM decision graphs, no sidecar

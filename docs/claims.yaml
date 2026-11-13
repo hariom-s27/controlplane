@@ -111,20 +111,6 @@ claims:
     kind: slow
     recompute: p04.n_discordant_stale
 
-  - id: p04-stale-slice-size
-    file: README.md
-    text: "`stale_policy_context` slice (20/20 cases)"
-    value: "20/20"
-    definition: >-
-      Gold cases in the stale_policy_context slice whose gold label is BLOCK, over all cases in
-      that slice.
-    n: 20
-    conditions: bench/gold_set.jsonl as committed.
-    evidence: [reports/summary.json, reports/baselines.md]
-    command: python bench/baselines.py --check
-    kind: slow
-    recompute: p04.stale_slice_block_over_n
-
   # --- P08 robustness: wrong-record sweep (bench/failure_injection.py) ----------
 
   - id: p08-record-error-crossover
@@ -265,3 +251,505 @@ claims:
     command: read window_days in manifests/servicing.yaml
     kind: fast
     recompute: manifest.servicing_window
+
+  # --- P04 per-slice and gold-set size (README claims table) ------------------
+
+  - id: p04-stale-slice-b5
+    file: README.md
+    text: "B5 gets the direction right on 20 of the 20 `stale_policy_context` gold cases"
+    value: "20 of the 20"
+    definition: "summary.json p04_baselines systems.B5_ControlPlane.per_slice.stale_policy_context correct_direction / n."
+    n: 20
+    conditions: "bench/gold_set.jsonl stale_policy_context slice; same run as p04-b5-direction-accuracy."
+    evidence: [reports/summary.json, reports/baselines.md, bench/results/baselines-per-case-c240d87.jsonl]
+    command: "python bench/baselines.py --check; per-case file: python -I -B bench/baselines.py --out DIR"
+    kind: slow
+    recompute: p04.stale_b5
+
+  - id: p04-stale-slice-b4
+    file: README.md
+    text: "(B4: 4 of 20)"
+    value: "4 of 20"
+    definition: "summary.json p04_baselines systems.B4_TraceGrounded.per_slice.stale_policy_context correct_direction / n."
+    n: 20
+    conditions: "Same as p04-stale-slice-b5."
+    evidence: [reports/summary.json, reports/baselines.md, bench/results/baselines-per-case-c240d87.jsonl]
+    command: "python bench/baselines.py --check; per-case file: python -I -B bench/baselines.py --out DIR"
+    kind: slow
+    recompute: p04.stale_b4
+
+  - id: gold-set-size-readme-table
+    file: README.md
+    text: "one slice of the 150-case gold set"
+    value: "150"
+    definition: "Cases (non-empty lines) in bench/gold_set.jsonl."
+    n: 150
+    conditions: "bench/gold_set.jsonl as committed (frozen)."
+    evidence: [bench/gold_set.jsonl]
+    command: "count the lines of bench/gold_set.jsonl"
+    kind: fast
+    recompute: gold.n_cases
+
+  # --- Demo fixture values (committed seeds and manifests) ----------------------
+
+  - id: demo-table-amount-88461
+    file: README.md
+    text: "| 7 — Stale-policy refund | ₹42,999 | ORD-88461 |"
+    value: "₹42,999"
+    definition: "amount_paise of seed order ORD-88461, in rupees."
+    n: 1
+    conditions: "Synthetic seeds and committed manifests."
+    evidence: [data/seed/orders.json]
+    command: "read the value in the evidence file"
+    kind: fast
+    recompute: seed.ord88461_amount
+
+  - id: demo-table-amount-90233
+    file: README.md
+    text: "| 8 — In-policy refund | ₹8,499 | ORD-90233 |"
+    value: "₹8,499"
+    definition: "amount_paise of seed order ORD-90233, in rupees."
+    n: 1
+    conditions: "Synthetic seeds and committed manifests."
+    evidence: [data/seed/orders.json]
+    command: "read the value in the evidence file"
+    kind: fast
+    recompute: seed.ord90233_amount
+
+  - id: demo-heading-amount
+    file: README.md
+    text: "The ₹42,999 scenario"
+    value: "₹42,999"
+    definition: "amount_paise of seed order ORD-88461, in rupees (section name and its cross-references)."
+    n: 1
+    conditions: "Synthetic seeds and committed manifests."
+    evidence: [data/seed/orders.json]
+    command: "read the value in the evidence file"
+    kind: fast
+    recompute: seed.ord88461_amount
+
+  - id: demo-table-scenario-amount
+    file: README.md
+    text: "use case 1 — the ₹42,999 scenario above"
+    value: "₹42,999"
+    definition: "amount_paise of seed order ORD-88461, in rupees."
+    n: 1
+    conditions: "Synthetic seeds and committed manifests."
+    evidence: [data/seed/orders.json]
+    command: "read the value in the evidence file"
+    kind: fast
+    recompute: seed.ord88461_amount
+
+  - id: product01-amount-88461
+    file: README.md
+    text: "₹42,999 STALE-POLICY REFUND, ₹8,499 IN-POLICY REFUND"
+    value: "₹42,999"
+    definition: "amount_paise of seed order ORD-88461, in rupees."
+    n: 1
+    conditions: "Synthetic seeds and committed manifests."
+    evidence: [data/seed/orders.json]
+    command: "read the value in the evidence file"
+    kind: fast
+    recompute: seed.ord88461_amount
+
+  - id: product01-amount-90233
+    file: README.md
+    text: "₹42,999 STALE-POLICY REFUND, ₹8,499 IN-POLICY REFUND"
+    value: "₹8,499"
+    definition: "amount_paise of seed order ORD-90233, in rupees."
+    n: 1
+    conditions: "Synthetic seeds and committed manifests."
+    evidence: [data/seed/orders.json]
+    command: "read the value in the evidence file"
+    kind: fast
+    recompute: seed.ord90233_amount
+
+  - id: claims-table-days
+    file: README.md
+    text: "26 days before the decision clock, outside the 7-day window"
+    value: "26"
+    definition: "Days from ORD-88461 delivered_at to the frozen clock CP_DEMO_DATE."
+    n: 1
+    conditions: "Synthetic seeds and committed manifests."
+    evidence: [data/seed/orders.json, pytest.ini]
+    command: "read the value in the evidence file"
+    kind: fast
+    recompute: seed.ord88461_days_elapsed
+
+  - id: claims-table-window
+    file: README.md
+    text: "26 days before the decision clock, outside the 7-day window"
+    value: "7-day"
+    definition: "window_days of the servicing manifest."
+    n: 1
+    conditions: "Synthetic seeds and committed manifests."
+    evidence: [manifests/servicing.yaml]
+    command: "read the value in the evidence file"
+    kind: fast
+    recompute: manifest.servicing_window_dash
+
+  - id: clause-v38-window
+    file: README.md
+    text: "a 30-day window (v3.8)"
+    value: "30-day"
+    definition: "window_days of policy clause refund_window v3.8 in the seed."
+    n: 1
+    conditions: "Synthetic seeds and committed manifests."
+    evidence: [data/seed/clauses.json]
+    command: "read the value in the evidence file"
+    kind: fast
+    recompute: clause.v38_window
+
+  - id: clause-v42-window
+    file: README.md
+    text: "superseded by v4.2 (7-day window)"
+    value: "7-day"
+    definition: "window_days of policy clause refund_window v4.2 in the seed."
+    n: 1
+    conditions: "Synthetic seeds and committed manifests."
+    evidence: [data/seed/clauses.json]
+    command: "read the value in the evidence file"
+    kind: fast
+    recompute: clause.v42_window
+
+  - id: zen-example-window
+    file: README.md
+    text: "the window is 7 days and this order is at 26"
+    value: "7 days"
+    definition: "window_days of the servicing manifest."
+    n: 1
+    conditions: "Synthetic seeds and committed manifests."
+    evidence: [manifests/servicing.yaml]
+    command: "read the value in the evidence file"
+    kind: fast
+    recompute: manifest.servicing_window
+
+  - id: zen-example-days
+    file: README.md
+    text: "the window is 7 days and this order is at 26"
+    value: "26"
+    definition: "Days from ORD-88461 delivered_at to the frozen clock CP_DEMO_DATE."
+    n: 1
+    conditions: "Synthetic seeds and committed manifests."
+    evidence: [data/seed/orders.json, pytest.ini]
+    command: "read the value in the evidence file"
+    kind: fast
+    recompute: seed.ord88461_days_elapsed
+
+  - id: discount-window
+    file: README.md
+    text: "a 14-day validity window and an INR 5,000 authority ceiling"
+    value: "14-day"
+    definition: "window_days of the discount_approval manifest."
+    n: 1
+    conditions: "Synthetic seeds and committed manifests."
+    evidence: [manifests/discount_approval.yaml]
+    command: "read the value in the evidence file"
+    kind: fast
+    recompute: manifest.discount_window
+
+  - id: discount-ceiling
+    file: README.md
+    text: "a 14-day validity window and an INR 5,000 authority ceiling"
+    value: "INR 5,000"
+    definition: "authority_ceiling_paise of the discount_approval manifest, in rupees."
+    n: 1
+    conditions: "Synthetic seeds and committed manifests."
+    evidence: [manifests/discount_approval.yaml]
+    command: "read the value in the evidence file"
+    kind: fast
+    recompute: manifest.discount_ceiling
+
+  # --- Latency evidence pack (Y6): README 'Measured results' item 3 -----------
+
+  - id: lat-workload-cases
+    file: README.md
+    text: "the 150-case gold set cycled 7 times"
+    value: "150"
+    definition: "Cases in bench/gold_set.jsonl, the C1 workload input."
+    n: 1050
+    conditions: "One Windows laptop, Best performance power mode (phase E1); bench/latency.py C1_hhem_off_seq; grounding off; concurrency 1; engine at 356ec58 (controlplane/, manifests/, schemas/, data/ unchanged through this commit)."
+    evidence: [bench/results/latency-m1-356ec58/summary.json, bench/results/latency-m1-356ec58/summarise.py, bench/results/latency-m1-356ec58/SHA256SUMS]
+    command: "python summarise.py --check (in bench/results/latency-m1-356ec58/)"
+    kind: fast
+    recompute: gold.n_cases
+
+  - id: lat-workload-cycles
+    file: README.md
+    text: "the 150-case gold set cycled 7 times"
+    value: "7"
+    definition: "Timed calls divided by gold-set cases."
+    n: 1050
+    conditions: "One Windows laptop, Best performance power mode (phase E1); bench/latency.py C1_hhem_off_seq; grounding off; concurrency 1; engine at 356ec58 (controlplane/, manifests/, schemas/, data/ unchanged through this commit)."
+    evidence: [bench/results/latency-m1-356ec58/summary.json, bench/results/latency-m1-356ec58/summarise.py, bench/results/latency-m1-356ec58/SHA256SUMS]
+    command: "python summarise.py --check (in bench/results/latency-m1-356ec58/)"
+    kind: fast
+    recompute: lat.cycles
+
+  - id: lat-n-timed
+    file: README.md
+    text: "n = 1,050 timed calls after 50 warm-up calls"
+    value: "1,050"
+    definition: "Timed calls per run (summary.json workload)."
+    n: 1050
+    conditions: "One Windows laptop, Best performance power mode (phase E1); bench/latency.py C1_hhem_off_seq; grounding off; concurrency 1; engine at 356ec58 (controlplane/, manifests/, schemas/, data/ unchanged through this commit)."
+    evidence: [bench/results/latency-m1-356ec58/summary.json, bench/results/latency-m1-356ec58/summarise.py, bench/results/latency-m1-356ec58/SHA256SUMS]
+    command: "python summarise.py --check (in bench/results/latency-m1-356ec58/)"
+    kind: fast
+    recompute: lat.n
+
+  - id: lat-warmup
+    file: README.md
+    text: "n = 1,050 timed calls after 50 warm-up calls"
+    value: "50"
+    definition: "Discarded warm-up calls per run (summary.json workload)."
+    n: 1050
+    conditions: "One Windows laptop, Best performance power mode (phase E1); bench/latency.py C1_hhem_off_seq; grounding off; concurrency 1; engine at 356ec58 (controlplane/, manifests/, schemas/, data/ unchanged through this commit)."
+    evidence: [bench/results/latency-m1-356ec58/summary.json, bench/results/latency-m1-356ec58/summarise.py, bench/results/latency-m1-356ec58/SHA256SUMS]
+    command: "python summarise.py --check (in bench/results/latency-m1-356ec58/)"
+    kind: fast
+    recompute: lat.warmup
+
+  - id: lat-concurrency
+    file: README.md
+    text: "grounding off, concurrency 1"
+    value: "1"
+    definition: "Concurrency of every counted run (summary.json runs[].concurrency)."
+    n: 1050
+    conditions: "One Windows laptop, Best performance power mode (phase E1); bench/latency.py C1_hhem_off_seq; grounding off; concurrency 1; engine at 356ec58 (controlplane/, manifests/, schemas/, data/ unchanged through this commit)."
+    evidence: [bench/results/latency-m1-356ec58/summary.json, bench/results/latency-m1-356ec58/summarise.py, bench/results/latency-m1-356ec58/SHA256SUMS]
+    command: "python summarise.py --check (in bench/results/latency-m1-356ec58/)"
+    kind: fast
+    recompute: lat.concurrency
+
+  - id: lat-e1-new-p50
+    file: README.md
+    text: "at commit `356ec58` had a median p50 of **3.16 ms**"
+    value: "3.16 ms"
+    definition: "Median over the E1 runs of each run's p50 per-call service time, commit 356ec58."
+    n: 1050
+    conditions: "One Windows laptop, Best performance power mode (phase E1); bench/latency.py C1_hhem_off_seq; grounding off; concurrency 1; engine at 356ec58 (controlplane/, manifests/, schemas/, data/ unchanged through this commit)."
+    evidence: [bench/results/latency-m1-356ec58/summary.json, bench/results/latency-m1-356ec58/summarise.py, bench/results/latency-m1-356ec58/SHA256SUMS]
+    command: "python summarise.py --check (in bench/results/latency-m1-356ec58/)"
+    kind: fast
+    recompute: lat.e1_new_p50
+
+  - id: lat-e1-new-p50-runs
+    file: README.md
+    text: "(runs 3.13, 3.16, 3.20 ms)"
+    value: "3.13, 3.16, 3.20"
+    definition: "The E1 per-run p50 values, rounds 1-3, commit 356ec58."
+    n: 1050
+    conditions: "One Windows laptop, Best performance power mode (phase E1); bench/latency.py C1_hhem_off_seq; grounding off; concurrency 1; engine at 356ec58 (controlplane/, manifests/, schemas/, data/ unchanged through this commit)."
+    evidence: [bench/results/latency-m1-356ec58/summary.json, bench/results/latency-m1-356ec58/summarise.py, bench/results/latency-m1-356ec58/SHA256SUMS]
+    command: "python summarise.py --check (in bench/results/latency-m1-356ec58/)"
+    kind: fast
+    recompute: lat.e1_new_p50_runs
+
+  - id: lat-e1-new-p99
+    file: README.md
+    text: "and a median p99 of **4.65 ms**"
+    value: "4.65 ms"
+    definition: "Median over the E1 runs of each run's p99, commit 356ec58."
+    n: 1050
+    conditions: "One Windows laptop, Best performance power mode (phase E1); bench/latency.py C1_hhem_off_seq; grounding off; concurrency 1; engine at 356ec58 (controlplane/, manifests/, schemas/, data/ unchanged through this commit)."
+    evidence: [bench/results/latency-m1-356ec58/summary.json, bench/results/latency-m1-356ec58/summarise.py, bench/results/latency-m1-356ec58/SHA256SUMS]
+    command: "python summarise.py --check (in bench/results/latency-m1-356ec58/)"
+    kind: fast
+    recompute: lat.e1_new_p99
+
+  - id: lat-e1-new-p99-runs
+    file: README.md
+    text: "(runs 3.94, 4.65, 5.27 ms)"
+    value: "3.94, 4.65, 5.27"
+    definition: "The E1 per-run p99 values, rounds 1-3, commit 356ec58."
+    n: 1050
+    conditions: "One Windows laptop, Best performance power mode (phase E1); bench/latency.py C1_hhem_off_seq; grounding off; concurrency 1; engine at 356ec58 (controlplane/, manifests/, schemas/, data/ unchanged through this commit)."
+    evidence: [bench/results/latency-m1-356ec58/summary.json, bench/results/latency-m1-356ec58/summarise.py, bench/results/latency-m1-356ec58/SHA256SUMS]
+    command: "python summarise.py --check (in bench/results/latency-m1-356ec58/)"
+    kind: fast
+    recompute: lat.e1_new_p99_runs
+
+  - id: lat-e1-old-p50
+    file: README.md
+    text: "of **13.90 ms** (runs 13.83, 14.00, 13.90 ms)"
+    value: "13.90 ms"
+    definition: "Median over the E1 runs of each run's p50, commit 880d5c9."
+    n: 1050
+    conditions: "One Windows laptop, Best performance power mode (phase E1); bench/latency.py C1_hhem_off_seq; grounding off; concurrency 1; engine at 356ec58 (controlplane/, manifests/, schemas/, data/ unchanged through this commit)."
+    evidence: [bench/results/latency-m1-356ec58/summary.json, bench/results/latency-m1-356ec58/summarise.py, bench/results/latency-m1-356ec58/SHA256SUMS]
+    command: "python summarise.py --check (in bench/results/latency-m1-356ec58/)"
+    kind: fast
+    recompute: lat.e1_old_p50
+
+  - id: lat-e1-old-p50-runs
+    file: README.md
+    text: "of **13.90 ms** (runs 13.83, 14.00, 13.90 ms)"
+    value: "13.83, 14.00, 13.90"
+    definition: "The E1 per-run p50 values, rounds 1-3, commit 880d5c9."
+    n: 1050
+    conditions: "One Windows laptop, Best performance power mode (phase E1); bench/latency.py C1_hhem_off_seq; grounding off; concurrency 1; engine at 356ec58 (controlplane/, manifests/, schemas/, data/ unchanged through this commit)."
+    evidence: [bench/results/latency-m1-356ec58/summary.json, bench/results/latency-m1-356ec58/summarise.py, bench/results/latency-m1-356ec58/SHA256SUMS]
+    command: "python summarise.py --check (in bench/results/latency-m1-356ec58/)"
+    kind: fast
+    recompute: lat.e1_old_p50_runs
+
+  - id: lat-e1-old-p99
+    file: README.md
+    text: "**17.59 ms** (runs 17.28, 17.59, 18.96 ms)"
+    value: "17.59 ms"
+    definition: "Median over the E1 runs of each run's p99, commit 880d5c9."
+    n: 1050
+    conditions: "One Windows laptop, Best performance power mode (phase E1); bench/latency.py C1_hhem_off_seq; grounding off; concurrency 1; engine at 356ec58 (controlplane/, manifests/, schemas/, data/ unchanged through this commit)."
+    evidence: [bench/results/latency-m1-356ec58/summary.json, bench/results/latency-m1-356ec58/summarise.py, bench/results/latency-m1-356ec58/SHA256SUMS]
+    command: "python summarise.py --check (in bench/results/latency-m1-356ec58/)"
+    kind: fast
+    recompute: lat.e1_old_p99
+
+  - id: lat-e1-old-p99-runs
+    file: README.md
+    text: "**17.59 ms** (runs 17.28, 17.59, 18.96 ms)"
+    value: "17.28, 17.59, 18.96"
+    definition: "The E1 per-run p99 values, rounds 1-3, commit 880d5c9."
+    n: 1050
+    conditions: "One Windows laptop, Best performance power mode (phase E1); bench/latency.py C1_hhem_off_seq; grounding off; concurrency 1; engine at 356ec58 (controlplane/, manifests/, schemas/, data/ unchanged through this commit)."
+    evidence: [bench/results/latency-m1-356ec58/summary.json, bench/results/latency-m1-356ec58/summarise.py, bench/results/latency-m1-356ec58/SHA256SUMS]
+    command: "python summarise.py --check (in bench/results/latency-m1-356ec58/)"
+    kind: fast
+    recompute: lat.e1_old_p99_runs
+
+  - id: lat-runs-per-condition
+    file: README.md
+    text: "Each value is the median of 3 runs"
+    value: "3"
+    definition: "Counted runs per condition (summary.json conditions[].runs)."
+    n: 1050
+    conditions: "One Windows laptop, Best performance power mode (phase E1); bench/latency.py C1_hhem_off_seq; grounding off; concurrency 1; engine at 356ec58 (controlplane/, manifests/, schemas/, data/ unchanged through this commit)."
+    evidence: [bench/results/latency-m1-356ec58/summary.json, bench/results/latency-m1-356ec58/summarise.py, bench/results/latency-m1-356ec58/SHA256SUMS]
+    command: "python summarise.py --check (in bench/results/latency-m1-356ec58/)"
+    kind: fast
+    recompute: lat.runs_per_condition
+
+  # --- Retired figures count (R6a, Q6) ------------------------------------------
+
+  - id: retired-figures-count
+    file: README.md
+    text: "**5 figures are retired by the experiment audit**"
+    value: "5"
+    definition: "Numbered retirement sections (\"## N.\") in docs/retired-figures.md."
+    n: 5
+    conditions: "docs/retired-figures.md as committed."
+    evidence: [docs/retired-figures.md]
+    command: "count the \"## N.\" headings in docs/retired-figures.md"
+    kind: fast
+    recompute: retired.count
+
+  # --- Current reference docs ---------------------------------------------------
+
+  - id: lim-crossover
+    file: docs/limitations.md
+    text: "**Crossover: ≈10.6%**"
+    value: "10.6%"
+    definition: "Same as p08-record-error-crossover."
+    n: 140
+    conditions: "Same as p08-record-error-crossover."
+    evidence: [reports/summary.json, reports/robustness.md]
+    command: "python bench/failure_injection.py"
+    kind: slow
+    recompute: p08.crossover
+
+  - id: lim-crossover-ci
+    file: docs/limitations.md
+    text: "95% interval [10.6%, 44.7%]"
+    value: "[10.6%, 44.7%]"
+    definition: "Same as p08-crossover-ci."
+    n: 140
+    conditions: "Same as p08-record-error-crossover."
+    evidence: [reports/summary.json, reports/robustness.md]
+    command: "python bench/failure_injection.py"
+    kind: slow
+    recompute: p08.crossover_ci
+
+  - id: lim-b4-frozen
+    file: docs/limitations.md
+    text: "(B4 right on 123/140 cases)"
+    value: "123/140"
+    definition: "B4 right-direction cases over non-ambiguous gold cases."
+    n: 140
+    conditions: "Same as p04-b4-direction-accuracy."
+    evidence: [reports/summary.json, bench/results/baselines-per-case-c240d87.jsonl]
+    command: "python bench/baselines.py --check; per-case file: python -I -B bench/baselines.py --out DIR"
+    kind: slow
+    recompute: p04.b4_correct_over_n
+
+  - id: inv-mutation-score
+    file: docs/invariants.md
+    text: "Current score: **0.60** (catchable operators 9 of 15"
+    value: "0.60"
+    definition: "Same as mutation-score."
+    n: 300
+    conditions: "Same as mutation-score."
+    evidence: [reports/summary.json, bench/mutation.py]
+    command: "python bench/mutation.py"
+    kind: fast
+    recompute: mutation.score
+
+  - id: inv-mutation-catchable
+    file: docs/invariants.md
+    text: "Current score: **0.60** (catchable operators 9 of 15"
+    value: "9 of 15"
+    definition: "Operators expected catchable over all operators in bench/mutation.py."
+    n: 15
+    conditions: "Same as mutation-score."
+    evidence: [reports/summary.json, bench/mutation.py]
+    command: "python bench/mutation.py"
+    kind: fast
+    recompute: mutation.catchable_of_n
+
+  - id: pm-window-row
+    file: docs/policy-manifest.md
+    text: "| `window_days` | 7 | — | 14 |"
+    value: "7 | — | 14"
+    definition: "window_days of servicing / knowledge_assistant (unset) / discount_approval manifests."
+    n: 3
+    conditions: "manifests/*.yaml as committed."
+    evidence: [manifests/servicing.yaml, manifests/knowledge_assistant.yaml, manifests/discount_approval.yaml]
+    command: "read window_days in each manifest"
+    kind: fast
+    recompute: manifest.table_window
+
+  - id: pm-ceiling-row
+    file: docs/policy-manifest.md
+    text: "| `authority_ceiling_paise` | 2,500,000 | 0 | 500,000 |"
+    value: "2,500,000 | 0 | 500,000"
+    definition: "authority_ceiling_paise of servicing / knowledge_assistant / discount_approval."
+    n: 3
+    conditions: "manifests/*.yaml as committed."
+    evidence: [manifests/servicing.yaml, manifests/knowledge_assistant.yaml, manifests/discount_approval.yaml]
+    command: "read authority_ceiling_paise in each manifest"
+    kind: fast
+    recompute: manifest.table_ceiling
+
+  - id: pm-bindings-row
+    file: docs/policy-manifest.md
+    text: "| bindings | 7 (order + policy + attrs) | 3 (entitlement + pii) | 3 (order + authority) |"
+    value: "7 (order + policy + attrs) | 3 (entitlement + pii) | 3 (order + authority)"
+    definition: "Number of claim_bindings in servicing / knowledge_assistant / discount_approval."
+    n: 3
+    conditions: "manifests/*.yaml as committed."
+    evidence: [manifests/servicing.yaml, manifests/knowledge_assistant.yaml, manifests/discount_approval.yaml]
+    command: "count claim_bindings in each manifest"
+    kind: fast
+    recompute: manifest.table_bindings
+
+  - id: gold-non-ambiguous-headline
+    file: README.md
+    text: "direction-accuracy on 140 non-ambiguous gold cases"
+    value: "140"
+    definition: "Cases in bench/gold_set.jsonl whose slice is not ambiguous_under_policy."
+    n: 150
+    conditions: "bench/gold_set.jsonl as committed (frozen)."
+    evidence: [bench/gold_set.jsonl, reports/summary.json]
+    command: "python bench/baselines.py --check"
+    kind: fast
+    recompute: gold.n_non_ambiguous

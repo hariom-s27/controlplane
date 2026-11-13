@@ -80,7 +80,7 @@ Run against the `eed05d9` engine, 44 of the 51 new or changed test IDs fail and 
 
 ## Measured effect
 
-**Full suite** (fresh copy, keys unset): `1 failed, 713 passed`. The one failure is the known, pre-existing `test_tau2_c2_controlplane_side.py::test_post_p02_integrity_record_accounts_for_one_authorized_change`. Baseline before this decision: 673 passed / 1 failed (same test).
+**Full suite** (fresh copy, keys unset): `1 failed, 713 passed`. The one failure is the known, pre-existing `test_tau2_c2_controlplane_side.py::test_post_p02_integrity_record_accounts_for_one_authorized_change` (that test was later replaced by `tests/test_integrity_v2.py`, commit `3b536d8`). Baseline before this decision: 673 passed / 1 failed (same test).
 
 **Headline (R6)**, B4/B5 on the 140 non-ambiguous cases of `bench/gold_set.jsonl`, offline, old vs new engine:
 

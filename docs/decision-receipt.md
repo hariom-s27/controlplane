@@ -1,8 +1,8 @@
 # The Decision Receipt — S10
 
-A signed JSON artifact per governed decision (measured median 2,282 bytes and
-p95 3,763 bytes over 120 receipts), appended to
-`decisions.jsonl`. This is the brief's "clear audit trail behind every
+A signed JSON artifact per governed decision, appended to
+`decisions.jsonl`. (Receipt sizes published earlier are stale and withdrawn;
+see `docs/errata.md`.) This is the brief's "clear audit trail behind every
 decision" made literal, and the single most demoable artifact in the repo —
 the thing that goes on screen and makes a judge understand the entire pitch
 in four seconds.
@@ -37,8 +37,12 @@ write to the operational trail alone.
 HMAC-SHA256 over the receipt's canonical JSON form — sorted keys, no
 whitespace (`json.dumps(..., sort_keys=True, separators=(",", ":"))`) —
 computed before the `sig` field is added, so verification re-derives the
-same bytes. The key comes from `CP_RECEIPT_SECRET` in `.env`; a real
-deployment would source it from a secret manager, not a dotfile.
+same bytes. The key is the `CP_RECEIPT_SECRET` environment variable
+(`controlplane/receipt.py::_secret`; signing fails if it is unset or empty).
+`controlplane/` never reads `.env`; the agent and demo scripts load `.env`
+into the environment, and CI sets a public test value. Any non-empty key is
+accepted — there is no production mode — so a real deployment would source
+it from a secret manager.
 
 ## Verification coverage (P1)
 
@@ -49,11 +53,16 @@ Two fields say two different things and must not be confused:
   under a source outage / ambiguity. It is not affected by how many claims
   were checked.
 - `verification_coverage` — the *scope of factual checking* behind the
-  action: `verified` load-bearing verification-eligible claims over the total
-  `eligible` load-bearing claims, plus `coverage` (the ratio, `null` when
-  `eligible` is 0 — never `1.0`), `coverage_basis` naming that denominator
-  population, and the four non-verified counters (`contradicted`,
-  `unverified`, `unavailable`, `unmodelled`).
+  action. The receipt block holds exactly `verified` (load-bearing,
+  verification-eligible claims that were verified), `eligible` (all such
+  claims), `coverage` (the ratio; `null` when there are no eligible claims —
+  never a default of one), `coverage_basis` (the name of that denominator
+  population) and `coverage_na` (the no-eligible-claims flag)
+  (`controlplane/receipt.py::_verification_coverage_block`). The non-verified
+  counters (`contradicted`, `unverified`, `unavailable`, `unmodelled`) are not
+  in the receipt block: they can be rebuilt from the per-claim `verification`
+  rows below and are kept in the telemetry `coverage.verification_coverage`
+  block.
 
 Each entry in `claims[]` also carries a `verification` field, so the coverage
 number can be recomputed from the receipt and checked against the stored

@@ -3,7 +3,7 @@
 Risk tier and compensability are **different axes**. A high-risk, fully
 compensable action (a refund — reversible by a chargeback) is a completely
 different design problem from a low-risk, non-compensable one (an email
-that has already been sent). Treating them as one scalar ("risk = 0.82")
+that has already been sent). Treating them as one scalar risk score
 is indefensible to a regulator; naming the axis and the class is.
 
 ## The table
@@ -23,13 +23,13 @@ loudly rather than defaulting to a guess about how reversible it is.
 
 1. **Not compensable + verdict ≠ VERIFIED → BLOCK.** There is no undo for
    this class, so irreversibility dominates severity regardless of how the
-   verdict was reached. Only ~0.8% of agent actions are estimated to be
-   genuinely irreversible — the strict path is narrow by construction,
-   which is what makes it affordable to be this strict.
+   verdict was reached. The strict path applies only to actions with no
+   compensating action; how common those are in real traffic is not
+   measured here.
 2. **Low confidence never blocks (D3).** A contradiction driven purely by a
    C3 (semantic/grounding) check — never a hard C1/C2 predicate failure —
-   escalates instead of blocking, because C3's ceiling is published SOTA
-   (77.4% on LLM-AggreFact), not certainty.
+   escalates instead of blocking, because a C3 entailment check is a model
+   judgement, not certainty.
 3. **A hard contradiction (a real C1/C2 predicate failed) blocks**, even on
    a compensable action — compensability is about what happens if a wrong
    action gets through some other way, not a license to proceed on a known

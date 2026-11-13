@@ -10,10 +10,11 @@ worth less than no benchmark — it trains a reviewer to distrust the numbers
 that are real. Removing these makes the rest of the repo's measurements
 more credible, not less.
 
-Every retired figure is one the project generated about *itself*. The
-external citations in the pitch (77.4% NLI SOTA, the 96%/25% LLM-judge
-figures, the USPS OIG scan-error rates) are unaffected — they were never
-ours to fabricate.
+Every retired figure below is one the project generated about *itself*.
+External figures once quoted in the pitch (an NLI state-of-the-art score,
+LLM-judge approval/catch rates, USPS OIG scan-error rates) are not backed by
+any committed file in this repository and are no longer quoted in its
+public text.
 
 ---
 
@@ -33,7 +34,7 @@ ours to fabricate.
 | **Was** | "100% verdict accuracy with the R3 `attributes_match` check on distractor cases, 75% without it" |
 | **Appeared in** | `reports/summary.json`, `README.md` ("Exp 3's result is real and worth stating…") |
 | **Why retired** | The gold label was *defined as* `resolves_to_distractor`, and the `attributes_match` predicate — the detector — recomputed that same boolean from the same fields. 100% agreement was an identity, not a measurement. The 75% baseline was `1 − P(wrong resolution)` read straight off the generator's coin flips. |
-| **Replaced by** | `bench/seb1_exp3_cross_validation.py` rebuilt: the true order id is recorded at construction time in `bench/exp3_ground_truth.jsonl`, a file the checker (`bench/exp3_checker.py`) never opens — asserted by AST inspection in `tests/test_seb1_experiments.py`. Gold verdict is `resolved_order_id != true_order_id`. The corpus now includes "hidden" distractors (same colour and category, different size) that the check cannot see. **Current numbers: 0.92 with the check, 0.755 without** (CP_SEED=20260814, n=200). The check misses every hidden-distractor wrong resolution — a real, reported blind spot, which is what makes the experiment able to fail. |
+| **Replaced by** | `bench/seb1_exp3_cross_validation.py` rebuilt: the true order id is recorded at construction time in `bench/exp3_ground_truth.jsonl`, a file the checker (`bench/exp3_checker.py`) never opens — asserted by AST inspection in `tests/test_seb1_experiments.py`. Gold verdict is `resolved_order_id != true_order_id`. The corpus now includes "hidden" distractors (same colour and category, different size) that the check cannot see. **Current numbers:** in README ("Honest limitations") and `docs/claims.yaml` (`exp3-accuracy-with-check`, `exp3-accuracy-without-check`), recomputed by `tests/test_claims.py`. The check misses every hidden-distractor wrong resolution — a real, reported blind spot, which is what makes the experiment able to fail. |
 
 ## 3. Mutation score — 1.000
 
@@ -42,7 +43,7 @@ ours to fabricate.
 | **Was** | Mutation score 1.000, all six operators at 1.000 |
 | **Appeared in** | `reports/summary.json`, `README.md`, `docs/invariants.md` |
 | **Why retired** | The six operators were derived from the six checks `decide()` already implements (`tests/test_mutation.py`'s own docstring: "one operator per `docs/invariants.md`'s table"). Every mutant corrupted a fact some check was already watching, so every mutant was caught. The score restated the unit tests. |
-| **Replaced by** | `controlplane/mutation.py` rewritten so operators come from the **specification** — the `issue_refund` tool JSON schema and `manifests/servicing.yaml` — including elements the gate has no mechanism to enforce (`currency` enum, negative amount, latency/escalation budgets, retention days, risk tier). **Current score: 0.60** (9 of 15 operators catchable), with a per-operator table in `reports/summary.json` naming exactly which spec violations the gate does not catch. A score of 1.0 now fails `tests/test_mutation.py` — it would mean the operator set had drifted back to mirroring the implementation. |
+| **Replaced by** | `bench/mutation.py` (originally shipped as `controlplane/mutation.py`) rewritten so operators come from the **specification** — the `issue_refund` tool JSON schema and `manifests/servicing.yaml` — including elements the gate has no mechanism to enforce (`currency` enum, negative amount, latency/escalation budgets, retention days, risk tier). **Current score:** in `docs/invariants.md` and `docs/claims.yaml` (`mutation-score`, `inv-mutation-catchable`), with a per-operator table in `reports/summary.json` naming exactly which spec violations the gate does not catch. A score of 1.0 now fails `tests/test_mutation.py` — it would mean the operator set had drifted back to mirroring the implementation. |
 
 ## 4. Bias probe — "no detectable difference"
 
@@ -64,13 +65,13 @@ ours to fabricate.
 
 ---
 
-## What was checked and left in place
+## Other figures checked later, and their status (P05b, 2026-11-14)
 
 | Figure | Status |
 |---|---|
-| Grounding scores 0.921 (accurate paraphrase) / 0.023 (fluent-but-wrong) | Real — measured against the downloaded HHEM-2.1-Open model, `tests/test_ground.py` |
-| Grounding model load (cold start) + HHEM scored-call latency | Real — **P09 measures both** (`reports/latency.md` §E cold start ≈ 9 s one-time, I/O-bound and variable; §C/§G HHEM `ground` stage p50 161 ms over 1,050 scored calls) |
-| Per-stage latency p50/p95/p99/max in `reports/latency.md` | Real — **P09**: 4 configurations × 1,050 gated calls each; unrounded percentiles in `summary.json['p09_latency']`. The old n=15/n=24 interim is superseded. |
-| Decision receipt size: median 2,282 B, p95 3,763 B (n=120) | Real — generated through all three manifest pipelines; see `reports/summary.json` |
+| HHEM grounding scores for the two `tests/test_ground.py` fixtures | Retired by P05b: the exact scores were never committed; the test checks only that each is above / below its threshold |
+| Grounding model load (cold start) + HHEM scored-call latency (P09) | Retired by P05b (`docs/errata.md`): not in the current latency evidence pack |
+| Per-stage and end-to-end latency in `reports/latency.md` (P09) | Retired by P05b (`docs/errata.md`); current figures come only from `bench/results/latency-m1-356ec58/` |
+| Decision receipt size (P05 era) | Retired by P05b (`docs/errata.md`): stale since the verification-coverage block was added; no current size is quoted |
 | Logger 2 (extraction accuracy under noise) | Honest `not_measured` stub — unchanged |
 | `reports/noise_sweep.png` | Not a noise sweep; titled honestly as Exp 3's comparison — unchanged |

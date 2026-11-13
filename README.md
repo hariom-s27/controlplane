@@ -4,9 +4,10 @@
 
 **A runtime verification layer for enterprise AI agents.** When an agent
 proposes an action, we intercept the tool call *before it executes*, check the
-claims inside it against the enterprise's own live systems of record, and
-decide whether to allow, modify, block or escalate — emitting a signed
-evidence receipt for every decision.
+claims inside it against the enterprise's system of record (order DB, policy
+store), queried at decision time, and decide whether to allow, modify, block or
+escalate — emitting a signed evidence receipt for every decision. The records
+in this repository are synthetic seeds.
 
 > Most AI checkers ask another AI for a second opinion.
 > We ask the company's own systems for the actual answer.
@@ -19,10 +20,10 @@ afterward.
 
 Accenture Innovation Challenge 2026 · Problem Track 1 · Round 2
 
-**Live demo:** https://controlplane-qvr2.onrender.com/ · 
+**Live demo:** https://controlplane-qvr2.onrender.com/
 
-**Current public main.** `round2-final` is this repository's published
-branch — the state described in this README.
+**Published branch.** `main` is this repository's published branch — the
+state described in this README.
 
 ---
 
@@ -71,7 +72,7 @@ The two strongest outcomes on that dashboard, Customer Support profile
 | Scenario | Amount | Order | Verdict | Intervention | Execution | Receipt |
 |---|---|---|---|---|---|---|
 | 7 — Stale-policy refund | ₹42,999 | ORD-88461 | CONTRADICTED | BLOCK | PREVENTED | VERIFIED |
-| 8 — In-policy refund | ₹8,499 | ORD-90233 | VERIFIED | ALLOW | EXECUTED (1 implementation call) | VERIFIED |
+| 8 — In-policy refund | ₹8,499 | ORD-90233 | VERIFIED | ALLOW | EXECUTED | VERIFIED |
 
 Scenario 7: the agent's claim about the refund window contradicts what
 `orders.db`/`policy_store.db` actually say — the refund is blocked before it
@@ -131,18 +132,23 @@ claim is actually about.
 | Claim (in the agent's context) | Company fact (queried live) | Source |
 |---|---|---|
 | The refund looks like it should be within policy | `orders.db`: ORD-88461 delivered 2026-07-19 — 26 days before the decision clock, outside the 7-day window | the scenario above |
-| Retrieved policy clause says a 30-day window (v3.8) | `policy_store.db`: v3.8 was superseded by v4.2 (7-day window) before the retrieval index was built | `reports/baselines.md`, `stale_policy_context` slice (20/20 cases) |
+| Retrieved policy clause says a 30-day window (v3.8) | `policy_store.db`: v3.8 was superseded by v4.2 (7-day window) before the retrieval index was built | B5 gets the direction right on 20 of the 20 `stale_policy_context` gold cases (B4: 4 of 20), one slice of the 150-case gold set — `reports/baselines.md` per-slice table |
 | A requested document looks like an ordinary internal document | `entitlements.db`: the requesting employee is entitled to a different customer's case, not this one | "Implementation approach" below, use case 2 |
 
-We ask the system of record, not another model, because the failure mode
+We ask the system of record (order DB, policy store), queried at decision
+time, not another model — the records in this repository are synthetic
+seeds — because the failure mode
 above is a stale or incomplete **fact**, not unsafe **text** — a second LLM
 reading the same stale context has no way to know it's stale either.
 
 ## Use cases
 
-All three use cases run the identical `controlplane/` engine — only the
+Every use case runs the identical `controlplane/` engine — only the
 manifest changes (`manifests/*.yaml`), which changes *what* is checked and
-*how*, never how it is enforced.
+*how*, never how it is enforced. Three use cases are described below; a
+further one, service credit approval (`agents/service_credit_agent.py`,
+`manifests/service_credit_approval.yaml`), is covered by
+`tests/test_service_credit_approval.py` and not described here.
 
 - **1 — Refund servicing** (`agents/servicing_agent.py`): the scenario
   above. Checks the refund window, order/customer/attribute match, and the
@@ -189,7 +195,7 @@ reconciliation: the agent proposes `send_document(recipient_id='EMP-4410',
 doc_id='DOC-2277')`; `entitlements.db` returns
 `doc_classification_permitted=true` but `recipient_entitled_to_doc=false` —
 verdict **CONTRADICTED**, intervention **BLOCK**, root cause
-`recipient_entitled`, execution **PREVENTED** (0 implementation calls),
+`recipient_entitled`, execution **PREVENTED** (the tool is not called),
 receipt **VERIFIED**.
 
 ![ControlPlane judge dashboard — RELIABLE CONTRADICTION hero scenario](docs/screenshot-dashboard.png)
@@ -211,21 +217,26 @@ decision record, not about what happened afterward.
 
 ## Continuous integration
 
-`.github/workflows/ci.yml` runs on every push and pull request — Python 3.11
-and 3.12, `contents: read` only, `CP_MODE=fixture`, a non-production
-`CP_RECEIPT_SECRET`: the Product-01/02/03/04A test suites, the P02
-use-case-agnostic engine regression gate
-(`tests/test_engine_is_use_case_agnostic.py`), a deterministic offline demo
-smoke test (`python -m scripts.judge_demo`), and a dashboard import / `GET
-/` smoke test. It deliberately does not run the full `pytest tests/ -q` —
-see the workflow's own header comment for the documented pre-existing
-failures (outside these product layers) that scope excludes. This
-reconciliation re-ran that same scope locally against this exact tree and
-every suite passed; **remote GitHub Actions have also run successfully on
-`main`** for this commit — see the Actions tab of the repository. A green
-run means only "the configured checks above passed," not "the full test
-suite is green" or "the research/benchmark findings are validated" — see
-`docs/limitations.md` for the actual full-suite counts.
+`.github/workflows/ci.yml` runs on every push and pull request with
+`contents: read` only, `CP_MODE=fixture` and a public, non-production
+`CP_RECEIPT_SECRET`:
+
+- **product-smoke** (Python 3.11 and 3.12): the Product-01/02/03/04A test
+  suites, the use-case-agnostic engine check
+  (`tests/test_engine_is_use_case_agnostic.py`), a deterministic offline demo
+  smoke test (`python -m scripts.judge_demo`) and a dashboard `GET /` smoke
+  test.
+- **full-suite**: `python -m pytest tests/` on Ubuntu (Python 3.12 and 3.14)
+  and Windows (Python 3.14). `tests/test_ground.py` skips itself when `torch`
+  is absent; `requirements.txt` does not install it.
+- **secret-scan**: gitleaks over the history of the checked-out commit.
+  gitleaks skips merge commits; merges in this repository are not
+  hand-resolved.
+
+A green run means only that these checks passed — not that the
+research/benchmark findings are validated. CI logs and artifacts expire;
+every number in this README rests on committed files, listed in
+`docs/claims.yaml` and checked by `tests/test_claims.py`.
 
 ## Implementation approach
 
@@ -244,9 +255,11 @@ sign and persist a Decision Receipt. Which claims exist, which resolver
 answers each, the predicate-payload shape, the predicate graph, and
 compensability all come from the active manifest's `claim_bindings`
 (`controlplane/bindings.py`, `docs/policy-manifest.md`) — the engine has no
-per-use-case code, and a CI check fails if it grows any. `docs/evidence/gate_condition_check.txt`
-is the roadmap's own required proof that this isn't staged: five different
-phrasings of the same request, majority propose the refund unprompted.
+per-use-case code, and a CI check fails if it grows any. That the agent
+proposes the refund unprompted is the captured negative-control run cited in
+"The ₹42,999 scenario" above (`docs/evidence/negative_control.txt`; the
+correction history is in `docs/evidence/gate_condition_check.txt`). It is a
+recorded live run and cannot be re-run offline.
 
 Zen Engine expresses business decision logic — the window is 7 days and this order is at 26. It is not the security perimeter; authorization is upstream and is not our contribution.
 
@@ -283,9 +296,11 @@ controlplane/telemetry.py ┘   + coverage / latency / promotion-cost blocks
 
 Built: S0-S18, plus the judge-facing product layer above (Product-01 through
 04A) and the CI workflow that exercises it. `make bench` runs SEB-1 Exp 3
-(D52 cross-validation); Exp 5 (confusion matrix) is **BLOCKED** pending a
-held-out gold set (task P03) — its previous version was circular and has
-been retired, see `docs/experiment-audit.md`. `make review` runs a terminal
+(D52 cross-validation); Exp 5 (confusion matrix) is **BLOCKED**: the gold
+set it needs now exists (`bench/gold_set.jsonl`, task P03), but its scoring
+driver (`_predict_class()`) is not built, so `run()` raises `SystemExit`. Its
+previous version was circular and has been retired, see
+`docs/experiment-audit.md`. `make review` runs a terminal
 human-in-the-loop console for ESCALATE decisions (needs an interactive
 human — see "Honest limitations"); the one-screen FastAPI dashboard
 described above is the actual judge-facing web UI, and is a separate,
@@ -394,45 +409,76 @@ below a **≈10.6%** record-error rate (cluster bootstrap 95% CI **[10.6%,
 needs fixing. Source: `reports/robustness.md`,
 `reports/summary.json['p08_robustness']`.
 
-**3. Gate overhead.** End-to-end median **7.67 ms** per gated call with
-grounding off (1,050 calls, config C1). With optional HHEM grounding on,
-the entailment call alone adds a further **~161 ms** median (p95 228 ms)
-and a one-time **~9.2 s** cold model load; `CP_GROUNDING=off` is the
-default for this reason. Source: `reports/latency.md`.
+**3. Gate service time.** On one Windows laptop in the Best performance power
+mode, the gate's per-call service time for the C1 workload (the 150-case gold
+set cycled 7 times: n = 1,050 timed calls after 50 warm-up calls, grounding
+off, concurrency 1) at commit `356ec58` had a median p50 of **3.16 ms** (runs
+3.13, 3.16, 3.20 ms) and a median p99 of **4.65 ms** (runs 3.94, 4.65,
+5.27 ms); at the earlier commit `880d5c9` the same workload had a median p50
+of **13.90 ms** (runs 13.83, 14.00, 13.90 ms) and a median p99 of
+**17.59 ms** (runs 17.28, 17.59, 18.96 ms). Each value is the median of 3
+runs. This is per-call service time, sequential calls in one process — not
+latency under load. It is repeatable, not reproduced: one machine, no other
+lab. The engine files measured at `356ec58` are unchanged in this commit.
+With optional HHEM grounding on, a model load and a model call are added per
+gated call; that configuration is not in the current evidence pack and no
+figure is quoted for it. Source: `bench/results/latency-m1-356ec58/`
+(`python summarise.py --check` in that folder).
+*History:* an earlier README p99 of 14.52 ms came from an uncommitted working
+tree and is retired; earlier HHEM-on figures are retired too
+(`docs/errata.md`).
 
-## External validation — tau²-bench post-mortem
+## Where it fails
 
-We also attempted validation on `sierra-research/tau2-bench` (external,
-third-party, retail domain, pinned tag `v1.0.1`) — deliberately outside our
-own gold set. **Status: partial, not a completed external validation.**
+What the evidence above does **not** show, and where the gate is known to be
+weak. Each point names its source.
 
-- **C1 (vanilla baseline, no ControlPlane): COMPLETE.** Run under
-  `Kimi-K2-Instruct` after a disclosed mid-experiment model change
-  (`Qwen3-8B` stalled repeatedly and was swapped, logged as a genuine
-  protocol deviation, not reward-motivated — both models scored
-  `reward=0.0` on the shared task IDs). Diagnostic pass^1 (judge/infra
-  failures excluded): **2/27 ≈ 7.4%** — a near-null result, consistent with
-  an untuned mid-size open-weight model on a hard multi-step benchmark. This
-  establishes a governance-free floor; it is not a claim about ControlPlane,
-  which was not yet in the loop for C1.
-- **C2 (ControlPlane + fresh policy) and C3 (ControlPlane + stale policy) —
-  the comparison this experiment exists to produce — are PENDING**, not yet
-  built or run.
-
-**So: tau2-bench does not currently provide external validation of the
-B4/B5 result above.** That result is our own internal, gold-set-based
-evidence only. Full deviation log and methodology: `reports/tau2-bench.md`.
+- **One failure mode, synthetic data.** The B4/B5 gap comes almost entirely
+  from stale-policy cases on a synthetic, single-domain gold set
+  (`reports/baselines.md`). It is not evidence that record-grounded checking
+  beats trace-grounded checking in general.
+- **No external validation.** The tau²-bench runs are retired as evidence:
+  no tool call reached the gate, and the runs are not in this repository
+  (`docs/errata.md`).
+- **The record can be wrong.** Once enough delivery dates in `orders.db` are
+  wrong, ControlPlane falls below the trace-grounded baseline
+  (`reports/robustness.md`); the gate trusts the record it queries.
+- **Agent and resolver can share a store.** For orders and entitlements the
+  gate re-reads the same store the agent reads; that is freshness, not an
+  independent source (`docs/threat-model.md`, T27). Only the policy-clause
+  path is a separate source.
+- **A missing policy-version assertion passes.** Gold cases where the agent
+  asserts no policy version pass the clause-current check
+  (`docs/decisions/D-M1-01-fail-closed.md`, known limitations).
+- **No currency check.** `decide()` does not compare the tool-call currency
+  with the order record; those cases are blocked only when another check
+  also fails (`reports/baselines.md`, caveat paragraph).
+- **Hidden distractors get through.** The attribute check reads colour and
+  category only, so a wrong order of the same colour and category is not
+  caught (Exp 3, `bench/seb1_exp3_cross_validation.py`).
+- **Fail-closed costs service.** An `escalate` posture holds actions for a
+  human; once the escalation budget is used, they are blocked
+  (`docs/decisions/D-M1-01-fail-closed.md`).
+- **Receipt keys.** Any non-empty `CP_RECEIPT_SECRET` is accepted, including
+  the public values in `.github/workflows/ci.yml`, `.env.example` and the
+  benchmark harnesses (which use a fixed public key for benchmarks only);
+  there is no production mode (`controlplane/receipt.py::_secret`). Receipts
+  are HMAC-signed one by one, not hash-chained.
+- **Retries are in-process only.** The at-most-once guarantee does not
+  survive a crash between execution and receipt persistence.
+- **Latency is service time on one laptop**, sequential, not under load
+  (see "Measured results").
+- **The dashboard is a single-process, fixture-mode demo**
+  (`docs/limitations.md`).
 
 ## Future work
 
 Not implemented; not claimed as current capability.
 
-- **tau2-bench C2/C3** — the external, third-party validation of the
-  record-vs-trace-grounding gap. Designed, not yet run (see above).
 - **Exp 5 confusion matrix** — `bench/seb1_exp5_confusion_matrix.py`
-  deliberately raises `SystemExit` rather than report a number; it needs a
-  held-out gold set labeled independently of `decide()`, which does not yet
-  exist.
+  deliberately raises `SystemExit` rather than report a number. The gold set
+  it needs exists (`bench/gold_set.jsonl`, labels from `bench/label.py`); the
+  scoring driver `_predict_class()` is not built.
 - **Logger 2 (SEB-1 extraction-accuracy-under-noise)** — reports
   `"status": "not_measured"`; needs the date-extraction harness from
   `phase 1/` ported and re-run against the live extractor.
@@ -447,8 +493,8 @@ Not implemented; not claimed as current capability.
 
 ## Dependencies
 
-Every dependency is MIT or Apache-2.0; see `requirements.txt` for the
-per-package licence. Two libraries were deliberately excluded on licence
+Dependencies are under the licences listed in `requirements.txt`, next to
+each package. Two libraries were deliberately excluded on licence
 grounds **before** we knew a public repository would be required:
 Bespoke-MiniCheck-7B (CC BY-NC) and SDV (BUSL-1.1).
 
@@ -474,19 +520,17 @@ thing in the repo.)*
   stays hand-authored. The version history (a real clause silently superseded, still
   reachable from a stale retrieval index) is the actual point being demonstrated and
   is unaffected by this.
-- **Decision receipts run larger than the ~2 KB target for a realistic
-  scenario** — 120 measured receipts across all three manifests have a
-  median of 2,282 bytes and p95 of 3,763 bytes (max 3,764). Nothing was
-  trimmed for this measurement. The aggregate is reproducible, but the 120
-  individual raw receipt payloads were not persisted. Two rounds of legitimate trimming happened before this:
+- **Decision receipts run larger than their original design target.** The
+  receipt sizes published earlier are stale (the receipt has since gained
+  the verification-coverage block) and are withdrawn (`docs/errata.md`); no
+  current size is quoted. Two rounds of legitimate trimming happened earlier:
   a claim that was tracked but not yet checked by `decide()` was excluded
   until it was real rather than kept for appearances, and `reasons` lists
   only the checks that actually failed rather than restating every pass
   (`claims`+`evidence` already show what was checked). Further compaction
   would mean shorter field names or dropping evidence entries, which trades
   against the receipt's actual job — being a complete, readable audit trail
-  — so it wasn't done. Reporting the real, current number here rather than
-  the illustrative one.
+  — so it wasn't done.
 - **R3 (entity match) is extended**, per D52: `item_colour`/`item_category`
   are now required structural arguments on the `issue_refund` tool call
   (declared in the tool schema, filled by native function-calling, never
@@ -501,7 +545,7 @@ thing in the repo.)*
 - **Escalation rate-limiting is enforced at `dispatch_tool`.** ESCALATE holds
   the action in `pending_actions.jsonl`; `make review` presents the receipt
   without its verdict, accepts APPROVE/BLOCK, then reveals the verdict and
-  records agreement. The rolling 100-decision budget comes from the active
+  records agreement. The rolling-window budget comes from the active
   manifest's `escalation_budget_pct`; when exhausted, the action is BLOCKed —
   always, whatever the configured posture (D-M1-01). The exhaustion outcome
   is persisted. `decide()` remains pure.
@@ -511,19 +555,15 @@ thing in the repo.)*
   `phase 1/`'s scratch folders and has not been ported into this repo.
   `controlplane/telemetry.py` reports `"status": "not_measured"` for it
   rather than inventing a figure.
-- **S8 grounding (HHEM-2.1-Open) is real, working, and measured** —
-  `CP_GROUNDING=off` is still the default (it's a ~600MB+ `torch`+`transformers`
-  download the base pipeline never needs; `controlplane/intercept.py` wraps
-  the import so the rest of the gate works identically with neither
-  installed), but both `tests/test_ground.py` fixtures pass against the
-  real downloaded model: an accurate paraphrase of v4.2 scores 0.921, a
-  fluent paraphrase asserting a 30-day window scores 0.023. **P09 profiled
-  the latency** (`reports/latency.md`, 4 configs × 1,050 gated calls): gate
-  end-to-end median **7.67 ms** with grounding off (C1); with grounding on
-  the HHEM entailment call is p50 **161 ms** and dominates every tail metric,
-  plus a one-time ~**9 s** cold-start model load. `CP_GROUNDING=off` is the
-  default. Load dominates tail latency exactly as the roadmap predicted —
-  reported here, not hidden.
+- **S8 grounding (HHEM-2.1-Open) is optional and off by default.**
+  `CP_GROUNDING=off` is the default: it needs `torch` and `transformers`, a
+  large download the base pipeline never needs, and `controlplane/intercept.py`
+  wraps the import so the rest of the gate works identically with neither
+  installed. With the model installed, both `tests/test_ground.py` tests
+  pass: an accurate paraphrase of v4.2 scores above the test's threshold and
+  a fluent paraphrase asserting the old window scores below it. CI does not
+  install `torch`, so CI skips these tests. No grounding latency is quoted
+  (the earlier figures are retired, `docs/errata.md`).
   A real environment bug surfaced and was fixed along the way:
   `transformers>=5.0` breaks HHEM's `trust_remote_code` model class
   (`AttributeError: ... no attribute 'all_tied_weights_keys'`) because it
@@ -535,8 +575,9 @@ thing in the repo.)*
   precedence ("SOURCE_UNRELIABLE > CONTRADICTED") *globally*: degrading ONE
   claim's evidence reliability could suppress a completely unrelated, still-
   fully-reliable claim's hard contradiction, turning what should stay BLOCK
-  into the strictly more permissive ESCALATE — exploitable by an agent (or a
-  bug) that simply degrades its own evidence quality. Fixed by scoping the
+  into the strictly more permissive ESCALATE — a defect class an agent (or a
+  bug) could trigger by degrading its own evidence quality. It was found by
+  Hypothesis property-based testing, not observed as an exploit. Fixed by scoping the
   precedence per-claim and, for the case where the SAME claim is both
   unreliable and would itself fail, decoupling the verdict label (still
   honestly `SOURCE_UNRELIABLE`) from the intervention floor (never weaker
@@ -544,13 +585,15 @@ thing in the repo.)*
   docstring and `tests/test_invariants.py` both carry the full explanation.
   This is the "found this and we fixed it" sentence the roadmap asked for —
   it isn't hypothetical.
-- **Four of the five reported experiments were circular and have been
-  retired.** An internal audit (`docs/experiment-audit.md`) found that the
-  confusion matrix (accuracy 1.000), the order_id cross-validation pair
-  (100% / 75%), the mutation score (1.000), and the bias probe ("no
-  difference detected") all had outcomes forced by how their test inputs
-  were constructed — none of them could fail. The retirements, and what
-  replaced each, are in `docs/retired-figures.md`. This is stated up front
+- **5 figures are retired by the experiment audit** (`docs/retired-figures.md`,
+  one numbered section each; later retirements — latency, receipt size,
+  grounding scores — are listed in that file's second table). Four came from experiments whose outcomes were forced by how their
+  test inputs were constructed, found by an internal audit
+  (`docs/experiment-audit.md`): the confusion matrix (accuracy 1.000), the
+  order_id cross-validation pair (100% / 75%), the mutation score (1.000)
+  and the bias probe ("no difference detected") — none of them could fail.
+  The fifth, the coverage ratio, restated a hard-coded claim list. What
+  replaced each is in `docs/retired-figures.md`. This is stated up front
   rather than buried: a benchmark that cannot fail teaches a reviewer to
   distrust the numbers that *are* real, so removing it is the credible
   move. What survives: Exp 3 rebuilt against held-out ground truth (0.92
@@ -558,10 +601,11 @@ thing in the repo.)*
   blind spot, so it can fail); a spec-derived mutation score (0.60, with a
   per-operator table of what the gate does and does not catch); a
   structural no-protected-attributes guarantee in place of the bias probe.
-- **The confusion matrix (Exp 5) is BLOCKED, not reported.** It needs a
-  held-out gold set whose labels are assigned independently of `decide()`
-  (task P03). Until that lands, `bench/seb1_exp5_confusion_matrix.py`
-  raises `SystemExit` rather than emit a passing-but-meaningless number.
+- **The confusion matrix (Exp 5) is BLOCKED, not reported.** The held-out
+  gold set exists (`bench/gold_set.jsonl`, task P03, labels from
+  `bench/label.py`), but the non-executing scoring driver is not built, so
+  `bench/seb1_exp5_confusion_matrix.py` raises `SystemExit` rather than emit
+  a number.
 - **Logger 2 (SEB-1 extraction-accuracy-under-noise)** stays an honest
   `not_measured` stub — it needs the *date-extraction* harness from
   `phase 1/` re-run against the live extractor, which nothing here
@@ -583,7 +627,7 @@ thing in the repo.)*
 
 Deeper limitations — the bias-measurement framing, retired figures, the
 P08 robustness findings, and the judge dashboard's own scope boundaries —
-are in `docs/limitations.md
+are in `docs/limitations.md`.
 
 ## Submission information
 
@@ -600,7 +644,7 @@ are in `docs/limitations.md
 | Path | What it is |
 |---|---|
 | `controlplane/` | The product — use-case agnostic. The gate, the registry, `bindings.py`, the receipt. |
-| `agents/` | Three demo agents — servicing, knowledge assistant, discount approval. |
+| `agents/` | Demo agents — servicing, knowledge assistant, discount approval, and service credit (not described above). |
 | `scripts/` | `judge_demo.py` (Product-01, eight scripted scenarios), `probe.py`, `scrape_policies.py`. |
 | `product/` | Presentation layers over the real pipeline — Product-02's Evidence Passport / Decision Inspector (`judge_presentation.py`, `judge_views.py`, `judge_cli.py`) and an earlier per-case CLI view (`views.py`/`cli.py`, `make product-demo`). |
 | `demo/` | Product-03/04A — the one-screen FastAPI judge dashboard (`web.py`, `templates/`, `static/`) over Product-01/02. |
@@ -613,7 +657,12 @@ are in `docs/limitations.md
 ## Reproducibility
 
 Everything is seeded at `CP_SEED=20260814` and the demo clock is frozen at
-`CP_DEMO_DATE=2026-08-14`. `python data/build_db.py` produces byte-identical
-databases on every run — `tests/test_data.py` asserts it. If you run this
-code you should get the numbers we published; if you do not, that is a bug and
-we want to hear about it.
+`CP_DEMO_DATE=2026-08-14`. `python data/build_db.py` builds the SQLite
+databases from the committed seeds and is deterministic on one machine —
+`tests/test_data.py` asserts it. The database *file* hash can differ between
+SQLite versions; the *content* hash is stable: `python scripts/db_content_hash.py`.
+Every number in this README is listed in `docs/claims.yaml` with its
+definition, sample size, conditions, evidence file and command, and
+`tests/test_claims.py` recomputes it from committed files. The headline table
+can be checked with `python bench/baselines.py --check`. If you run this code
+and get a different number, that is a bug and we want to hear about it.

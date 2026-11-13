@@ -42,7 +42,7 @@ violation would mean something specific and actionable:
   your own evidence — the opposite of what a verification layer is for.
 - **M2** is the amount-specific case of M1, split out because amount is the
   one dimension with a natural total order the business itself uses
-  (the ₹25,000 authority ceiling) — worth its own check rather than folding
+  (the servicing manifest's authority ceiling, `authority_ceiling_paise`) — worth its own check rather than folding
   into the generic evidence-favourability relation.
 - **M3** catches policy-equivalence bugs that unit tests miss by
   construction: two concrete inputs that *should* reduce to the same
@@ -103,8 +103,8 @@ caller-level controls such as the escalation budget are labelled separately.
 
 `tests/test_mutation.py` runs every operator the same number of times
 against independently varied base scenarios (seeded), so the score is a
-stable property of the operator set. Current score: **0.60** (9 of 15
-operators catchable). `test_mutation.py` asserts the score is `< 1.0` — a
+stable property of the operator set. Current score: **0.60** (catchable
+operators 9 of 15; `python bench/mutation.py`, `docs/claims.yaml`). `test_mutation.py` asserts the score is `< 1.0` — a
 1.0 would mean the operator set had drifted back to mirroring the
 implementation.
 
