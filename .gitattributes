@@ -2,3 +2,4 @@
 /bench/ground_truth_holdout.jsonl text eol=lf
 /bench/human_label_sample.csv text eol=lf
 /bench/human_label_sample_pass1.csv text eol=lf
+bench/results/latency-m1-356ec58/** -text

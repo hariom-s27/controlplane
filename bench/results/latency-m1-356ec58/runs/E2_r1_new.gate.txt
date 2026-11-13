@@ -1,0 +1,2 @@
+GATE free_GB=4.92 avail_GB=4.91 commit=19,741/36,044 MB cpu_avg=4.7 samples=2.9,8.3,8.7,1.1,2.5 pass=True
+overlay=961cc777-2547-4f9d-8174-7d86181b8a7a api=961cc777-2547-4f9d-8174-7d86181b8a7a battery_status=2

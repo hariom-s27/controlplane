@@ -1,0 +1,95 @@
+{
+  "config": "C1_hhem_off_seq",
+  "c3": "off",
+  "concurrency": 1,
+  "n": 1050,
+  "warmup_discarded": 50,
+  "stages": {
+    "extract": {
+      "n": 1050,
+      "p50": 0.0,
+      "p95": 0.0,
+      "p99": 0.0,
+      "max": 0.01,
+      "mean": 9.523809523809525e-06
+    },
+    "classify": {
+      "n": 1050,
+      "p50": 0.05,
+      "p95": 0.08,
+      "p99": 0.12,
+      "max": 0.24,
+      "mean": 0.05551428571428571
+    },
+    "resolve": {
+      "n": 1050,
+      "p50": 1.28,
+      "p95": 2.16,
+      "p99": 2.89,
+      "max": 4.53,
+      "mean": 1.3855714285714285
+    },
+    "predicate": {
+      "n": 1050,
+      "p50": 1.33,
+      "p95": 1.87,
+      "p99": 2.37,
+      "max": 2.96,
+      "mean": 1.3854952380952381
+    },
+    "ground": {
+      "n": 0,
+      "p50": null,
+      "p95": null,
+      "p99": null,
+      "max": null,
+      "mean": null
+    },
+    "decide": {
+      "n": 1050,
+      "p50": 0.16,
+      "p95": 0.24,
+      "p99": 0.3,
+      "max": 1.08,
+      "mean": 0.1723714285714286
+    },
+    "receipt": {
+      "n": 1050,
+      "p50": 0.47,
+      "p95": 0.68,
+      "p99": 0.94,
+      "max": 2.15,
+      "mean": 0.5018
+    }
+  },
+  "end_to_end": {
+    "n": 1050,
+    "p50": 3.62,
+    "p95": 5.17,
+    "p99": 6.7,
+    "max": 9.15,
+    "mean": 3.797295238095238
+  },
+  "observed_max_concurrency": 1,
+  "wall_clock_s": 4.143,
+  "throughput_calls_per_s": 253.4,
+  "grounded_calls": 0,
+  "all_signatures_valid": true,
+  "receipt_persisted_lines": 1100,
+  "receipt_lines_all_parse": true,
+  "intervention_distribution": {
+    "ALLOW": 378,
+    "BLOCK": 602,
+    "ESCALATE": 70
+  },
+  "label": "E1_r1_new",
+  "mode": "plain",
+  "patched": [],
+  "copy": "D:\\sem_iitk\\sem9\\comp\\_work\\p04c\\e\\new",
+  "tempdir": "D:\\sem_iitk\\sem9\\comp\\_work\\p04c\\tmp",
+  "python_isolated": 1,
+  "dont_write_bytecode": false,
+  "sum_stage_p50": 3.29,
+  "gap_mean": 0.3,
+  "gap_p50": 0.33
+}

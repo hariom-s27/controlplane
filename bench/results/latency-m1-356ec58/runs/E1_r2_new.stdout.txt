@@ -1,0 +1,3 @@
+controlplane.__file__ = D:\sem_iitk\sem9\comp\_work\p04c\e\new\controlplane\__init__.py | tempdir = D:\sem_iitk\sem9\comp\_work\p04c\tmp | isolated = 1 | dont_write_bytecode = False
+patched: none
+{"label": "E1_r2_new", "n": 1050, "p50": 3.16, "p95": 3.61, "p99": 4.65, "max": 7.39, "sum_stage_p50": 2.9, "gap_mean": 0.26, "sig_ok": true, "interventions": {"ALLOW": 378, "BLOCK": 602, "ESCALATE": 70}}

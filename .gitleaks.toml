@@ -1,0 +1,18 @@
+# gitleaks configuration (P05 V18). Keeps every default rule.
+# One rule-scoped exception: the default generic-api-key rule reads the public
+# Windows power-overlay GUIDs after `api=` / `"overlay_api":` in the latency
+# evidence pack as keys. Only those exact lines inside the pack are allowed.
+# No global allowlist.
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "generic-api-key"
+
+  [[rules.allowlists]]
+  description = "public Windows power-overlay GUIDs in the latency evidence pack (P05 V18)"
+  condition = "AND"
+  regexTarget = "line"
+  regexes = ['''(?:api=|"overlay_api":\s*")(?:ded574b5-45a0-4f42-8737-46345c09c238|961cc777-2547-4f9d-8174-7d86181b8a7a)''']
+  paths = ['''^bench/results/latency-m1-356ec58/''']
