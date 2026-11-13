@@ -30,9 +30,18 @@ on:
 permissions:
   contents: read
 
+# P06a W11: a newer push to the same ref cancels the older run.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# P06a W2: actions pinned by full commit SHA (Node 24 runtime). The trailing
+# comment names the release tag the SHA was resolved from (git ls-remote).
+
 jobs:
   product-smoke:
     runs-on: ubuntu-latest
+    timeout-minutes: 15  # P06a W9
     strategy:
       fail-fast: false
       matrix:
@@ -50,10 +59,10 @@ jobs:
       CP_GATE: "on"
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6.3.0
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -96,6 +105,7 @@ jobs:
 
   full-suite:
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30  # P06a W9
     strategy:
       fail-fast: false
       matrix:
@@ -118,10 +128,10 @@ jobs:
       TRANSFORMERS_OFFLINE: "1"
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
 
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6.3.0
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -134,15 +144,51 @@ jobs:
         run: python data/build_db.py
 
       - name: Full test suite
-        run: python -m pytest tests/ -q
+        run: python -m pytest tests/ -q --junitxml=junit.xml
+
+      # P06a W10: report only. pytest's exit code above decides pass/fail;
+      # this step always exits 0 and never changes the job result.
+      - name: Test summary
+        if: always()
+        shell: python
+        env:
+          CI_OS: ${{ matrix.os }}
+          CI_PY: ${{ matrix.python-version }}
+        run: |
+          import os
+          import xml.etree.ElementTree as ET
+
+          def counts(path):
+              root = ET.parse(path).getroot()
+              suites = [root] if root.tag == "testsuite" else root.iter("testsuite")
+              t = {"tests": 0, "failures": 0, "errors": 0, "skipped": 0}
+              for s in suites:
+                  for k in t:
+                      t[k] += int(s.get(k, 0))
+              t["passed"] = t["tests"] - t["failures"] - t["errors"] - t["skipped"]
+              return t
+
+          label = f"{os.environ.get('CI_OS', '?')} / Python {os.environ.get('CI_PY', '?')}"
+          head = "| job | passed | failed | errors | skipped |\n|---|---|---|---|---|\n"
+          try:
+              c = counts("junit.xml")
+              row = f"| {label} | {c['passed']} | {c['failures']} | {c['errors']} | {c['skipped']} |\n"
+          except Exception as exc:
+              row = f"| {label} | junit.xml missing or unreadable ({type(exc).__name__}) | | | |\n"
+          print(head + row, end="")
+          out = os.environ.get("GITHUB_STEP_SUMMARY")
+          if out:
+              with open(out, "a", encoding="utf-8") as f:
+                  f.write(head + row)
 
   secret-scan:
     runs-on: ubuntu-latest
+    timeout-minutes: 15  # P06a W9
     env:
       GITLEAKS_VERSION: "8.30.1"
     steps:
       - name: Checkout (full history)
-        uses: actions/checkout@v4
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803  # v6.1.0
         with:
           fetch-depth: 0
 
