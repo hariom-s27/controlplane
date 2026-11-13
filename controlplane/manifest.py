@@ -17,7 +17,11 @@ says which binding and why.
 from __future__ import annotations
 
 import ast
+import copy
+import hashlib
 import json
+import threading
+from dataclasses import dataclass
 from pathlib import Path
 
 import jsonschema
@@ -46,6 +50,28 @@ SUPPORTED_SCHEMA_VERSIONS = {1}
 
 _json_schema_cache: dict | None = None
 
+# D-M1-02 (policy snapshot): the expensive work — the 2020-12 metaschema check,
+# yaml.safe_load and the structural validation — runs once per manifest
+# CONTENT, not once per gate call. The file is still read and hashed on every
+# call, so an edit is picked up on the next call. A failed rebuild leaves no
+# snapshot behind; failures are never cached. Callers always get a deep copy.
+_schema_validator = None  # built (and check_schema run) once per schema object
+_VALIDATOR_LOCK = threading.Lock()
+_REBUILD_LOCK = threading.Lock()
+
+
+@dataclass(frozen=True)
+class PolicySnapshot:
+    """A validated manifest for one exact file content. Never handed out."""
+
+    path: str
+    sha256: str
+    validator: object
+    data: dict
+
+
+_SNAPSHOTS: dict[str, PolicySnapshot] = {}
+
 
 def _json_schema() -> dict:
     """The structural contract (schemas/manifest.schema.json), loaded once.
@@ -57,18 +83,38 @@ def _json_schema() -> dict:
     return _json_schema_cache
 
 
+def _structural_validator():
+    """The schema validator, built once per schema object. check_schema (the
+    metaschema check jsonschema.validate repeats on every call) runs here,
+    once; a SchemaError propagates exactly as before and nothing is cached."""
+    global _schema_validator
+    schema = _json_schema()
+    v = _schema_validator
+    if v is not None and v.schema is schema:
+        return v
+    with _VALIDATOR_LOCK:
+        v = _schema_validator
+        if v is None or v.schema is not schema:
+            cls = jsonschema.validators.validator_for(schema)
+            cls.check_schema(schema)
+            v = cls(schema)
+            _schema_validator = v
+        return v
+
+
 def _validate_structural(data: dict, name: str) -> None:
     instance = {k: v for k, v in data.items() if k != "_name"}
-    try:
-        jsonschema.validate(instance=instance, schema=_json_schema())
-    except jsonschema.ValidationError as e:
+    # Same steps as jsonschema.validate (best_match over iter_errors), minus
+    # the per-call check_schema, so the reported error is identical.
+    e = jsonschema.exceptions.best_match(_structural_validator().iter_errors(instance))
+    if e is not None:
         raise ManifestBindingError(
             f"manifests/{name}.yaml: structural schema violation at "
             f"{'/'.join(str(p) for p in e.absolute_path) or '(root)'}: {e.message}"
         ) from e
 
 
-def _validate(data: dict, name: str) -> None:
+def _validate(data: dict, name: str, *, structural: bool = True) -> None:
     def fail(msg: str) -> None:
         raise ManifestBindingError(f"manifests/{name}.yaml: {msg}")
 
@@ -87,7 +133,8 @@ def _validate(data: dict, name: str) -> None:
         if value == "allow_with_caveat":
             fail(f"'verdict_handling.{verdict}: allow_with_caveat' {_D_M1_01}; use 'escalate'")
 
-    _validate_structural(data, name)
+    if structural:
+        _validate_structural(data, name)
 
     graph = data.get("predicate_graph")
     if not graph:
@@ -138,10 +185,32 @@ def _validate(data: dict, name: str) -> None:
 
 def load_manifest(name: str) -> dict:
     path = MANIFESTS_DIR / f"{name}.yaml"
-    data = yaml.safe_load(path.read_text(encoding="utf-8"))
-    data["_name"] = name
-    _validate(data, name)
-    return data
+    text = path.read_text(encoding="utf-8")  # every call: same read, same errors
+    digest = hashlib.sha256(text.encode("utf-8")).hexdigest()
+    key = str(path)
+    validator = _structural_validator()
+
+    snap = _SNAPSHOTS.get(key)
+    if snap is not None and snap.sha256 == digest and snap.validator is validator:
+        data = copy.deepcopy(snap.data)
+        # Content already passed the full check. Re-run the cheap semantic
+        # checks, which also depend on things outside this file (graph file
+        # present, registered resolvers), so their outcome stays per call.
+        _validate(data, name, structural=False)
+        return data
+
+    with _REBUILD_LOCK:
+        snap = _SNAPSHOTS.get(key)
+        if snap is not None and snap.sha256 == digest and snap.validator is validator:
+            data = copy.deepcopy(snap.data)  # another thread just rebuilt it
+            _validate(data, name, structural=False)  # same semantic checks as the hit path
+            return data
+        _SNAPSHOTS.pop(key, None)  # a failed rebuild must leave no stale snapshot
+        data = yaml.safe_load(text)
+        data["_name"] = name
+        _validate(data, name)
+        _SNAPSHOTS[key] = PolicySnapshot(key, digest, validator, data)  # one-reference swap
+    return copy.deepcopy(data)
 
 
 def active_fail_posture(manifest: dict) -> tuple[int, str]:
