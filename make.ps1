@@ -93,8 +93,9 @@ switch ($Task) {
         & $Py -m product.cli $CaseId --replay
     }
     "clean" {
+        # PR-05 (P05 V8): generated, untracked outputs only; reports\ holds committed reports.
         Remove-Item -Recurse -Force -EA SilentlyContinue `
-            data\*.db, data\stale_index, reports, decisions.jsonl, .pytest_cache
+            data\*.db, data\stale_index, decisions.jsonl, .pytest_cache
         Get-ChildItem -Recurse -Directory -Filter __pycache__ |
             Remove-Item -Recurse -Force -EA SilentlyContinue
         Write-Host "cleaned." -ForegroundColor Green

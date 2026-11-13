@@ -62,7 +62,9 @@ report:   ; $(PY) bench/report.py
 review:   ; $(PY) bench/reviewer_console.py
 reviewer: review
 product-demo: ; $(PY) -m product.cli $(CASE) --replay
+# PR-05 (P05 V8): clean removes generated, untracked outputs only. reports/ holds
+# committed reports, so it is never deleted here.
 clean:
-	rm -rf data/*.db data/stale_index reports decisions.jsonl .pytest_cache
+	rm -rf data/*.db data/stale_index decisions.jsonl .pytest_cache
 	find . -name __pycache__ -type d -exec rm -rf {} +
 	@echo "cleaned."
