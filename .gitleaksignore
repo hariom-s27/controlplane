@@ -1,0 +1,58 @@
+# gitleaks ignore list (P05a, P05 V18b). Commit-qualified fingerprints ONLY:
+#   <40-hex commit>:<file>:<rule>:<line>
+# Never add file:rule:line lines: they would mute that spot in every future commit.
+# All 45 entries are generic-api-key matches in history that was already public in
+# v1.0-round2 (5b82915); reviewed in P05a, none is a credential for an external service.
+
+# B3 fixture prompt_sha_key values (hash prefixes in replay fixtures) (28)
+b4ef009ab309372d1cd683145684a313696fa06a:data/fixtures/b3/gs-002.0d716d29bd7f242895a1.json:generic-api-key:9
+b4ef009ab309372d1cd683145684a313696fa06a:data/fixtures/b3/gs-004.a0fa2935d109d46cb88d.json:generic-api-key:9
+b4ef009ab309372d1cd683145684a313696fa06a:data/fixtures/b3/gs-005.ad6105c0c96385874b58.json:generic-api-key:9
+b4ef009ab309372d1cd683145684a313696fa06a:data/fixtures/b3/gs-006.582607952724ed923a4f.json:generic-api-key:9
+b4ef009ab309372d1cd683145684a313696fa06a:data/fixtures/b3/gs-007.d0fe1756512474a3c07c.json:generic-api-key:9
+b4ef009ab309372d1cd683145684a313696fa06a:data/fixtures/b3/gs-017.763fad9c16e859a722a1.json:generic-api-key:9
+b4ef009ab309372d1cd683145684a313696fa06a:data/fixtures/b3/gs-021.51d7e4ff3b26868b350b.json:generic-api-key:9
+b4ef009ab309372d1cd683145684a313696fa06a:data/fixtures/b3/gs-024.08efc51e8801b298c64d.json:generic-api-key:9
+b4ef009ab309372d1cd683145684a313696fa06a:data/fixtures/b3/gs-025.be4157362e0ede1af8c3.json:generic-api-key:9
+b4ef009ab309372d1cd683145684a313696fa06a:data/fixtures/b3/gs-030.03e5bad6fe7a8f850e4c.json:generic-api-key:9
+b4ef009ab309372d1cd683145684a313696fa06a:data/fixtures/b3/gs-042.4a8e3d03905c1bb91e4a.json:generic-api-key:9
+b4ef009ab309372d1cd683145684a313696fa06a:data/fixtures/b3/gs-056.ec4e32e61eb285baf96d.json:generic-api-key:9
+b4ef009ab309372d1cd683145684a313696fa06a:data/fixtures/b3/gs-063.576bcce4bd479a62e803.json:generic-api-key:9
+b4ef009ab309372d1cd683145684a313696fa06a:data/fixtures/b3/gs-065.b0ada9023e126aef7c7e.json:generic-api-key:9
+b4ef009ab309372d1cd683145684a313696fa06a:data/fixtures/b3/gs-076.77fd6a23f50ef94417b7.json:generic-api-key:9
+b4ef009ab309372d1cd683145684a313696fa06a:data/fixtures/b3/gs-082.22a7bfbfa809d5119536.json:generic-api-key:9
+b4ef009ab309372d1cd683145684a313696fa06a:data/fixtures/b3/gs-084.98996bc2a0e14ecbfe76.json:generic-api-key:9
+b4ef009ab309372d1cd683145684a313696fa06a:data/fixtures/b3/gs-092.2a8d56bfb5f5e1ec7ce4.json:generic-api-key:9
+b4ef009ab309372d1cd683145684a313696fa06a:data/fixtures/b3/gs-093.5e2f382c65177fa6046f.json:generic-api-key:9
+b4ef009ab309372d1cd683145684a313696fa06a:data/fixtures/b3/gs-097.ad6e74b8f4524a1dd199.json:generic-api-key:9
+b4ef009ab309372d1cd683145684a313696fa06a:data/fixtures/b3/gs-098.264200c586ab9f8a15d7.json:generic-api-key:9
+b4ef009ab309372d1cd683145684a313696fa06a:data/fixtures/b3/gs-110.a305e9f6128de031b491.json:generic-api-key:9
+b4ef009ab309372d1cd683145684a313696fa06a:data/fixtures/b3/gs-116.8318b95fcfd3eac2028e.json:generic-api-key:9
+b4ef009ab309372d1cd683145684a313696fa06a:data/fixtures/b3/gs-120.40b728ef5f17999b1d3d.json:generic-api-key:9
+b4ef009ab309372d1cd683145684a313696fa06a:data/fixtures/b3/gs-128.1006ebba2cf9308980e4.json:generic-api-key:9
+b4ef009ab309372d1cd683145684a313696fa06a:data/fixtures/b3/gs-140.1ca9276953f093851c1b.json:generic-api-key:9
+b4ef009ab309372d1cd683145684a313696fa06a:data/fixtures/b3/gs-142.796e3cde54893226a809.json:generic-api-key:9
+b4ef009ab309372d1cd683145684a313696fa06a:data/fixtures/b3/gs-148.1ac0eb80025db034723d.json:generic-api-key:9
+
+# idempotency_key values in reports and a test assertion (13)
+b4ef009ab309372d1cd683145684a313696fa06a:reports/robustness.md:generic-api-key:211
+b4ef009ab309372d1cd683145684a313696fa06a:reports/robustness.md:generic-api-key:339
+b4ef009ab309372d1cd683145684a313696fa06a:reports/robustness.md:generic-api-key:402
+b4ef009ab309372d1cd683145684a313696fa06a:reports/robustness.md:generic-api-key:530
+b4ef009ab309372d1cd683145684a313696fa06a:reports/robustness.md:generic-api-key:647
+b4ef009ab309372d1cd683145684a313696fa06a:reports/robustness.md:generic-api-key:753
+b4ef009ab309372d1cd683145684a313696fa06a:reports/summary.json:generic-api-key:10214
+b4ef009ab309372d1cd683145684a313696fa06a:reports/summary.json:generic-api-key:10407
+b4ef009ab309372d1cd683145684a313696fa06a:reports/summary.json:generic-api-key:10480
+b4ef009ab309372d1cd683145684a313696fa06a:reports/summary.json:generic-api-key:10565
+b4ef009ab309372d1cd683145684a313696fa06a:reports/summary.json:generic-api-key:10692
+b4ef009ab309372d1cd683145684a313696fa06a:reports/summary.json:generic-api-key:10798
+c653b7f798daace090e111f00d8321cfbac7a751:tests/test_decide.py:generic-api-key:124
+
+# benchmark-only receipt signing key set inside a temporary benchmark context (bench harness; see P05a report) (2)
+b4ef009ab309372d1cd683145684a313696fa06a:bench/failure_injection.py:generic-api-key:222
+b4ef009ab309372d1cd683145684a313696fa06a:bench/latency.py:generic-api-key:241
+
+# other: a test parameter after B2_AuthOnly, prose in docs/related-work.md (2)
+b4ef009ab309372d1cd683145684a313696fa06a:tests/test_baselines.py:generic-api-key:139
+bfa689d81d18c8e3f181e886320571014476b12e:docs/related-work.md:generic-api-key:13
