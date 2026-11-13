@@ -19,8 +19,7 @@ afterward.
 
 Accenture Innovation Challenge 2026 · Problem Track 1 · Round 2
 
-**Live demo:** https://controlplane-qvr2.onrender.com/ · **Walkthrough
-video:** https://drive.google.com/file/d/1xY9aRYtE8hGwFtVfI7Ku9jBMZXa2-A9T/view?usp=sharing
+**Live demo:** https://controlplane-qvr2.onrender.com/ · 
 
 **Current public main.** `round2-final` is this repository's published
 branch — the state described in this README.
@@ -584,11 +583,7 @@ thing in the repo.)*
 
 Deeper limitations — the bias-measurement framing, retired figures, the
 P08 robustness findings, and the judge dashboard's own scope boundaries —
-are in `docs/limitations.md`.
-
-## Demo / video
-
-Walkthrough video: https://drive.google.com/file/d/1xY9aRYtE8hGwFtVfI7Ku9jBMZXa2-A9T/view?usp=sharing
+are in `docs/limitations.md
 
 ## Submission information
 
