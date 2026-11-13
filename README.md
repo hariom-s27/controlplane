@@ -52,6 +52,12 @@ You do **not** need an API key to run any of the above: LLM responses for the
 demo scenarios are cached as committed fixtures (`CP_MODE=fixture`). Set
 `CP_MODE=live` in `.env` to call the provider for real.
 
+`setup` creates `.env` from `.env.example` only if `.env` does not exist
+yet, and puts a newly generated random `CP_RECEIPT_SECRET` in it (Python
+`secrets`; the key is never printed). An existing `.env` is never changed.
+The value in `.env.example` is a placeholder, not a key: a receipt signed
+with a key published in this repository proves nothing.
+
 `python -m demo.web` is the local development/demo entry point for the
 one-screen judge dashboard — the same UI shown in the public live demo below,
 run on your own machine.

@@ -44,12 +44,17 @@ ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-# Deterministic, offline, no-API-key defaults for the dashboard process.
-# setdefault only — a real .env (loaded by scripts.judge_demo below) or an
-# operator-set environment variable always wins. These are the same
-# development-fixture values already documented in .env.example, not new
-# secrets or new behaviour.
-os.environ.setdefault("CP_RECEIPT_SECRET", "development-test-fixture-not-for-production")
+# Configuration for the dashboard process (P05b Y12). An operator-set
+# environment variable wins over .env (python-dotenv never overrides), and
+# .env wins over the setdefault values below. There is no fallback receipt key:
+# without CP_RECEIPT_SECRET (from the environment or from .env, written by
+# `make setup` / `.\make.ps1 setup`) the dashboard refuses to start.
+from dotenv import load_dotenv  # noqa: E402
+
+load_dotenv(ROOT / ".env")
+RECEIPT_KEY_MISSING = "CP_RECEIPT_SECRET is not set — run `make setup` (or make.ps1 setup) first"
+if not os.environ.get("CP_RECEIPT_SECRET"):
+    raise SystemExit(RECEIPT_KEY_MISSING)
 os.environ.setdefault("CP_DEMO_DATE", "2026-08-14")
 os.environ.setdefault("CP_PII", "regex")
 os.environ.setdefault("CP_GROUNDING", "off")

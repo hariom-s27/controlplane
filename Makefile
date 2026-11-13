@@ -30,7 +30,9 @@ setup:
 	$(PY) -m pip install --upgrade pip --quiet
 	$(PY) -m pip install -r requirements.txt
 	$(PY) data/build_db.py
-	@test -f .env || (cp .env.example .env && echo "\nCreated .env — paste your Featherless key into it.")
+	@# P05b Y12: write .env from .env.example with a new random CP_RECEIPT_SECRET, only if .env
+	@# does not exist; an existing .env is never changed; the key is never printed.
+	@$(PY) -c 'import pathlib,secrets,sys; e=pathlib.Path(".env"); sys.exit(print("Kept the existing .env (not changed).")) if e.exists() else None; k="CP_RECEIPT_SECRET="; L=[(k+secrets.token_hex(32) if l.startswith(k) else l) for l in pathlib.Path(".env.example").read_text(encoding="utf-8").splitlines()]; assert sum(l.startswith(k) for l in L)==1, "expected one CP_RECEIPT_SECRET line in .env.example"; open(e,"x",encoding="utf-8",newline="\n").write("\n".join(L)+"\n"); print("Created .env with a new random CP_RECEIPT_SECRET (not shown). Paste your Featherless key into it.")'
 	@echo "\nSetup complete. Next: make probe"
 
 probe:    ; $(PY) scripts/probe.py

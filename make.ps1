@@ -48,11 +48,11 @@ switch ($Task) {
         & $Py -m pip install -r requirements.txt
         Write-Host "[4/4] building databases..." -ForegroundColor Cyan
         & $Py data\build_db.py
-        if (-not (Test-Path ".env")) {
-            Copy-Item .env.example .env
-            Write-Host ""
-            Write-Host "Created .env -- open it and paste your Featherless key." -ForegroundColor Yellow
-        }
+        # P05b Y12: write .env from .env.example with a new random CP_RECEIPT_SECRET, only if .env
+        # does not exist; an existing .env is never changed; the key is never printed.
+        # The code goes to Python on stdin so PowerShell does not rewrite its quotes.
+        $EnvCode = 'import pathlib,secrets,sys; e=pathlib.Path(".env"); sys.exit(print("Kept the existing .env (not changed).")) if e.exists() else None; k="CP_RECEIPT_SECRET="; L=[(k+secrets.token_hex(32) if l.startswith(k) else l) for l in pathlib.Path(".env.example").read_text(encoding="utf-8").splitlines()]; assert sum(l.startswith(k) for l in L)==1, "expected one CP_RECEIPT_SECRET line in .env.example"; open(e,"x",encoding="utf-8",newline="\n").write("\n".join(L)+"\n"); print("Created .env with a new random CP_RECEIPT_SECRET (not shown). Paste your Featherless key into it.")'
+        $EnvCode | & $Py -
         Write-Host ""
         Write-Host "Setup complete. Next:  .\make.ps1 probe" -ForegroundColor Green
     }
