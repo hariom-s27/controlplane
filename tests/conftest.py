@@ -102,6 +102,33 @@ def _repo_root_runtime_files_untouched():
 
 
 # --------------------------------------------------------------------------
+# P05b: a random per-session receipt key when none is set. Product code has no
+# fallback key (demo/web.py refuses to start without one), so a test session
+# with CP_RECEIPT_SECRET unset gets a fresh random key for the session only.
+# It is never printed, and it is removed again when the session ends. A key
+# that is already set (CI, a developer's shell) is left untouched.
+# --------------------------------------------------------------------------
+
+_SESSION_KEY_SET_BY_CONFTEST = False
+
+
+def pytest_configure(config):
+    global _SESSION_KEY_SET_BY_CONFTEST
+    if not os.environ.get("CP_RECEIPT_SECRET"):
+        import secrets
+
+        os.environ["CP_RECEIPT_SECRET"] = secrets.token_hex(32)
+        _SESSION_KEY_SET_BY_CONFTEST = True
+
+
+def pytest_unconfigure(config):
+    global _SESSION_KEY_SET_BY_CONFTEST
+    if _SESSION_KEY_SET_BY_CONFTEST:
+        os.environ.pop("CP_RECEIPT_SECRET", None)
+        _SESSION_KEY_SET_BY_CONFTEST = False
+
+
+# --------------------------------------------------------------------------
 # P05b Y21: opt-in CI counts hook. Active ONLY when CP_CI_COUNTS_FILE is set;
 # otherwise it returns at once and writes nothing. It writes pytest's own
 # counts, taken from the terminal reporter's stats (which include

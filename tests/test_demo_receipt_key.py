@@ -25,7 +25,8 @@ START = (
 
 
 def _start(env_key: str | None) -> subprocess.CompletedProcess:
-    env = {k: v for k, v in os.environ.items() if k != "CP_RECEIPT_SECRET"}
+    assert "CP_RECEIPT_SECRET" not in os.environ  # removed by monkeypatch in each test
+    env = dict(os.environ)
     if env_key is not None:
         env["CP_RECEIPT_SECRET"] = env_key
     # -X utf8: the message contains an em dash; read it exactly on any console.
@@ -33,7 +34,10 @@ def _start(env_key: str | None) -> subprocess.CompletedProcess:
                           capture_output=True, text=True, encoding="utf-8", env=env, cwd=ROOT)
 
 
-def test_demo_refuses_to_start_without_a_receipt_key():
+def test_demo_refuses_to_start_without_a_receipt_key(monkeypatch):
+    # The session may carry a key (CI, or tests/conftest.py's per-session one);
+    # remove it for this test only.
+    monkeypatch.delenv("CP_RECEIPT_SECRET", raising=False)
     # An empty value counts as "not set"; it also stops python-dotenv from
     # filling the variable from a developer's local .env.
     proc = _start("")
@@ -46,7 +50,8 @@ def test_demo_refuses_to_start_without_a_receipt_key():
         assert MESSAGE in unset.stderr
 
 
-def test_demo_starts_with_a_receipt_key():
+def test_demo_starts_with_a_receipt_key(monkeypatch):
+    monkeypatch.delenv("CP_RECEIPT_SECRET", raising=False)
     proc = _start("test-key-not-for-production")
     assert proc.returncode == 0, proc.stderr
     assert "started 200" in proc.stdout
