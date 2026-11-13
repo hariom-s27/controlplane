@@ -3,6 +3,18 @@
 
     CP_MODE=live python bench/baselines.py      # first run: records B3 fixtures
     python bench/baselines.py                    # subsequent runs: fully offline
+    python bench/baselines.py --out DIR          # writes baselines.md, summary.json
+                                                 # and the per-case file into DIR
+                                                 # instead of reports/ (for checking)
+    python bench/baselines.py --check            # recompute and compare; writes nothing
+
+--check and --out read B3 fixtures only (a missing fixture exits 2; no LLM call,
+no fixture write), do not load .env, and stub the per-call timer, so they
+measure no latency (--out's latency cells read 0.000). --check compares
+everything with the committed
+reports/baselines.md, reports/summary.json['p04_baselines'] and
+bench/results/baselines-per-case-c240d87.jsonl except the named wall-clock
+latency fields (WALL_CLOCK_SYSTEMS x median/p95). It exits 0 only on a match.
 
 Six systems scored on the SAME 150 cases from bench/gold_set.jsonl:
 
@@ -55,7 +67,10 @@ from dotenv import load_dotenv
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
-load_dotenv(ROOT / ".env")
+# --check / --out are offline modes: they never read .env.
+_OFFLINE_FLAGS = ("--check", "--out")
+if not (__name__ == "__main__" and any(a.split("=")[0] in _OFFLINE_FLAGS for a in sys.argv[1:])):
+    load_dotenv(ROOT / ".env")
 
 from controlplane.bindings import build_predicate_payload, claim_specs
 from controlplane.decide import decide
@@ -80,6 +95,32 @@ ORDERS_DB = ROOT / "data" / "orders.db"
 POLICY_DB = ROOT / "data" / "policy_store.db"
 REPORTS = ROOT / "reports"
 B3_FIXTURES = ROOT / "data" / "fixtures" / "b3"
+PER_CASE_NAME = "baselines-per-case.jsonl"
+COMMITTED_PER_CASE = ROOT / "bench" / "results" / "baselines-per-case-c240d87.jsonl"
+
+# Systems whose reported latency is wall-clock time measured in run_system().
+# B3's latency is the LLM call time recorded in its fixtures, so it is exact.
+WALL_CLOCK_SYSTEMS = (
+    "B0_NoGate",
+    "B1_RuleOnly",
+    "B2_AuthOnly",
+    "B4_TraceGrounded",
+    "B5_ControlPlane",
+)
+WALL_CLOCK_FIELDS = ("median_ms", "p95_ms")
+
+# Per-call timer used by run_system(); --check and --out replace it with a constant.
+_call_timer = time.perf_counter
+# True in --check / --out: B3 reads fixtures only and never calls the LLM.
+_FIXTURES_ONLY = False
+
+
+class MissingB3Fixture(Exception):
+    pass
+
+
+# system name -> seed-0 predictions of the last build_report() call
+_LAST_PREDICTIONS: dict[str, list] = {}
 
 FROZEN_TODAY = "2026-08-14"  # CP_DEMO_DATE — the frozen demo clock
 SEEDS = (0, 1, 2)            # Fixed evaluation-order seeds. Every system is deterministic,
@@ -413,8 +454,11 @@ _b3_call_latency_ms: dict[str, float] = {}
 
 
 def b3_llm_judge(case: dict) -> str:
-    B3_FIXTURES.mkdir(parents=True, exist_ok=True)
     fx = _b3_cache_path(case)
+    if _FIXTURES_ONLY and not fx.exists():
+        raise MissingB3Fixture(f"B3 fixture missing for {case['id']}: {fx.relative_to(ROOT)}")
+    if not _FIXTURES_ONLY:
+        B3_FIXTURES.mkdir(parents=True, exist_ok=True)
     if fx.exists():
         rec = json.loads(fx.read_text(encoding="utf-8"))
     else:
@@ -503,9 +547,9 @@ def run_system(name: str, fn, cases: list[dict], seed: int = 0) -> list[Predicti
     random.Random(seed).shuffle(indexed_cases)
     indexed_preds: list[tuple[int, Prediction]] = []
     for original_index, case in indexed_cases:
-        t0 = time.perf_counter()
+        t0 = _call_timer()
         predicted = fn(case)
-        dt = (time.perf_counter() - t0) * 1000
+        dt = (_call_timer() - t0) * 1000
         if name == "B3_LLMJudge":
             # the fixture read is sub-ms; report the recorded LLM call latency
             dt = _b3_call_latency_ms.get(case["id"], dt)
@@ -920,6 +964,9 @@ def build_report() -> dict:
 
     mc = mcnemar_b4_b5(preds_by_system_seed["B4_TraceGrounded"][0],
                        preds_by_system_seed["B5_ControlPlane"][0])
+    # side channel for per_case_rows(); not part of the report dict
+    _LAST_PREDICTIONS.clear()
+    _LAST_PREDICTIONS.update({name: runs[0] for name, runs in preds_by_system_seed.items()})
 
     return {
         "gold_set": {
@@ -1003,8 +1050,13 @@ def _fmt_distribution_mean_range(distribution: dict) -> str:
     )
 
 
-def write_markdown(report: dict) -> None:
-    REPORTS.mkdir(exist_ok=True)
+def write_markdown(report: dict, path: Path | None = None) -> None:
+    path = path or REPORTS / "baselines.md"
+    path.parent.mkdir(exist_ok=True)
+    path.write_text(render_markdown(report), encoding="utf-8")
+
+
+def render_markdown(report: dict) -> str:
     g = report["gold_set"]
     L = ["# P04 — baseline table (B0–B5)", ""]
     L += [
@@ -1238,7 +1290,7 @@ def write_markdown(report: dict) -> None:
     # findings vs hypothesis
     L += ["", "## Did the hypothesis hold?", "", _findings_paragraph(report), ""]
 
-    (REPORTS / "baselines.md").write_text("\n".join(L) + "\n", encoding="utf-8")
+    return "\n".join(L) + "\n"
 
 
 def _findings_paragraph(report: dict) -> str:
@@ -1304,34 +1356,181 @@ def _findings_paragraph(report: dict) -> str:
     return "\n\n".join(parts)
 
 
-def merge_summary_json(report: dict) -> None:
-    REPORTS.mkdir(exist_ok=True)
-    path = REPORTS / "summary.json"
+def _summary_text(report: dict, src: Path) -> str:
     existing = {}
-    if path.exists():
+    if src.exists():
         try:
-            existing = json.loads(path.read_text(encoding="utf-8"))
+            existing = json.loads(src.read_text(encoding="utf-8"))
         except json.JSONDecodeError:
             existing = {}
     existing["p04_baselines"] = report
-    path.write_text(
-        json.dumps(existing, indent=2, default=str, allow_nan=False) + "\n",
-        encoding="utf-8",
-    )
+    return json.dumps(existing, indent=2, default=str, allow_nan=False) + "\n"
 
 
-def main() -> int:
-    report = build_report()
-    write_markdown(report)
-    merge_summary_json(report)
+def merge_summary_json(report: dict, dst: Path | None = None) -> None:
+    """Merge p04_baselines into reports/summary.json (default) or into dst,
+    reading the other keys from reports/summary.json."""
+    src = REPORTS / "summary.json"
+    dst = dst or src
+    dst.parent.mkdir(exist_ok=True)
+    text = _summary_text(report, src)
+    dst.write_text(text, encoding="utf-8")
+
+
+def per_case_rows() -> list[dict]:
+    """B4 and B5 prediction per gold case (seed 0, gold-set order) from the
+    last build_report() call. No timing field."""
+    # Built without a dict literal keyed by system name: tests/test_baselines.py
+    # reads the SYSTEMS dict from the module AST by that key.
+    b4_name, b5_name = "B4_TraceGrounded", "B5_ControlPlane"
+    b4, b5 = _LAST_PREDICTIONS[b4_name], _LAST_PREDICTIONS[b5_name]
+    assert [p.case_id for p in b4] == [p.case_id for p in b5]
+    rows = []
+    for p4, p5 in zip(b4, b5):
+        row = dict(id=p4.case_id, slice=p4.slice, gold_label=p4.gold_label)
+        row[b4_name] = p4.predicted
+        row[b5_name] = p5.predicted
+        rows.append(row)
+    return rows
+
+
+def per_case_text(rows: list[dict]) -> str:
+    return "".join(json.dumps(r, sort_keys=True) + "\n" for r in rows)
+
+
+def _wall_clock_paths(report: dict) -> list[tuple]:
+    """Paths (into report['systems']) of every wall-clock latency field."""
+    paths = []
+    for name in WALL_CLOCK_SYSTEMS:
+        s = report["systems"][name]
+        for f in WALL_CLOCK_FIELDS:
+            paths.append((name, "latency", f))
+            paths.append((name, "mean_range", "latency", f))
+            for i in range(len(s["per_seed"])):
+                paths.append((name, "per_seed", i, "latency", f))
+    return paths
+
+
+def _get(obj, path):
+    for k in path:
+        obj = obj[k]
+    return obj
+
+
+def _set(obj, path, value):
+    for k in path[:-1]:
+        obj = obj[k]
+    obj[path[-1]] = value
+
+
+def _diff_paths(a, b, prefix=()):
+    if type(a) is not type(b):
+        yield prefix
+    elif isinstance(a, dict):
+        for k in sorted(set(a) | set(b), key=str):
+            if k not in a or k not in b:
+                yield prefix + (k,)
+            else:
+                yield from _diff_paths(a[k], b[k], prefix + (k,))
+    elif isinstance(a, list):
+        if len(a) != len(b):
+            yield prefix
+        else:
+            for i, (x, y) in enumerate(zip(a, b)):
+                yield from _diff_paths(x, y, prefix + (i,))
+    elif a != b:
+        yield prefix
+
+
+def check(report: dict) -> list[str]:
+    """Compare a fresh report with the committed files. Returns problems
+    (empty = match). Wall-clock latency fields are the only fields not
+    compared; after that, the committed values are put into those fields and
+    baselines.md and summary.json must then match byte for byte."""
+    problems: list[str] = []
+    committed_summary = REPORTS / "summary.json"
+    committed_md = REPORTS / "baselines.md"
+    committed = json.loads(committed_summary.read_text(encoding="utf-8"))["p04_baselines"]
+    fresh = json.loads(json.dumps(report, default=str, allow_nan=False))
+    masked = {("systems",) + p for p in _wall_clock_paths(fresh)}
+    for path in _diff_paths(committed, fresh):
+        if not any(path[:len(m)] == m for m in masked):
+            problems.append("summary.json[p04_baselines]." + ".".join(map(str, path)))
+    if problems:
+        return problems
+    for p in _wall_clock_paths(report):
+        _set(report["systems"], p, _get(committed["systems"], p))
+    if render_markdown(report) != committed_md.read_text(encoding="utf-8"):
+        problems.append("reports/baselines.md differs outside the wall-clock latency cells")
+    if _summary_text(report, committed_summary) != committed_summary.read_text(encoding="utf-8"):
+        problems.append("reports/summary.json differs outside the wall-clock latency fields")
+    if COMMITTED_PER_CASE.exists():
+        if per_case_text(per_case_rows()) != COMMITTED_PER_CASE.read_text(encoding="utf-8"):
+            problems.append(f"{COMMITTED_PER_CASE.relative_to(ROOT).as_posix()} differs")
+    else:
+        problems.append(f"{COMMITTED_PER_CASE.relative_to(ROOT).as_posix()} is missing")
+    return problems
+
+
+def _print_headline(report: dict) -> None:
     m = report["mcnemar_b4_vs_b5"]
-    print("wrote reports/baselines.md and reports/summary.json[p04_baselines]")
     print(f"  B4 vs B5: {m['n_discordant']} discordant, p={m['p_value_exact_binomial']:.3g}, "
           f"B5−B4 acc diff {m['accuracy_diff_b5_minus_b4']*100:.1f}%")
     for name, s in report["systems"].items():
         b = s["binary_140"]
         print(f"  {name:20} recall={_fmt_pct(b['recall']):>6} "
               f"FPR={_fmt_pct(b['fpr_on_50_gold_allow']):>6} F1={_fmt_pct(b['f1']):>6}")
+
+
+def main(argv: list[str] | None = None) -> int:
+    import argparse
+
+    global _call_timer, _FIXTURES_ONLY
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except (AttributeError, ValueError):
+        pass
+    ap = argparse.ArgumentParser(description="P04 baseline table (B0-B5).")
+    mode = ap.add_mutually_exclusive_group()
+    mode.add_argument("--check", action="store_true",
+                      help="recompute and compare with the committed files; write nothing")
+    mode.add_argument("--out", type=Path, metavar="DIR",
+                      help="write baselines.md, summary.json and the per-case file into DIR")
+    args = ap.parse_args(argv)
+
+    if args.check or args.out:
+        _FIXTURES_ONLY = True
+        # outputs are for checking, not latency: no latency is measured
+        _call_timer = lambda: 0.0  # noqa: E731
+    try:
+        report = build_report()
+    except MissingB3Fixture as exc:
+        print(f"FAIL: {exc}", file=sys.stderr)
+        return 2
+
+    if args.check:
+        problems = check(report)
+        _print_headline(report)
+        if problems:
+            print("check: DIFFERS")
+            for p in problems[:50]:
+                print("  " + p)
+            return 1
+        print("check: OK (wall-clock latency fields not compared)")
+        return 0
+
+    if args.out:
+        out = args.out
+        out.mkdir(parents=True, exist_ok=True)
+        write_markdown(report, out / "baselines.md")
+        merge_summary_json(report, out / "summary.json")
+        (out / PER_CASE_NAME).write_text(per_case_text(per_case_rows()), encoding="utf-8", newline="\n")
+        print(f"wrote {out / 'baselines.md'}, {out / 'summary.json'}, {out / PER_CASE_NAME}")
+    else:
+        write_markdown(report)
+        merge_summary_json(report)
+        print("wrote reports/baselines.md and reports/summary.json[p04_baselines]")
+    _print_headline(report)
     return 0
 
 

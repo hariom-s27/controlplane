@@ -1,0 +1,267 @@
+# Claims registry: every number the public text states, with what backs it.
+#
+# Checked by tests/test_claims.py:
+#   - `text` must appear in `file` (whitespace runs collapsed, so a sentence may wrap);
+#   - `value` must appear in `text`;
+#   - every `evidence` path must be a tracked file (on an archive copy, which holds
+#     only tracked files, "exists" is used instead);
+#   - kind fast / slow: the value is recomputed from committed files by the
+#     function named in `recompute` and must equal `value` exactly;
+#     slow = the recompute takes more than ~5 s (all claims run in the normal suite);
+#   - kind ci: presence only (CI logs and artifacts expire; the claim rests on the
+#     quoted run, not on a file).
+#
+# Fields: id, file, text, value, definition, n, conditions, evidence (list of paths),
+# command (how a person recomputes it), kind (fast | slow | ci), recompute (test hook).
+
+version: 1
+claims:
+
+  # --- P04 headline: B4 vs B5 on the P03 gold set (bench/baselines.py) ---------
+
+  - id: p04-b5-direction-accuracy
+    file: README.md
+    text: "**100.0% vs. 87.9%** direction-accuracy on 140 non-ambiguous gold cases"
+    value: "100.0%"
+    definition: >-
+      B5 (ControlPlane, live registry queries) direction accuracy: share of gold cases where
+      "flag" (BLOCK / ESCALATE / MODIFY) agrees with gold "do not auto-execute" (BLOCK or ESCALATE).
+    n: 140
+    conditions: >-
+      Non-ambiguous cases of bench/gold_set.jsonl (150 cases, 10 ambiguous excluded); clock frozen at
+      2026-08-14; deterministic extraction; offline; engine at c240d87.
+    evidence: [reports/summary.json, reports/baselines.md, bench/results/baselines-per-case-c240d87.jsonl]
+    command: "python bench/baselines.py --check; per-case file: python -I -B bench/baselines.py --out DIR"
+    kind: slow
+    recompute: p04.b5_accuracy
+
+  - id: p04-b4-direction-accuracy
+    file: README.md
+    text: "**100.0% vs. 87.9%** direction-accuracy on 140 non-ambiguous gold cases"
+    value: "87.9%"
+    definition: >-
+      B4 (same pipeline, evidence taken from the agent's own retrieved trace) direction accuracy,
+      same definition as p04-b5-direction-accuracy.
+    n: 140
+    conditions: Same as p04-b5-direction-accuracy.
+    evidence: [reports/summary.json, reports/baselines.md, bench/results/baselines-per-case-c240d87.jsonl]
+    command: "python bench/baselines.py --check; per-case file: python -I -B bench/baselines.py --out DIR"
+    kind: slow
+    recompute: p04.b4_accuracy
+
+  - id: p04-accuracy-difference
+    file: README.md
+    text: "a **12.1-point** difference"
+    value: "12.1"
+    definition: B5 minus B4 direction accuracy, in percentage points.
+    n: 140
+    conditions: Same as p04-b5-direction-accuracy.
+    evidence: [reports/summary.json]
+    command: python bench/baselines.py --check
+    kind: slow
+    recompute: p04.accuracy_diff_points
+
+  - id: p04-mcnemar-p
+    file: README.md
+    text: "McNemar exact two-sided **p = 1.53e-05**"
+    value: "1.53e-05"
+    definition: Exact two-sided binomial (McNemar) p-value over the B4/B5 discordant pairs.
+    n: 140
+    conditions: Same as p04-b5-direction-accuracy.
+    evidence: [reports/summary.json]
+    command: python bench/baselines.py --check
+    kind: slow
+    recompute: p04.mcnemar_p
+
+  - id: p04-difference-ci
+    file: README.md
+    text: "95% CI on the difference (cluster bootstrap over source-order clusters) **[6.6%, 19.7%]**"
+    value: "[6.6%, 19.7%]"
+    definition: >-
+      95% percentile interval of B5 minus B4 accuracy from a bootstrap that resamples public
+      source-order clusters (order ids), not cases.
+    n: 140
+    conditions: Same as p04-b5-direction-accuracy; bootstrap seed and iterations as in bench/baselines.py.
+    evidence: [reports/summary.json]
+    command: python bench/baselines.py --check
+    kind: slow
+    recompute: p04.diff_ci
+
+  - id: p04-discordant-count
+    file: README.md
+    text: "Of the 17 discordant cases, **16 are `stale_policy_context`** cases"
+    value: "17"
+    definition: Cases where exactly one of B4 / B5 has the right direction.
+    n: 140
+    conditions: Same as p04-b5-direction-accuracy.
+    evidence: [reports/summary.json, bench/results/baselines-per-case-c240d87.jsonl]
+    command: "python bench/baselines.py --check; per-case file: python -I -B bench/baselines.py --out DIR"
+    kind: slow
+    recompute: p04.n_discordant
+
+  - id: p04-discordant-stale-policy
+    file: README.md
+    text: "Of the 17 discordant cases, **16 are `stale_policy_context`** cases"
+    value: "16"
+    definition: Discordant cases whose gold slice is stale_policy_context.
+    n: 17
+    conditions: Same as p04-b5-direction-accuracy.
+    evidence: [reports/summary.json, bench/results/baselines-per-case-c240d87.jsonl]
+    command: "python bench/baselines.py --check; per-case file: python -I -B bench/baselines.py --out DIR"
+    kind: slow
+    recompute: p04.n_discordant_stale
+
+  - id: p04-stale-slice-size
+    file: README.md
+    text: "`stale_policy_context` slice (20/20 cases)"
+    value: "20/20"
+    definition: >-
+      Gold cases in the stale_policy_context slice whose gold label is BLOCK, over all cases in
+      that slice.
+    n: 20
+    conditions: bench/gold_set.jsonl as committed.
+    evidence: [reports/summary.json, reports/baselines.md]
+    command: python bench/baselines.py --check
+    kind: slow
+    recompute: p04.stale_slice_block_over_n
+
+  # --- P08 robustness: wrong-record sweep (bench/failure_injection.py) ----------
+
+  - id: p08-record-error-crossover
+    file: README.md
+    text: "below a **≈10.6%** record-error rate (cluster bootstrap 95% CI **[10.6%, 44.7%]**)"
+    value: "10.6%"
+    definition: >-
+      First achieved rate on the fixed 21-point grid at which ControlPlane's direction accuracy
+      is strictly below the frozen P04 B4 value (123/140), where the rate is the share of
+      date-bearing orders.db records whose delivered_at is flipped across the 7-day boundary.
+    n: 140
+    conditions: >-
+      Fixed grid 0.00-1.00 step 0.05 over 85 date-bearing records; each point on its own SQLite
+      clone; real controlplane.intercept gate; non-ambiguous P03 gold cases.
+    evidence: [reports/summary.json, reports/robustness.md]
+    command: python bench/failure_injection.py
+    kind: slow
+    recompute: p08.crossover
+
+  - id: p08-crossover-ci
+    file: README.md
+    text: "below a **≈10.6%** record-error rate (cluster bootstrap 95% CI **[10.6%, 44.7%]**)"
+    value: "[10.6%, 44.7%]"
+    definition: >-
+      95% percentile interval of the crossing grid point over 5,000 bootstrap draws of public
+      source-order clusters (seed 20260814); fixed grid points only, no interpolation.
+    n: 140
+    conditions: Same as p08-record-error-crossover.
+    evidence: [reports/summary.json, reports/robustness.md]
+    command: python bench/failure_injection.py
+    kind: slow
+    recompute: p08.crossover_ci
+
+  - id: p08-frozen-b4-baseline
+    file: README.md
+    text: "ControlPlane's accuracy stays at/above the frozen B4 baseline (87.9%)"
+    value: "87.9%"
+    definition: The frozen P04 B4 direction accuracy the sweep compares against.
+    n: 140
+    conditions: Same as p04-b4-direction-accuracy.
+    evidence: [reports/summary.json]
+    command: python bench/baselines.py --check
+    kind: slow
+    recompute: p04.b4_accuracy
+
+  # --- SEB-1 Exp 3 and spec-derived mutation score -----------------------------
+
+  - id: exp3-accuracy-with-check
+    file: README.md
+    text: "(0.92 with the attribute check, 0.755 without"
+    value: "0.92"
+    definition: >-
+      Verdict accuracy of the order-id cross-check with the attributes_match predicate; gold
+      verdict is resolved_order_id != true_order_id from bench/exp3_ground_truth.jsonl, which the
+      checker never opens.
+    n: 200
+    conditions: CP_SEED 20260814; synthetic corpus from bench/exp3_corpus.py incl. hidden distractors.
+    evidence: [reports/summary.json, bench/seb1_exp3_cross_validation.py]
+    command: python bench/seb1_exp3_cross_validation.py
+    kind: fast
+    recompute: exp3.accuracy_with
+
+  - id: exp3-accuracy-without-check
+    file: README.md
+    text: "(0.92 with the attribute check, 0.755 without"
+    value: "0.755"
+    definition: Same as exp3-accuracy-with-check, without the attributes_match predicate.
+    n: 200
+    conditions: Same as exp3-accuracy-with-check.
+    evidence: [reports/summary.json, bench/seb1_exp3_cross_validation.py]
+    command: python bench/seb1_exp3_cross_validation.py
+    kind: fast
+    recompute: exp3.accuracy_without
+
+  - id: mutation-score
+    file: README.md
+    text: "a spec-derived mutation score (0.60, with a"
+    value: "0.60"
+    definition: >-
+      Caught mutants over all mutants; operators derived from the issue_refund tool schema and
+      manifests/servicing.yaml, including spec elements the gate cannot enforce (< 1.0 by design).
+    n: 300
+    conditions: 15 operators x 20 trials, CP_SEED 20260814.
+    evidence: [reports/summary.json, bench/mutation.py]
+    command: python bench/mutation.py
+    kind: fast
+    recompute: mutation.score
+
+  # --- Negative control and the demo scenario (committed seeds / evidence) -----
+
+  - id: negative-control-proposals
+    file: README.md
+    text: "request produce the same unprompted proposal 5/5 times"
+    value: "5/5"
+    definition: >-
+      Phrasings for which the gate-off agent proposed issue_refund unprompted, over phrasings run.
+    n: 5
+    conditions: >-
+      Captured live run (Qwen3-8B via the provider); not reproducible offline. The recompute
+      counts the PROPOSED lines in the committed capture.
+    evidence: [docs/evidence/negative_control.txt]
+    command: count the "[k] PROPOSED" lines in docs/evidence/negative_control.txt
+    kind: fast
+    recompute: negctl.proposed_over_runs
+
+  - id: demo-refund-amount
+    file: README.md
+    text: "— a ₹42,999 refund, proposed unprompted"
+    value: "₹42,999"
+    definition: amount_paise of seed order ORD-88461, in rupees.
+    n: 1
+    conditions: Synthetic seed record.
+    evidence: [data/seed/orders.json]
+    command: read ORD-88461 in data/seed/orders.json
+    kind: fast
+    recompute: seed.ord88461_amount
+
+  - id: demo-days-elapsed
+    file: README.md
+    text: "it was delivered **2026-07-19**; the decision clock is frozen at **2026-08-14**, 26 days later. The active manifest's refund window is 7 days."
+    value: "26"
+    definition: Days from ORD-88461's delivered_at to the frozen decision clock.
+    n: 1
+    conditions: Synthetic seed record; clock CP_DEMO_DATE=2026-08-14 (pytest.ini).
+    evidence: [data/seed/orders.json, pytest.ini]
+    command: read ORD-88461 in data/seed/orders.json; subtract from 2026-08-14
+    kind: fast
+    recompute: seed.ord88461_days_elapsed
+
+  - id: demo-refund-window
+    file: README.md
+    text: "it was delivered **2026-07-19**; the decision clock is frozen at **2026-08-14**, 26 days later. The active manifest's refund window is 7 days."
+    value: "7 days"
+    definition: window_days of the servicing manifest.
+    n: 1
+    conditions: manifests/servicing.yaml as committed.
+    evidence: [manifests/servicing.yaml]
+    command: read window_days in manifests/servicing.yaml
+    kind: fast
+    recompute: manifest.servicing_window
