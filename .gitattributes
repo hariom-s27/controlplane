@@ -3,3 +3,30 @@
 /bench/human_label_sample.csv text eol=lf
 /bench/human_label_sample_pass1.csv text eol=lf
 bench/results/latency-m1-356ec58/** -text
+# P05a V16: protected/frozen text files and the integrity record v2 stay LF on every checkout
+/controlplane/intercept.py text eol=lf
+/controlplane/manifest.py text eol=lf
+/controlplane/decide.py text eol=lf
+/schemas/manifest.schema.json text eol=lf
+/manifests/discount_approval.yaml text eol=lf
+/manifests/knowledge_assistant.yaml text eol=lf
+/manifests/service_credit_approval.yaml text eol=lf
+/manifests/servicing.yaml text eol=lf
+/manifests/tau2_cancel_pending_order.yaml text eol=lf
+/manifests/tau2_exchange_delivered_order_items.yaml text eol=lf
+/manifests/tau2_modify_pending_order_address.yaml text eol=lf
+/manifests/tau2_modify_pending_order_items.yaml text eol=lf
+/manifests/tau2_modify_pending_order_payment.yaml text eol=lf
+/manifests/tau2_return_delivered_order_items.yaml text eol=lf
+/tests/test_manifest_hardening.py text eol=lf
+/bench/label.py text eol=lf
+/bench/extraction_gold_v1.jsonl text eol=lf
+/reports/README.md text eol=lf
+/reports/extraction-completeness-v1.json text eol=lf
+/reports/extraction-completeness-v1.md text eol=lf
+/reports/foundational-requirement-coverage-v1.json text eol=lf
+/reports/foundational-requirement-coverage-v1.md text eol=lf
+/reports/manifest-claim-coverage.md text eol=lf
+/reports/tau2-bench.md text eol=lf
+/reports/verification-coverage.md text eol=lf
+/docs/m1-integrity-v2.sha256 text eol=lf

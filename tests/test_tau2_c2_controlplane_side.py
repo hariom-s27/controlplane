@@ -402,24 +402,13 @@ def test_latency_provenance_is_explicitly_unavailable_without_inference():
     assert "task_id" not in session_block
 
 
-def test_post_p02_integrity_record_accounts_for_one_authorized_change():
+def test_v1_integrity_record_is_kept_unchanged_as_history():
+    # P05 V7: the v1 record (raw-byte hashes, 30 Aug 2026) is history and must not be
+    # edited. Live files are checked against v2 (LF-normalised) instead:
+    # docs/m1-integrity-v2.sha256 and tests/test_integrity_v2.py.
     record = ROOT / "docs" / "p06-post-p02-integrity.sha256"
-    rows = [
-        line.split(maxsplit=5)
-        for line in record.read_text(encoding="utf-8").splitlines()
-        if line and not line.startswith("#")
-    ]
-    assert len(rows) == 14
-    changed = [row for row in rows if row[2] == "AUTHORIZED_CHANGE"]
-    assert len(changed) == 1
-    original_hash, current_hash, _, path, reason = changed[0]
-    assert path == "tests/test_manifest_hardening.py"
-    assert original_hash == "fb9dd57a2ccfdff03e0e199cead74e6f80a356ead3c60184b89b7c68c6479544"
-    assert current_hash == "4a8c229df1bfd11cf7b163da8e6b4ac68b844af053184151f7fc8bf2108a741b"
-    assert reason == "P02_minimal_repair_regression_coverage_authorized"
-
-    for original_hash, current_hash, status, path, _reason in rows:
-        live = __import__("hashlib").sha256((ROOT / path).read_bytes()).hexdigest()
-        assert live == current_hash
-        if status == "UNCHANGED":
-            assert original_hash == current_hash
+    lf = record.read_bytes().replace(b"\r\n", b"\n")
+    assert (
+        __import__("hashlib").sha256(lf).hexdigest()
+        == "77bbcd4d83b5d9aaed2f37d7bd71c46f1dbb1a317f0bfba267821e47d806ea64"
+    )

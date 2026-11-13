@@ -1,0 +1,44 @@
+# M1 integrity record v2 (P05a; PR-02; decisions P05 V6, V7)
+# created: 2026-11-13
+# base commit: 0381b6841db54d8da273d2c60e4ff4ef56ba7d2b
+# v1 base: b4ef009ab309372d1cd683145684a313696fa06a (docs/p06-post-p02-integrity.sha256, kept unchanged)
+# method: sha256; files with suffix .py .md .json .jsonl .csv .yaml .yml .txt .sha256 .toml .sh .ps1 are hashed with every CRLF replaced by LF (no other change); all other files as raw bytes
+# columns: sha256_lf  status  path  authority
+09deaecb374eb6b60bd03b95c90bbe1c8e3a75562eb9c59edc6c89970cd48c8e  UNCHANGED_SINCE_V1  bench/gold_set.jsonl  v1
+204e4a8e2af61d0aec109e0226018f4486451044f6de73e282f04aff7a24e3cb  UNCHANGED_SINCE_V1  bench/ground_truth_holdout.jsonl  v1
+c58a3ed172458e9cd25b2a0267f51a037ce2f7d653b7acb13aa7c15049e84550  UNCHANGED_SINCE_V1  bench/human_label_sample.csv  v1
+dfd7f67c20d7bcc764f457d392b99f23c9573831e157499ac681d9a3fd7fda5a  UNCHANGED_SINCE_V1  bench/human_label_sample_pass1.csv  v1
+e63851475627e0928a6b9c396302e8116a29274ebfb19d6911f7e3957e68cd82  UNCHANGED_SINCE_V1  docs/onboarding-measurement.md  v1
+087b54dd0b43f232d930eaf3342cb4b9d2a0bd9c881ddbfd602a756169231dc9  UNCHANGED_SINCE_V1  reports/baselines.md  v1
+95e30da4e979be03ae2502b6ae7f04b6d037a06b21c26455aec14117881fb42d  UNCHANGED_SINCE_V1  reports/evidence-ablation.md  v1
+c1523a18e6d307c552a242e5685fe7aa001ad82002ad807438d1aa7dfeaa55c2  UNCHANGED_SINCE_V1  reports/robustness.md  v1
+14562e60f86ae953b0fc8f4ae211e2492a21dbee77b98ed3eb61de74a003913a  UNCHANGED_SINCE_V1  reports/latency.md  v1
+2e7b168c8dabb74379e7087345d340e25a8b690f5f9f2c655474fcf5b57b47dc  UNCHANGED_SINCE_V1  reports/summary.json  v1
+662b99ca896e0d9b93f80e31a07c050ab79ecdd2b808dd908112a8eb88a3c1fa  CHANGED_AUTHORIZED  controlplane/manifest.py  D-M1-01 (00ca015); D-M1-02 (356ec58)
+d6616505ad84a1ad425c61bcda660c64fce8b073248cf6904b40ea2ea8cda0fa  UNCHANGED_SINCE_V1  controlplane/bindings.py  v1
+cbf74fa8271667c3d15bc602f5a99a78839243b731f9fd28fcba8890e81fcb3a  CHANGED_AUTHORIZED  controlplane/intercept.py  pre-M1 public history, in v1.0-round2 (5b82915); D-M1-01 (00ca015)
+11194e365c2d504b1dc0edc08a8122f9b311e62464a2c2938547cd347bc60663  CHANGED_AUTHORIZED  tests/test_manifest_hardening.py  v1: P02_minimal_repair_regression_coverage_authorized; pre-M1 public history, in v1.0-round2 (5b82915); D-M1-01 (00ca015)
+79b209523bfc806e3495ac321abdcf9af2764a9f369e8949c496dd9ea6c8c56d  NEW_IN_V2  bench/extraction_gold_v1.jsonl  baseline 0381b68; P03 local commit, decision D10 (6c2ca5a)
+04e4b5134b8814f8e40a3f6e9a97c4403fcf274974b76a237de4184e0ad37764  NEW_IN_V2  bench/label.py  baseline 0381b68
+3229c32f8a836a5292fcdcf9297c146585c56ae3e1df6f79588a9711e798a330  NEW_IN_V2  controlplane/decide.py  baseline 0381b68; pre-M1 public history, in v1.0-round2 (5b82915); P03 local commit, decision D10 (678b566); D-M1-01 (00ca015)
+110602ad6459a300440c4c51c7d73e0f474919f183d6d5263330369665d0bb94  NEW_IN_V2  manifests/discount_approval.yaml  baseline 0381b68; D-M1-01 (00ca015)
+53088291dac6a679518eb065a56d14713a2951ad832ae5f60a28ded6804199e9  NEW_IN_V2  manifests/knowledge_assistant.yaml  baseline 0381b68; D-M1-01 (00ca015)
+2352220101ad76b530c40fa380a4b42594819fadffaabb0b66dfaa4661f7e488  NEW_IN_V2  manifests/service_credit_approval.yaml  baseline 0381b68; D-M1-01 (00ca015)
+d9a37752eb178db4c296c2204b33c3a14be5b977481f8af290b5cbd2975dff97  NEW_IN_V2  manifests/servicing.yaml  baseline 0381b68; D-M1-01 (00ca015)
+432e4125e2a77d1bc066cc1f9a99716001e20bb18ec9d0d95243865dd4629df2  NEW_IN_V2  manifests/tau2_cancel_pending_order.yaml  baseline 0381b68; pre-M1 public history, in v1.0-round2 (5b82915); D-M1-01 (00ca015)
+b272d368099a63f00f4ceb95fbd2fe4a36622bacb2579c668556d733187ec9e6  NEW_IN_V2  manifests/tau2_exchange_delivered_order_items.yaml  baseline 0381b68; pre-M1 public history, in v1.0-round2 (5b82915); D-M1-01 (00ca015)
+0821d1efde16704aefd4cc2640e5b1e86c7f184e7720a95926125f442aa6ddd5  NEW_IN_V2  manifests/tau2_modify_pending_order_address.yaml  baseline 0381b68; pre-M1 public history, in v1.0-round2 (5b82915); D-M1-01 (00ca015)
+057baa38e56a6516ea3a97ddbfbe25b4727634bfbccc5881f17912c4d0ffc2fe  NEW_IN_V2  manifests/tau2_modify_pending_order_items.yaml  baseline 0381b68; pre-M1 public history, in v1.0-round2 (5b82915); D-M1-01 (00ca015)
+414bb108161c8af6e15881e396cb8bafb37e93256bfafaa0385d212a959f6052  NEW_IN_V2  manifests/tau2_modify_pending_order_payment.yaml  baseline 0381b68; pre-M1 public history, in v1.0-round2 (5b82915); D-M1-01 (00ca015)
+48e9005e8a80db9009a9fd3b51cfdeb8abb3365ab06ac838921f33982fca0822  NEW_IN_V2  manifests/tau2_return_delivered_order_items.yaml  baseline 0381b68; pre-M1 public history, in v1.0-round2 (5b82915); D-M1-01 (00ca015)
+e63ad83c8e480473b8a47b80cf60ebf9e08c45ed20b15d0993bdf58fc6d8824f  NEW_IN_V2  reports/README.md  baseline 0381b68; pre-M1 public history, in v1.0-round2 (5b82915)
+5f284f8c3b96bc57801f41fe5a60148b95f7cb7493c3d7c7e5f849a85f8e175d  NEW_IN_V2  reports/evidence-ablation-absence.png  baseline 0381b68
+ae52cb7f5afdb912f2c04ed36e3a1e9d206a43cba5dcf1ecabfd3eba72447b57  NEW_IN_V2  reports/evidence-ablation-staleness.png  baseline 0381b68
+0c7c8961e9dca1da035085023159b26dbbcf2476c0795f6755db450b5836a107  NEW_IN_V2  reports/extraction-completeness-v1.json  baseline 0381b68; P03 local commit, decision D10 (6c2ca5a)
+48bebb6d75b262ca1f31007471e3bd1d4c8c8f3fe1b700671d3eba30e08ac0cd  NEW_IN_V2  reports/extraction-completeness-v1.md  baseline 0381b68; P03 local commit, decision D10 (6c2ca5a)
+3acf504acafd93c8a1df92ed8928c943f63f25373b0573d7326c3ad194a0d652  NEW_IN_V2  reports/foundational-requirement-coverage-v1.json  baseline 0381b68; P03 local commit, decision D10; P3-D to P3-G (eed05d9)
+492edad3bb363101a5fcb46ef8a5e4b385d634872cb4048e95e361c339d89562  NEW_IN_V2  reports/foundational-requirement-coverage-v1.md  baseline 0381b68; P03 local commit, decision D10; P3-D to P3-G (eed05d9)
+72161fdd05cb797206db82c049ad6a6b9d00b832d06bb13fd541ee7d43a9d012  NEW_IN_V2  reports/manifest-claim-coverage.md  baseline 0381b68; P03 local commit, decision D10; P3-A (a5549b7)
+d071e6c3c3f4fc3069d82401183f765b26c25290f5be0b057744039b4b1a9d11  NEW_IN_V2  reports/tau2-bench.md  baseline 0381b68; pre-M1 public history, in v1.0-round2 (5b82915)
+fcb675cce41074cad70bac188b31426d298323a1e09676cd66b4d7895bdaf794  NEW_IN_V2  reports/verification-coverage.md  baseline 0381b68; P03 local commit, decision D10 (678b566)
+e2c5df74c3ac3b52c876e792c6f031667f8b4f0b5dc28b3601f210c1b80c0ab1  NEW_IN_V2  schemas/manifest.schema.json  baseline 0381b68; pre-M1 public history, in v1.0-round2 (5b82915); D-M1-01 (00ca015)
