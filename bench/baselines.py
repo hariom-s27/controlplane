@@ -1442,24 +1442,64 @@ def _diff_paths(a, b, prefix=()):
         yield prefix
 
 
+# Report fields that hold a relative path. The committed reports were written
+# on Windows (backslash); a recompute on Linux gives forward slashes. --check
+# compares these fields with separators normalised on both sides; every other
+# field is compared exactly.
+PATH_FIELDS: tuple[tuple, ...] = (("config", "b3", "fixtures_dir"),)
+
+
+def _norm_path(value):
+    return value.replace("\\", "/") if isinstance(value, str) else value
+
+
+def _path_field_equal(committed: dict, fresh: dict, path: tuple) -> bool:
+    try:
+        a, b = _get(committed, path), _get(fresh, path)
+    except (KeyError, IndexError, TypeError):
+        return False
+    return isinstance(a, str) and isinstance(b, str) and _norm_path(a) == _norm_path(b)
+
+
+def _field_problems(committed: dict, fresh: dict) -> list[str]:
+    """Field-by-field compare of p04_baselines (committed vs fresh, both
+    JSON-round-tripped). Skips wall-clock latency fields, and PATH_FIELDS
+    that are equal after separator normalisation."""
+    masked = {("systems",) + p for p in _wall_clock_paths(fresh)} if "systems" in fresh else set()
+    problems = []
+    for path in _diff_paths(committed, fresh):
+        if any(path[:len(m)] == m for m in masked):
+            continue
+        if path in PATH_FIELDS and _path_field_equal(committed, fresh, path):
+            continue
+        problems.append("summary.json[p04_baselines]." + ".".join(map(str, path)))
+    return problems
+
+
+def _adopt_committed_path_fields(report: dict, committed: dict) -> None:
+    """Put the committed spelling of each normalised-equal PATH_FIELD into
+    report, so the byte-for-byte compare of summary.json is OS-independent."""
+    for path in PATH_FIELDS:
+        if _path_field_equal(committed, report, path):
+            _set(report, path, _get(committed, path))
+
+
 def check(report: dict) -> list[str]:
     """Compare a fresh report with the committed files. Returns problems
     (empty = match). Wall-clock latency fields are the only fields not
-    compared; after that, the committed values are put into those fields and
+    compared; PATH_FIELDS are compared with path separators normalised.
+    After that, the committed values are put into those fields and
     baselines.md and summary.json must then match byte for byte."""
-    problems: list[str] = []
     committed_summary = REPORTS / "summary.json"
     committed_md = REPORTS / "baselines.md"
     committed = json.loads(committed_summary.read_text(encoding="utf-8"))["p04_baselines"]
     fresh = json.loads(json.dumps(report, default=str, allow_nan=False))
-    masked = {("systems",) + p for p in _wall_clock_paths(fresh)}
-    for path in _diff_paths(committed, fresh):
-        if not any(path[:len(m)] == m for m in masked):
-            problems.append("summary.json[p04_baselines]." + ".".join(map(str, path)))
+    problems = _field_problems(committed, fresh)
     if problems:
         return problems
     for p in _wall_clock_paths(report):
         _set(report["systems"], p, _get(committed["systems"], p))
+    _adopt_committed_path_fields(report, committed)
     if render_markdown(report) != committed_md.read_text(encoding="utf-8"):
         problems.append("reports/baselines.md differs outside the wall-clock latency cells")
     if _summary_text(report, committed_summary) != committed_summary.read_text(encoding="utf-8"):
