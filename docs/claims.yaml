@@ -753,3 +753,137 @@ claims:
     command: "python bench/baselines.py --check"
     kind: fast
     recompute: gold.n_non_ambiguous
+
+  # --- CI run quoted in README "Continuous integration" (kind ci: presence only) ---
+
+  - id: ci-run-all-checks-green
+    file: README.md
+    text: "CI run [43550220503](https://github.com/hariom-s27/controlplane/actions/runs/43550220503) on commit `c86f368` (2026-11-14): all 7 checks green."
+    value: "7"
+    definition: "Check runs in the run, all with conclusion success: product-smoke (3.11), product-smoke (3.12), full-suite (ubuntu-26.04, 3.12), full-suite (ubuntu-26.04, 3.14), full-suite (windows-2025, 3.14), secret-scan, ci-ok."
+    n: 7
+    conditions: "CI run 43550220503 on commit c86f368 (2026-11-14), workflow .github/workflows/ci.yml; GitHub-hosted runners, no torch installed."
+    evidence: [.github/workflows/ci.yml]
+    command: "gh run view 43550220503 --repo hariom-s27/controlplane --log (logs expire)"
+    kind: ci
+
+  - id: ci-run-image-product-smoke-311
+    file: README.md
+    text: "| product-smoke (3.11) | ubuntu-26.04, 20261111.196.1 | 3.11.18 | success |"
+    value: "20261111.196.1"
+    definition: "Runner image name and version from the job's Set up job / Runner Image log block; Python from python -VV in the Provenance step."
+    n: 1
+    conditions: "CI run 43550220503 on commit c86f368 (2026-11-14), workflow .github/workflows/ci.yml; GitHub-hosted runners, no torch installed."
+    evidence: [.github/workflows/ci.yml]
+    command: "gh run view 43550220503 --repo hariom-s27/controlplane --log (logs expire)"
+    kind: ci
+
+  - id: ci-run-image-product-smoke-312
+    file: README.md
+    text: "| product-smoke (3.12) | ubuntu-26.04, 20261111.196.1 | 3.12.16 | success |"
+    value: "20261111.196.1"
+    definition: "Runner image name and version from the job's Set up job / Runner Image log block; Python from python -VV in the Provenance step."
+    n: 1
+    conditions: "CI run 43550220503 on commit c86f368 (2026-11-14), workflow .github/workflows/ci.yml; GitHub-hosted runners, no torch installed."
+    evidence: [.github/workflows/ci.yml]
+    command: "gh run view 43550220503 --repo hariom-s27/controlplane --log (logs expire)"
+    kind: ci
+
+  - id: ci-run-image-full-suite-ubuntu-312
+    file: README.md
+    text: "| full-suite (ubuntu-26.04, 3.12) | ubuntu-26.04, 20261111.196.1 | 3.12.16 | success |"
+    value: "20261111.196.1"
+    definition: "Runner image name and version from the job's Set up job / Runner Image log block; Python from python -VV in the Provenance step."
+    n: 1
+    conditions: "CI run 43550220503 on commit c86f368 (2026-11-14), workflow .github/workflows/ci.yml; GitHub-hosted runners, no torch installed."
+    evidence: [.github/workflows/ci.yml]
+    command: "gh run view 43550220503 --repo hariom-s27/controlplane --log (logs expire)"
+    kind: ci
+
+  - id: ci-run-image-full-suite-ubuntu-314
+    file: README.md
+    text: "| full-suite (ubuntu-26.04, 3.14) | ubuntu-26.04, 20261111.82.6 | 3.14.10 | success |"
+    value: "20261111.82.6"
+    definition: "Runner image name and version from the job's Set up job / Runner Image log block; Python from python -VV in the Provenance step. A different image build from the other ubuntu-26.04 jobs in the same run."
+    n: 1
+    conditions: "CI run 43550220503 on commit c86f368 (2026-11-14), workflow .github/workflows/ci.yml; GitHub-hosted runners, no torch installed."
+    evidence: [.github/workflows/ci.yml]
+    command: "gh run view 43550220503 --repo hariom-s27/controlplane --log (logs expire)"
+    kind: ci
+
+  - id: ci-run-image-full-suite-windows-314
+    file: README.md
+    text: "| full-suite (windows-2025, 3.14) | windows-2025-vs2026, 20261103.298.1 | 3.14.10 | success |"
+    value: "20261103.298.1"
+    definition: "Runner image name and version from the job's Set up job / Runner Image log block; Python from python -VV in the Provenance step."
+    n: 1
+    conditions: "CI run 43550220503 on commit c86f368 (2026-11-14), workflow .github/workflows/ci.yml; GitHub-hosted runners, no torch installed."
+    evidence: [.github/workflows/ci.yml]
+    command: "gh run view 43550220503 --repo hariom-s27/controlplane --log (logs expire)"
+    kind: ci
+
+  - id: ci-run-image-secret-scan
+    file: README.md
+    text: "| secret-scan | ubuntu-26.04, 20261111.196.1 | — | success (no leaks found) |"
+    value: "20261111.196.1"
+    definition: "Runner image name and version from the job's Set up job / Runner Image log block; result from the gitleaks output line."
+    n: 1
+    conditions: "CI run 43550220503 on commit c86f368 (2026-11-14), workflow .github/workflows/ci.yml; GitHub-hosted runners."
+    evidence: [.github/workflows/ci.yml, .gitleaks.toml]
+    command: "gh run view 43550220503 --repo hariom-s27/controlplane --log (logs expire)"
+    kind: ci
+
+  - id: ci-run-image-ci-ok
+    file: README.md
+    text: "| ci-ok | ubuntu-26.04, 20261111.196.1 | — | success (every needed job succeeded) |"
+    value: "20261111.196.1"
+    definition: "Runner image name and version from the job's Set up job / Runner Image log block; result from the gate's output line."
+    n: 1
+    conditions: "CI run 43550220503 on commit c86f368 (2026-11-14), workflow .github/workflows/ci.yml; GitHub-hosted runners."
+    evidence: [.github/workflows/ci.yml]
+    command: "gh run view 43550220503 --repo hariom-s27/controlplane --log (logs expire)"
+    kind: ci
+
+  - id: ci-run-counts-ubuntu-312
+    file: README.md
+    text: "| full-suite (ubuntu-26.04, 3.12) | 923 / 0 / 0 / 1 | 923 / 0 / 0 / 1 | tests/test_ground.py |"
+    value: "923 / 0 / 0 / 1"
+    definition: "passed / failed / errors / skipped from junit.xml and, independently, from pytest's terminal-reporter stats written by the tests/conftest.py hook (CP_CI_COUNTS_FILE); the Test summary step fails the job if they differ or a skip is not allowlisted."
+    n: 924
+    conditions: "CI run 43550220503 on commit c86f368 (2026-11-14), workflow .github/workflows/ci.yml; GitHub-hosted runners, no torch installed."
+    evidence: [.github/workflows/ci.yml, tests/conftest.py, tests/ci_allowed_skips.txt]
+    command: "gh run view 43550220503 --repo hariom-s27/controlplane --log (logs expire)"
+    kind: ci
+
+  - id: ci-run-counts-ubuntu-314
+    file: README.md
+    text: "| full-suite (ubuntu-26.04, 3.14) | 923 / 0 / 0 / 1 | 923 / 0 / 0 / 1 | tests/test_ground.py |"
+    value: "923 / 0 / 0 / 1"
+    definition: "passed / failed / errors / skipped from junit.xml and, independently, from pytest's terminal-reporter stats written by the tests/conftest.py hook (CP_CI_COUNTS_FILE); the Test summary step fails the job if they differ or a skip is not allowlisted."
+    n: 924
+    conditions: "CI run 43550220503 on commit c86f368 (2026-11-14), workflow .github/workflows/ci.yml; GitHub-hosted runners, no torch installed."
+    evidence: [.github/workflows/ci.yml, tests/conftest.py, tests/ci_allowed_skips.txt]
+    command: "gh run view 43550220503 --repo hariom-s27/controlplane --log (logs expire)"
+    kind: ci
+
+  - id: ci-run-counts-windows-314
+    file: README.md
+    text: "| full-suite (windows-2025, 3.14) | 923 / 0 / 0 / 1 | 923 / 0 / 0 / 1 | tests/test_ground.py |"
+    value: "923 / 0 / 0 / 1"
+    definition: "passed / failed / errors / skipped from junit.xml and, independently, from pytest's terminal-reporter stats written by the tests/conftest.py hook (CP_CI_COUNTS_FILE); the Test summary step fails the job if they differ or a skip is not allowlisted."
+    n: 924
+    conditions: "CI run 43550220503 on commit c86f368 (2026-11-14), workflow .github/workflows/ci.yml; GitHub-hosted runners, no torch installed."
+    evidence: [.github/workflows/ci.yml, tests/conftest.py, tests/ci_allowed_skips.txt]
+    command: "gh run view 43550220503 --repo hariom-s27/controlplane --log (logs expire)"
+    kind: ci
+
+  - id: ci-ok-seen-red
+    file: README.md
+    text: "on CI run 43528720666 (commit `d503343`), one test failed on both Ubuntu full-suite jobs and ci-ok reported `not successful: full-suite`"
+    value: "43528720666"
+    definition: "Run in which tests/test_claims.py::test_slow_p04_reports_and_per_case_file_match_recompute failed on full-suite (ubuntu-26.04, 3.12) and (ubuntu-26.04, 3.14), 1 failed / 917 passed / 1 skipped each, and the ci-ok job printed: ci-ok FAILED: not successful: full-suite."
+    n: 1
+    conditions: "CI run 43528720666 on commit d503343 (2026-11-13), workflow .github/workflows/ci.yml; cause fixed by c86f368 (path separators in bench/baselines.py --check)."
+    evidence: [.github/workflows/ci.yml, bench/baselines.py]
+    command: "gh run view 43528720666 --repo hariom-s27/controlplane --log (logs expire)"
+    kind: ci

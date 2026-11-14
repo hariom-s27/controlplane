@@ -238,11 +238,50 @@ decision record, not about what happened afterward.
 - **secret-scan**: gitleaks over the history of the checked-out commit.
   gitleaks skips merge commits; merges in this repository are not
   hand-resolved.
+- **ci-ok**: a single gate job that needs the three jobs above and fails
+  unless every one of them succeeded (failed, skipped or cancelled all count
+  as not successful).
+
+The seven check names are: product-smoke (3.11) · product-smoke (3.12) ·
+full-suite (ubuntu-26.04, 3.12) · full-suite (ubuntu-26.04, 3.14) ·
+full-suite (windows-2025, 3.14) · secret-scan · ci-ok.
 
 A green run means only that these checks passed — not that the
-research/benchmark findings are validated. CI logs and artifacts expire;
-every number in this README rests on committed files, listed in
-`docs/claims.yaml` and checked by `tests/test_claims.py`.
+research/benchmark findings are validated. CI logs and artifacts expire; the
+run figures below are quoted from the run log (registered as `kind: ci` in
+`docs/claims.yaml`, checked for presence only). Every other number in this
+README rests on committed files, listed in `docs/claims.yaml` and checked by
+`tests/test_claims.py`.
+
+### Last recorded run
+
+CI run [43550220503](https://github.com/hariom-s27/controlplane/actions/runs/43550220503) on commit `c86f368` (2026-11-14): all 7 checks green.
+
+| job | runner image (Image, Version) | Python | result |
+|---|---|---|---|
+| product-smoke (3.11) | ubuntu-26.04, 20261111.196.1 | 3.11.18 | success |
+| product-smoke (3.12) | ubuntu-26.04, 20261111.196.1 | 3.12.16 | success |
+| full-suite (ubuntu-26.04, 3.12) | ubuntu-26.04, 20261111.196.1 | 3.12.16 | success |
+| full-suite (ubuntu-26.04, 3.14) | ubuntu-26.04, 20261111.82.6 | 3.14.10 | success |
+| full-suite (windows-2025, 3.14) | windows-2025-vs2026, 20261103.298.1 | 3.14.10 | success |
+| secret-scan | ubuntu-26.04, 20261111.196.1 | — | success (no leaks found) |
+| ci-ok | ubuntu-26.04, 20261111.196.1 | — | success (every needed job succeeded) |
+
+The two Ubuntu full-suite jobs ran on different builds of the same
+`ubuntu-26.04` label, as shown. Test counts per full-suite job, from two
+independent sources (junit.xml and pytest's own terminal-reporter counts,
+written by the hook in `tests/conftest.py`), as passed / failed / errors / skipped:
+
+| full-suite job | junit.xml | pytest hook | skipped id |
+|---|---|---|---|
+| full-suite (ubuntu-26.04, 3.12) | 923 / 0 / 0 / 1 | 923 / 0 / 0 / 1 | tests/test_ground.py |
+| full-suite (ubuntu-26.04, 3.14) | 923 / 0 / 0 / 1 | 923 / 0 / 0 / 1 | tests/test_ground.py |
+| full-suite (windows-2025, 3.14) | 923 / 0 / 0 / 1 | 923 / 0 / 0 / 1 | tests/test_ground.py |
+
+The one skip is `tests/test_ground.py` (no `torch` in CI), the only entry in
+`tests/ci_allowed_skips.txt`.
+
+The gate has also been seen red: on CI run 43528720666 (commit `d503343`), one test failed on both Ubuntu full-suite jobs and ci-ok reported `not successful: full-suite`.
 
 ## Implementation approach
 
