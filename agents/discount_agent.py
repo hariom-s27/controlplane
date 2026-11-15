@@ -153,9 +153,13 @@ def run(customer_id: str = "CUST-2291", gate_enabled: bool | None = None) -> Non
 
 
 def main() -> int:
-    """`python -m agents.discount_agent` (make demo3). P07a: a missing LLM
-    recording ends with a clear message and exit code 2; every other error
-    still propagates."""
+    """`python -m agents.discount_agent` (make demo3); added in the P07a audit.
+
+    Offline, this demo can only use a recorded LLM response. If none matches
+    the request, print what happened and how to get a working run, and return
+    exit code 2, so a first-time user sees a next step instead of a raw
+    traceback and scripts see a failure. Only that "No fixture" error is
+    caught; every other error still propagates."""
     try:
         run()
     except RuntimeError as exc:

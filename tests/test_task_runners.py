@@ -1,8 +1,14 @@
-"""P07a Q6/Q7/G7: static checks of the two task runners (make.ps1, Makefile).
+"""Static checks of the two task runners, make.ps1 and Makefile (audit labels
+P07a Q6/Q7/G7).
 
-No shell is started here; the runners' behaviour is shown by hand in the P07a
-scratch-clone run. These tests keep the texts and the failure handling from
-drifting back.
+The tests read the runner files as text; no shell is started. They check that
+every native command in make.ps1 goes through Invoke-Native, so a failing step
+stops the run with that step's exit code instead of carrying on and looking
+like success (exp5 is the one step allowed to fail); that the console encoding
+is put back afterwards; and that the help texts are accurate (the paid probe
+step is not presented as a first step, setup is followed by test). Live
+behaviour is not exercised here; run the tasks in a fresh clone to see it.
+These tests keep the texts and the failure handling from drifting back.
 """
 
 from __future__ import annotations
