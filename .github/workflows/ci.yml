@@ -129,6 +129,16 @@ jobs:
       - name: Deterministic offline demo smoke test
         run: python -m scripts.judge_demo
 
+      - name: Use case 2 CLI demo (fixture mode, no keys)
+        run: |
+          python -m agents.knowledge_assistant | tee demo2.out
+          grep -F "dispatch> BLOCK: CONTRADICTED" demo2.out
+
+      - name: Use case 3 CLI demo (fixture mode, no keys)
+        run: |
+          python -m agents.discount_agent | tee demo3.out
+          grep -F "dispatch> BLOCK: CONTRADICTED" demo3.out
+
       - name: Dashboard import / GET-/ smoke test
         run: |
           python -c "

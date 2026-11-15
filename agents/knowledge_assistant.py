@@ -181,5 +181,24 @@ def run(subject_id: str = "EMP-4410", gate_enabled: bool | None = None) -> None:
         print(f"dispatch> {e}")
 
 
+def main() -> int:
+    """`python -m agents.knowledge_assistant` (make demo2). P07a: a missing LLM
+    recording ends with a clear message and exit code 2; every other error
+    still propagates."""
+    try:
+        run()
+    except RuntimeError as exc:
+        if not str(exc).startswith("No fixture"):
+            raise
+        print(
+            f"demo2: no usable recorded LLM response for this request ({exc}) "
+            "Set CP_MODE=live and a provider key in .env (paid API), "
+            "or run .\\make.ps1 judge-demo (offline; covers use case 2).",
+            file=sys.stderr,
+        )
+        return 2
+    return 0
+
+
 if __name__ == "__main__":
-    run()
+    sys.exit(main())

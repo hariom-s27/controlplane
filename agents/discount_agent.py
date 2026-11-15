@@ -152,5 +152,24 @@ def run(customer_id: str = "CUST-2291", gate_enabled: bool | None = None) -> Non
         print(f"dispatch> {e}")
 
 
+def main() -> int:
+    """`python -m agents.discount_agent` (make demo3). P07a: a missing LLM
+    recording ends with a clear message and exit code 2; every other error
+    still propagates."""
+    try:
+        run()
+    except RuntimeError as exc:
+        if not str(exc).startswith("No fixture"):
+            raise
+        print(
+            f"demo3: no usable recorded LLM response for this request ({exc}) "
+            "Set CP_MODE=live and a provider key in .env (paid API), "
+            "or run python -m pytest tests/test_third_use_case.py (offline).",
+            file=sys.stderr,
+        )
+        return 2
+    return 0
+
+
 if __name__ == "__main__":
-    run()
+    sys.exit(main())

@@ -1,0 +1,17 @@
+{
+  "description": "The only recordings agents/llm.py::chat() may replay when the exact fixture is missing. Each was recorded before max_tokens joined the cache key (b4ef009) and is pinned by the sha256 of its bytes. chat() also checks in code that the recording answers this request apart from max_tokens, was not cut off (finish_reason stop/tool_calls), used fewer tokens than the cap now requested, and came from the requested model. Anything else is not replayed.",
+  "entries": [
+    {
+      "requested_key": "1be373c0ba35ffb89501",
+      "legacy_file": "1f178c3adfd04c2dbbd3.json",
+      "legacy_sha256": "a5026b90b850fa04dfbfcbfb8d84a3c731b6cb0bf9aafe12b8dd097d6a8d456d",
+      "reason": "recorded before max_tokens joined the cache key (commit b4ef009); replayed only when pinned by sha256 and proven complete by code"
+    },
+    {
+      "requested_key": "4b57e71075df8b5b7077",
+      "legacy_file": "e67b69f08a2a8d7658ee.json",
+      "legacy_sha256": "84b0d9d59caffb60ae6fd0e6ad3149aefc68575e918535a3c40f34c07bcea805",
+      "reason": "recorded before max_tokens joined the cache key (commit b4ef009); replayed only when pinned by sha256 and proven complete by code"
+    }
+  ]
+}
