@@ -287,7 +287,10 @@ def build_context_fixtures() -> dict:
 
 
 def _write_fixture_readme(cur: dict, sup: dict) -> None:
-    (FIX / "README.md").write_text(
+    """Write bench/fixtures/p05/README.md with LF line endings, and only when its
+    bytes differ (P07a G5): a plain write_text() produced CRLF on Windows, so a
+    test run left the committed (LF) file modified in a fresh clone."""
+    text = (
         "# P05 context fixtures — provenance\n\n"
         "`context_fixtures.jsonl` is **synthetic** and generated deterministically by\n"
         "`bench/evidence_ablation.py::build_context_fixtures()` from the FROZEN P03\n"
@@ -314,9 +317,13 @@ def _write_fixture_readme(cur: dict, sup: dict) -> None:
         "P03/P04 artifacts, `decide.py`, the predicate graph, or the manifest.\n\n"
         f"Current clause: {cur['version']} / {cur['window_days']}d. "
         f"Superseded: {sup['version']} / {sup['window_days']}d "
-        f"(effective_to {POLICY_CUTOVER}).\n",
-        encoding="utf-8",
+        f"(effective_to {POLICY_CUTOVER}).\n"
     )
+    path = FIX / "README.md"
+    if path.exists() and path.read_bytes() == text.encode("utf-8"):
+        return
+    with open(path, "w", encoding="utf-8", newline="\n") as fh:
+        fh.write(text)
 
 
 def _policy_snapshot(as_of: date, dst_path: Path) -> tuple[str, int]:

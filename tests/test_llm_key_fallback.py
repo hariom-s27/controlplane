@@ -163,6 +163,10 @@ def test_cached_chat_rejects_empty_choices(monkeypatch, tmp_path):
         llm_module.chat(messages)
 
 
+# Guards the UNVERIFIED legacy case (b4ef009 rule). Since the pinned-replay rule
+# (data/fixtures/legacy_replay.json), only legacy recordings pinned by sha256 in
+# data/fixtures/legacy_replay.json and proven complete by code are replayed;
+# see the policy test.
 def test_cache_does_not_replay_fixture_keyed_without_max_tokens(monkeypatch, tmp_path):
     monkeypatch.setattr(llm_module, "FIXTURES", tmp_path)
     monkeypatch.setenv("CP_MODEL", "test-model")

@@ -11,6 +11,19 @@ must not be quoted as current.
 
 ---
 
+## 2026-11-15 (P07a)
+
+### E6 — `reports/README.md`: tau2-bench C1 described as done
+
+| | |
+|---|---|
+| Report and lines | `reports/README.md:17` (row for `tau2-bench.md`: "Partial — C1 baseline only; C2/C3 pending"); `reports/README.md:70-74` ("tau2-bench C1 (a governance-free baseline on a third-party benchmark) is done; C2/C3 … are not yet built or run") |
+| Stale text | tau2-bench C1 described as a completed baseline, with C2/C3 still to come |
+| Correction | Same withdrawal as E3, which named only `reports/tau2-bench.md`: tau2-bench C1/C2 are retired as evidence (0 tool calls; the adapter dropped tools), and the runs are not in this repository. No C1 baseline exists that a later comparison could build on. The rest of the "External validation is incomplete" point stands: every quantitative result in the reports is internal, single-domain, single-gold-set evidence. |
+| Evidence | E3 below (the same finding; this entry only extends it to the two places in `reports/README.md` that E3 did not name) |
+
+---
+
 ## 2026-11-14 (P05b)
 
 ### E1 — `reports/latency.md`: P09 timing figures retired

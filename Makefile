@@ -4,15 +4,15 @@ PY := .venv/bin/python
 .PHONY: help setup probe db test ci demo demo2 demo3 negative judge-demo judge-demo-reset bench goldset baselines ablation robustness latency report review reviewer product-demo clean
 help:
 	@echo "  setup     one-time: venv + install + build db"
-	@echo "  probe     check the LLM provider works   <- do this first"
+	@echo "  probe     check the LLM provider works (calls the provider: needs a paid key)"
 	@echo "  db        rebuild the SQLite stores"
 	@echo "  test      run the test suite"
-	@echo "  ci        test suite + the use-case-agnostic engine check"
+	@echo "  ci        test suite, quiet output (pytest -q)"
 	@echo "  demo      use case 1: servicing   (blocks ORD-88461)"
 	@echo "  demo2     use case 2: knowledge assistant (cross-tenant block)"
 	@echo "  demo3     use case 3: discount approval — manifest + graph data, no engine change"
 	@echo "  negative  use case 1 with the gate OFF"
-	@echo "  judge-demo       six-scenario judge-facing governance walkthrough (offline)"
+	@echo "  judge-demo       eight-scenario judge-facing governance walkthrough (offline)"
 	@echo "  judge-demo-reset reset judge-demo's local state"
 	@echo "  bench     run SEB-1"
 	@echo "  goldset   rebuild the P03 independent gold set + label + agreement"
@@ -33,7 +33,7 @@ setup:
 	@# P05b Y12: write .env from .env.example with a new random CP_RECEIPT_SECRET, only if .env
 	@# does not exist; an existing .env is never changed; the key is never printed.
 	@$(PY) -c 'import pathlib,secrets,sys; e=pathlib.Path(".env"); sys.exit(print("Kept the existing .env (not changed).")) if e.exists() else None; k="CP_RECEIPT_SECRET="; L=[(k+secrets.token_hex(32) if l.startswith(k) else l) for l in pathlib.Path(".env.example").read_text(encoding="utf-8").splitlines()]; assert sum(l.startswith(k) for l in L)==1, "expected one CP_RECEIPT_SECRET line in .env.example"; open(e,"x",encoding="utf-8",newline="\n").write("\n".join(L)+"\n"); print("Created .env with a new random CP_RECEIPT_SECRET (not shown). Paste your Featherless key into it.")'
-	@echo "\nSetup complete. Next: make probe"
+	@echo "\nSetup complete. Next: make test"
 
 probe:    ; $(PY) scripts/probe.py
 db:       ; $(PY) data/build_db.py

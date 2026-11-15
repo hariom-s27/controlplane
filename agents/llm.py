@@ -18,6 +18,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import sys
 import time
 from pathlib import Path
 
@@ -29,6 +30,9 @@ load_dotenv(ROOT / ".env")
 
 FIXTURES = ROOT / "data" / "fixtures"
 FIXTURES.mkdir(parents=True, exist_ok=True)
+# The pinned list of recordings _legacy_replay() may use.
+LEGACY_REPLAY = FIXTURES / "legacy_replay.json"
+_LEGACY_FINISH = frozenset({"stop", "tool_calls"})
 
 # Qwen-family models can spend a substantial part of the completion budget on
 # hidden reasoning.  Keep the budget explicit so an exhausted implicit default
@@ -152,6 +156,60 @@ def _validated_completion(response: dict) -> dict:
     return response
 
 
+def _legacy_replay(payload: dict, requested_key: str) -> dict | None:
+    """A pinned recording made before max_tokens joined the cache key
+    (b4ef009), or None.
+
+    b4ef009's rule: a fixture keyed without max_tokens is not replayed, because
+    a response recorded with no explicit cap may have been cut off by the
+    provider's own limit. The pinned-replay rule (data/fixtures/
+    legacy_replay.json) narrows that rule into one exception. A legacy
+    recording is replayed only if ALL of these hold, checked on every call:
+      * requested_key is listed in data/fixtures/legacy_replay.json;
+      * the listed file is cache_key(payload without max_tokens), i.e. it
+        answers exactly this request apart from the cap;
+      * the file's sha256 equals the pinned value;
+      * finish_reason is "stop" or "tool_calls" (the answer was not cut off);
+      * usage.completion_tokens < payload["max_tokens"] (it fits under the
+        cap now requested);
+      * the recorded model equals payload["model"];
+      * _validated_completion() accepts it.
+    Otherwise None: chat() then raises its usual "No fixture" error.
+    """
+    try:
+        entries = json.loads(LEGACY_REPLAY.read_text(encoding="utf-8"))["entries"]
+        entry = next(e for e in entries if isinstance(e, dict) and e.get("requested_key") == requested_key)
+    except (OSError, ValueError, KeyError, TypeError, StopIteration):
+        return None
+    legacy_file = f"{cache_key({k: v for k, v in payload.items() if k != 'max_tokens'})}.json"
+    if entry.get("legacy_file") != legacy_file:
+        return None
+    try:
+        raw = (FIXTURES / legacy_file).read_bytes()
+    except OSError:
+        return None
+    if hashlib.sha256(raw).hexdigest() != entry.get("legacy_sha256"):
+        return None
+    cap = payload["max_tokens"]
+    try:
+        response = json.loads(raw.decode("utf-8"))
+        finish = response["choices"][0].get("finish_reason")
+        tokens = response["usage"]["completion_tokens"]
+        if finish not in _LEGACY_FINISH or type(tokens) is not int or not tokens < cap:
+            return None
+        if response.get("model") != payload["model"]:
+            return None
+        _validated_completion(response)
+    except (KeyError, IndexError, TypeError, AttributeError, ValueError, RuntimeError):
+        return None
+    print(
+        f"replayed {legacy_file} (recorded before b4ef009); sha256 ok; "
+        f"finish={finish}, {tokens} tokens < cap {cap}",
+        file=sys.stderr,
+    )
+    return response
+
+
 def chat(messages, tools=None, json_mode=False, temperature=0.0, force_live=False):
     """R6: every call is cached. CP_MODE=fixture (default) never touches the network.
 
@@ -171,11 +229,17 @@ def chat(messages, tools=None, json_mode=False, temperature=0.0, force_live=Fals
     if json_mode:
         payload["response_format"] = {"type": "json_object"}
 
-    f = FIXTURES / f"{cache_key(payload)}.json"
+    key = cache_key(payload)
+    f = FIXTURES / f"{key}.json"
     if not force_live and f.exists():
         return _validated_completion(json.loads(f.read_text()))
 
     if os.environ.get("CP_MODE", "fixture") != "live":
+        # Pinned replay: only in fixture mode, never with force_live, and only after the
+        # exact key missed. See _legacy_replay() for the conditions.
+        replayed = None if force_live else _legacy_replay(payload, key)
+        if replayed is not None:
+            return replayed
         raise RuntimeError(
             f"No fixture {f.name} and CP_MODE != live. Run with CP_MODE=live once to record it."
         )
