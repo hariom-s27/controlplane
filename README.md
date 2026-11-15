@@ -1,6 +1,6 @@
 # ControlPlane
 
-[![CI](https://github.com/hariom-s27/controlplane/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/hariom-s27/controlplane/actions/workflows/ci.yml)
+[![CI](https://github.com/hariom-s27/controlplane/actions/workflows/ci.yml/badge.svg?branch=main&event=push)](https://github.com/hariom-s27/controlplane/actions/workflows/ci.yml)
 
 **A runtime verification layer for enterprise AI agents.** When an agent
 proposes an action, we intercept the tool call *before it executes*, check the
@@ -32,25 +32,32 @@ state described in this README.
 **Windows**
 
 ```powershell
-git clone <repo-url>
+git clone https://github.com/hariom-s27/controlplane.git
 cd controlplane
 .\make.ps1 setup      # venv + install + build the databases
-.\make.ps1 probe      # check your LLM provider works
 .\make.ps1 test       # tests should pass
 .\make.ps1 negative   # the agent fails, with the gate OFF
 .\make.ps1 demo       # use case 1: the gate catches it — BLOCK, plus a signed receipt
 .\make.ps1 demo2      # use case 2: the cross-tenant document block
 .\make.ps1 demo3      # use case 3: discount approval — added as manifest + graph data, zero engine code
 .\make.ps1 judge-demo # eight-scenario judge-facing walkthrough (offline, all fixtures)
-python -m demo.web    # one-screen judge dashboard — open http://127.0.0.1:8000/
+.\.venv\Scripts\python -m demo.web    # one-screen judge dashboard — open http://127.0.0.1:8000/
 ```
 
-**macOS / Linux** — same, with `make setup`, `make probe`, and so on
-(`make judge-demo` and `python -m demo.web` are identical on every platform).
+**macOS / Linux** — same, with `make setup`, `make test`, and so on; the
+dashboard is `.venv/bin/python -m demo.web`.
 
-You do **not** need an API key to run any of the above: LLM responses for the
-demo scenarios are cached as committed fixtures (`CP_MODE=fixture`). Set
-`CP_MODE=live` in `.env` to call the provider for real.
+After `setup`, every step above runs offline and needs no API key: LLM
+responses are replayed from committed fixtures (`CP_MODE=fixture`). `demo2`
+and `demo3` replay a recording made before max_tokens joined the cache key
+(b4ef009); code checks it was not cut off by the cap. Only `probe` and
+`CP_MODE=live` in `.env` call the LLM provider, which needs a paid key.
+
+| Step | Network | Paid key |
+|---|---|---|
+| `setup` | PyPI (`pip install`) | no |
+| `test`, `negative`, `demo`, `demo2`, `demo3`, `judge-demo`, dashboard | none (offline) | no |
+| `probe` (optional: checks the LLM provider) | LLM provider (Featherless) | **yes** |
 
 `setup` creates `.env` from `.env.example` only if `.env` does not exist
 yet, and puts a newly generated random `CP_RECEIPT_SECRET` in it (Python
@@ -58,9 +65,9 @@ yet, and puts a newly generated random `CP_RECEIPT_SECRET` in it (Python
 The value in `.env.example` is a placeholder, not a key: a receipt signed
 with a key published in this repository proves nothing.
 
-`python -m demo.web` is the local development/demo entry point for the
-one-screen judge dashboard — the same UI shown in the public live demo below,
-run on your own machine.
+`python -m demo.web` (run with the virtualenv's Python, as above) is the
+local development/demo entry point for the one-screen judge dashboard — the
+same UI shown in the public live demo below, run on your own machine.
 
 ---
 
@@ -70,7 +77,10 @@ run on your own machine.
 dashboard (Product-03/04A). It runs in deterministic fixture mode
 (`CP_MODE=fixture`): every scenario replays a committed LLM-response fixture,
 so no external LLM provider credentials are needed to use it. This is a demo
-deployment, not a service with an uptime guarantee.
+deployment, not a service with an uptime guarantee. It runs on a Render free
+instance: a free instance spins down after 15 minutes idle, and the first
+request after that can take about a minute (Render docs,
+https://render.com/docs/free).
 
 The two strongest outcomes on that dashboard, Customer Support profile
 (`servicing-v1`):
@@ -181,7 +191,7 @@ so a judge can see it work without reading Python.
 |---|---|---|
 | **Product-01** | Eight scripted, offline scenarios run over the real pipeline, across both profiles: NORMAL ALLOW, SOURCE UNRELIABLE, RELIABLE CONTRADICTION, INVALID MODIFY / SAFETY REFUSAL, UNSAFE MODIFY / SAFETY REFUSAL, DUPLICATE / REPLAY (Internal Knowledge Assistant); ₹42,999 STALE-POLICY REFUND, ₹8,499 IN-POLICY REFUND (Customer Support) | `scripts/judge_demo.py` — `.\make.ps1 judge-demo` |
 | **Product-02** | Evidence Passport + Decision Inspector: both read off one shared, real `PresentationModel` — neither re-derives evidence, claims, policy or the verdict | `product/judge_presentation.py`, `product/judge_views.py` — `python -m product.judge_cli --scenario 3` |
-| **Product-03** | One-screen FastAPI dashboard: profile switcher, scenario picker, RUN, RESET | `demo/web.py` — `python -m demo.web`, then open `http://127.0.0.1:8000/` |
+| **Product-03** | One-screen FastAPI dashboard: profile switcher, scenario picker, RUN, RESET | `demo/web.py` — `.\.venv\Scripts\python -m demo.web`, then open `http://127.0.0.1:8000/` |
 | **Product-04A** | Dashboard hardening: no autorun on page load, query params, or refresh; a second RUN or RESET arriving while one is in flight is **rejected** (HTTP 409), never queued or silently serialized; a fixed-message error firewall (no raw exception text ever reaches the UI); RESET clears only demo-local state | same files as Product-03 — `tests/test_product04a_hardening.py` |
 
 The dashboard exposes exactly **two** of the three governed use cases as
@@ -230,8 +240,8 @@ decision record, not about what happened afterward.
 - **product-smoke** (Python 3.11 and 3.12): the Product-01/02/03/04A test
   suites, the use-case-agnostic engine check
   (`tests/test_engine_is_use_case_agnostic.py`), a deterministic offline demo
-  smoke test (`python -m scripts.judge_demo`) and a dashboard `GET /` smoke
-  test.
+  smoke test (`python -m scripts.judge_demo`) and the use case 2 and 3 CLI
+  demos, plus a dashboard `GET /` smoke test.
 - **full-suite**: `python -m pytest tests/` on Ubuntu (Python 3.12 and 3.14)
   and Windows (Python 3.14). `tests/test_ground.py` skips itself when `torch`
   is absent; `requirements.txt` does not install it.
@@ -277,6 +287,10 @@ written by the hook in `tests/conftest.py`), as passed / failed / errors / skipp
 | full-suite (ubuntu-26.04, 3.12) | 923 / 0 / 0 / 1 | 923 / 0 / 0 / 1 | tests/test_ground.py |
 | full-suite (ubuntu-26.04, 3.14) | 923 / 0 / 0 / 1 | 923 / 0 / 0 / 1 | tests/test_ground.py |
 | full-suite (windows-2025, 3.14) | 923 / 0 / 0 / 1 | 923 / 0 / 0 / 1 | tests/test_ground.py |
+
+n counts every pytest outcome reported (passed + failed + errors + skipped);
+the one skipped item is the whole module `tests/test_ground.py`, whose tests
+are not collected without torch.
 
 The one skip is `tests/test_ground.py` (no `torch` in CI), the only entry in
 `tests/ci_allowed_skips.txt`.
@@ -413,16 +427,18 @@ score was 1.000 by construction — retired, see `docs/experiment-audit.md`.
 |---|---|
 | `.\make.ps1 negative` | Gate OFF — the negative control. The refund executes unchecked. |
 | `.\make.ps1 demo` | Gate ON, use case 1 — the ₹42,999 scenario above. BLOCK, signed receipt. |
-| `.\make.ps1 demo2` | Use case 2 — the cross-tenant document block. |
-| `.\make.ps1 demo3` | Use case 3 — discount approval, added as manifest + graph data only. |
+| `.\make.ps1 demo2` | Use case 2 — the cross-tenant document block (offline, recorded response). |
+| `.\make.ps1 demo3` | Use case 3 — discount approval, added as manifest + graph data only (offline, recorded response). |
 | `.\make.ps1 judge-demo` | All eight Product-01 scenarios, offline, over the real pipeline. |
-| `python -m demo.web` | The one-screen judge dashboard (Product-03) — open `http://127.0.0.1:8000/`. |
+| `.\.venv\Scripts\python -m demo.web` | The one-screen judge dashboard (Product-03) — open `http://127.0.0.1:8000/`. |
 | `.\make.ps1 review` | Human-in-the-loop console for ESCALATE decisions (needs an interactive human — see Limitations). |
 
 All demo scenarios run against committed, seeded LLM fixtures by default —
 no API key needed (`CP_MODE=live` in `.env` switches to a real provider
-call). This is an engineering demonstration of the pipeline above, over
-deterministic seeded data — it is not external validation and not a live
+call, which needs a paid key). `demo2` and `demo3` replay recordings made
+before max_tokens joined the cache key; see "Quick start". This is an
+engineering demonstration of the pipeline above, over deterministic seeded
+data — it is not external validation and not a live
 production deployment; see "External validation" below for what has and has
 not been validated outside this repository.
 
@@ -547,7 +563,6 @@ Bespoke-MiniCheck-7B (CC BY-NC) and SDV (BUSL-1.1).
 
 ```powershell
 .\make.ps1 setup
-.\make.ps1 probe
 .\make.ps1 test
 .\make.ps1 negative   # gate off — money moves, unchecked
 .\make.ps1 demo       # gate on  — BLOCK, plus a signed receipt in decisions.jsonl

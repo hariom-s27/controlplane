@@ -848,7 +848,7 @@ claims:
     file: README.md
     text: "| full-suite (ubuntu-26.04, 3.12) | 923 / 0 / 0 / 1 | 923 / 0 / 0 / 1 | tests/test_ground.py |"
     value: "923 / 0 / 0 / 1"
-    definition: "passed / failed / errors / skipped from junit.xml and, independently, from pytest's terminal-reporter stats written by the tests/conftest.py hook (CP_CI_COUNTS_FILE); the Test summary step fails the job if they differ or a skip is not allowlisted."
+    definition: "passed / failed / errors / skipped from junit.xml and, independently, from pytest's terminal-reporter stats written by the tests/conftest.py hook (CP_CI_COUNTS_FILE); the Test summary step fails the job if they differ or a skip is not allowlisted. n counts every pytest outcome reported (passed + failed + errors + skipped); the one skipped item is the whole module tests/test_ground.py (module-level pytest.importorskip('torch')), whose tests are not collected without torch."
     n: 924
     conditions: "CI run 43550220503 on commit c86f368 (2026-11-14), workflow .github/workflows/ci.yml; GitHub-hosted runners, no torch installed."
     evidence: [.github/workflows/ci.yml, tests/conftest.py, tests/ci_allowed_skips.txt]
@@ -859,7 +859,7 @@ claims:
     file: README.md
     text: "| full-suite (ubuntu-26.04, 3.14) | 923 / 0 / 0 / 1 | 923 / 0 / 0 / 1 | tests/test_ground.py |"
     value: "923 / 0 / 0 / 1"
-    definition: "passed / failed / errors / skipped from junit.xml and, independently, from pytest's terminal-reporter stats written by the tests/conftest.py hook (CP_CI_COUNTS_FILE); the Test summary step fails the job if they differ or a skip is not allowlisted."
+    definition: "passed / failed / errors / skipped from junit.xml and, independently, from pytest's terminal-reporter stats written by the tests/conftest.py hook (CP_CI_COUNTS_FILE); the Test summary step fails the job if they differ or a skip is not allowlisted. n counts every pytest outcome reported (passed + failed + errors + skipped); the one skipped item is the whole module tests/test_ground.py (module-level pytest.importorskip('torch')), whose tests are not collected without torch."
     n: 924
     conditions: "CI run 43550220503 on commit c86f368 (2026-11-14), workflow .github/workflows/ci.yml; GitHub-hosted runners, no torch installed."
     evidence: [.github/workflows/ci.yml, tests/conftest.py, tests/ci_allowed_skips.txt]
@@ -870,7 +870,7 @@ claims:
     file: README.md
     text: "| full-suite (windows-2025, 3.14) | 923 / 0 / 0 / 1 | 923 / 0 / 0 / 1 | tests/test_ground.py |"
     value: "923 / 0 / 0 / 1"
-    definition: "passed / failed / errors / skipped from junit.xml and, independently, from pytest's terminal-reporter stats written by the tests/conftest.py hook (CP_CI_COUNTS_FILE); the Test summary step fails the job if they differ or a skip is not allowlisted."
+    definition: "passed / failed / errors / skipped from junit.xml and, independently, from pytest's terminal-reporter stats written by the tests/conftest.py hook (CP_CI_COUNTS_FILE); the Test summary step fails the job if they differ or a skip is not allowlisted. n counts every pytest outcome reported (passed + failed + errors + skipped); the one skipped item is the whole module tests/test_ground.py (module-level pytest.importorskip('torch')), whose tests are not collected without torch."
     n: 924
     conditions: "CI run 43550220503 on commit c86f368 (2026-11-14), workflow .github/workflows/ci.yml; GitHub-hosted runners, no torch installed."
     evidence: [.github/workflows/ci.yml, tests/conftest.py, tests/ci_allowed_skips.txt]
