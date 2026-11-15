@@ -8,7 +8,7 @@ file here changes nothing on its own.
 | File | Applies to | Status |
 |---|---|---|
 | `ruleset-main.json` | branch `main` | **applied** (ruleset 27251565) |
-| `ruleset-tags.json` | tags matching `refs/tags/v*` | **proposed, not yet applied** |
+| `ruleset-tags.json` | tags matching `refs/tags/v*` | **applied** (ruleset 27320545) |
 
 ## `ruleset-main.json` (applied)
 
@@ -23,12 +23,21 @@ other fields matched (checked with `gh api … GET`). On `main` it:
 - blocks force-pushes (`non_fast_forward`) and deletion of the branch;
 - has an empty bypass list, so the rules also apply to the repository owner.
 
-## `ruleset-tags.json` (proposed, not yet applied)
+## `ruleset-tags.json` (applied)
 
-A draft. If applied, it would stop release tags (`v*`, for example
-`v1.0-round2`) from being moved to another commit (`update`) or deleted
-(`deletion`), with an empty bypass list. Until it is applied, tags have no
-ruleset protection.
+Applied as ruleset 27320545 (`release-tags`). GitHub's read-back (checked
+with `gh api … GET`) matched `name`, `target`, `enforcement`,
+`bypass_actors`, `conditions` and `rules` in this file. It also adds `id`,
+`source_type`, `source`, `node_id`, `created_at`, `updated_at`,
+`current_user_can_bypass` (`never`) and `_links`, which are not part of the
+file. It stops release tags (`v*`, for example `v1.0-round2`) from being
+moved to another commit (`update`) or deleted (`deletion`), with an empty
+bypass list.
+
+## Other repository settings
+
+- Immutable releases are enabled.
+- Private vulnerability reporting is enabled (see `SECURITY.md`).
 
 ## Checking a live ruleset against these files
 
@@ -36,9 +45,11 @@ With read access to the repository settings:
 
 ```
 gh api repos/hariom-s27/controlplane/rulesets/27251565
+gh api repos/hariom-s27/controlplane/rulesets/27320545
 ```
 
 Compare `name`, `target`, `enforcement`, `bypass_actors`, `conditions` and
-`rules` in the output with `ruleset-main.json`. GitHub also returns fields
-such as `id`, `source`, links, timestamps and its default
-`do_not_enforce_on_create`, which are not part of the submitted body.
+`rules` in the output with `ruleset-main.json` and `ruleset-tags.json`.
+GitHub also returns fields such as `id`, `source`, links, timestamps and,
+for the `main` ruleset, its default `do_not_enforce_on_create`, which are
+not part of the submitted body.

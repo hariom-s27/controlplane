@@ -265,28 +265,33 @@ README rests on committed files, listed in `docs/claims.yaml` and checked by
 
 ### Last recorded run
 
-CI run [43550220503](https://github.com/hariom-s27/controlplane/actions/runs/43550220503) on commit `c86f368` (2026-11-14): all 7 checks green.
+CI run [43735287589](https://github.com/hariom-s27/controlplane/actions/runs/43735287589) on commit `e6c8044` (2026-11-15): all 7 checks green.
+
+Between `e6c8044` and the commit that adds this paragraph, only
+`README.md`, `docs/claims.yaml`, `docs/governance/README.md` and
+`tests/test_governance_files.py` changed; this run did not test those
+edits.
 
 | job | runner image (Image, Version) | Python | result |
 |---|---|---|---|
 | product-smoke (3.11) | ubuntu-26.04, 20261111.196.1 | 3.11.18 | success |
-| product-smoke (3.12) | ubuntu-26.04, 20261111.196.1 | 3.12.16 | success |
+| product-smoke (3.12) | ubuntu-26.04, 20261111.82.6 | 3.12.16 | success |
 | full-suite (ubuntu-26.04, 3.12) | ubuntu-26.04, 20261111.196.1 | 3.12.16 | success |
-| full-suite (ubuntu-26.04, 3.14) | ubuntu-26.04, 20261111.82.6 | 3.14.10 | success |
+| full-suite (ubuntu-26.04, 3.14) | ubuntu-26.04, 20261111.196.1 | 3.14.10 | success |
 | full-suite (windows-2025, 3.14) | windows-2025-vs2026, 20261103.298.1 | 3.14.10 | success |
-| secret-scan | ubuntu-26.04, 20261111.196.1 | — | success (no leaks found) |
+| secret-scan | ubuntu-26.04, 20261111.82.6 | — | success (no leaks found) |
 | ci-ok | ubuntu-26.04, 20261111.196.1 | — | success (every needed job succeeded) |
 
-The two Ubuntu full-suite jobs ran on different builds of the same
-`ubuntu-26.04` label, as shown. Test counts per full-suite job, from two
+Jobs on the `ubuntu-26.04` label did not all run on the same build of it,
+as shown. Test counts per full-suite job, from two
 independent sources (junit.xml and pytest's own terminal-reporter counts,
 written by the hook in `tests/conftest.py`), as passed / failed / errors / skipped:
 
 | full-suite job | junit.xml | pytest hook | skipped id |
 |---|---|---|---|
-| full-suite (ubuntu-26.04, 3.12) | 923 / 0 / 0 / 1 | 923 / 0 / 0 / 1 | tests/test_ground.py |
-| full-suite (ubuntu-26.04, 3.14) | 923 / 0 / 0 / 1 | 923 / 0 / 0 / 1 | tests/test_ground.py |
-| full-suite (windows-2025, 3.14) | 923 / 0 / 0 / 1 | 923 / 0 / 0 / 1 | tests/test_ground.py |
+| full-suite (ubuntu-26.04, 3.12) | 995 / 0 / 0 / 1 | 995 / 0 / 0 / 1 | tests/test_ground.py |
+| full-suite (ubuntu-26.04, 3.14) | 995 / 0 / 0 / 1 | 995 / 0 / 0 / 1 | tests/test_ground.py |
+| full-suite (windows-2025, 3.14) | 995 / 0 / 0 / 1 | 995 / 0 / 0 / 1 | tests/test_ground.py |
 
 n counts every pytest outcome reported (passed + failed + errors + skipped);
 the one skipped item is the whole module `tests/test_ground.py`, whose tests
@@ -531,6 +536,9 @@ weak. Each point names its source.
   (see "Measured results").
 - **The dashboard is a single-process, fixture-mode demo**
   (`docs/limitations.md`).
+- **Console encoding.** Logs redirected to a file from Windows PowerShell 5.1
+  show — and ₹ garbled (the calling console's code page); a normal console
+  shows them correctly.
 
 ## Future work
 

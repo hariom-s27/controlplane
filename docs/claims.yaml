@@ -758,13 +758,13 @@ claims:
 
   - id: ci-run-all-checks-green
     file: README.md
-    text: "CI run [43550220503](https://github.com/hariom-s27/controlplane/actions/runs/43550220503) on commit `c86f368` (2026-11-14): all 7 checks green."
+    text: "CI run [43735287589](https://github.com/hariom-s27/controlplane/actions/runs/43735287589) on commit `e6c8044` (2026-11-15): all 7 checks green."
     value: "7"
     definition: "Check runs in the run, all with conclusion success: product-smoke (3.11), product-smoke (3.12), full-suite (ubuntu-26.04, 3.12), full-suite (ubuntu-26.04, 3.14), full-suite (windows-2025, 3.14), secret-scan, ci-ok."
     n: 7
-    conditions: "CI run 43550220503 on commit c86f368 (2026-11-14), workflow .github/workflows/ci.yml; GitHub-hosted runners, no torch installed."
+    conditions: "CI run 43735287589 on commit e6c8044 (2026-11-15), workflow .github/workflows/ci.yml; GitHub-hosted runners, no torch installed."
     evidence: [.github/workflows/ci.yml]
-    command: "gh run view 43550220503 --repo hariom-s27/controlplane --log (logs expire)"
+    command: "gh run view 43735287589 --repo hariom-s27/controlplane --log (logs expire)"
     kind: ci
 
   - id: ci-run-image-product-smoke-311
@@ -773,20 +773,20 @@ claims:
     value: "20261111.196.1"
     definition: "Runner image name and version from the job's Set up job / Runner Image log block; Python from python -VV in the Provenance step."
     n: 1
-    conditions: "CI run 43550220503 on commit c86f368 (2026-11-14), workflow .github/workflows/ci.yml; GitHub-hosted runners, no torch installed."
+    conditions: "CI run 43735287589 on commit e6c8044 (2026-11-15), workflow .github/workflows/ci.yml; GitHub-hosted runners, no torch installed."
     evidence: [.github/workflows/ci.yml]
-    command: "gh run view 43550220503 --repo hariom-s27/controlplane --log (logs expire)"
+    command: "gh run view 43735287589 --repo hariom-s27/controlplane --log (logs expire)"
     kind: ci
 
   - id: ci-run-image-product-smoke-312
     file: README.md
-    text: "| product-smoke (3.12) | ubuntu-26.04, 20261111.196.1 | 3.12.16 | success |"
-    value: "20261111.196.1"
-    definition: "Runner image name and version from the job's Set up job / Runner Image log block; Python from python -VV in the Provenance step."
+    text: "| product-smoke (3.12) | ubuntu-26.04, 20261111.82.6 | 3.12.16 | success |"
+    value: "20261111.82.6"
+    definition: "Runner image name and version from the job's Set up job / Runner Image log block; Python from python -VV in the Provenance step. One of two ubuntu-26.04 jobs in this run (with secret-scan) on a different image build from the others."
     n: 1
-    conditions: "CI run 43550220503 on commit c86f368 (2026-11-14), workflow .github/workflows/ci.yml; GitHub-hosted runners, no torch installed."
+    conditions: "CI run 43735287589 on commit e6c8044 (2026-11-15), workflow .github/workflows/ci.yml; GitHub-hosted runners, no torch installed."
     evidence: [.github/workflows/ci.yml]
-    command: "gh run view 43550220503 --repo hariom-s27/controlplane --log (logs expire)"
+    command: "gh run view 43735287589 --repo hariom-s27/controlplane --log (logs expire)"
     kind: ci
 
   - id: ci-run-image-full-suite-ubuntu-312
@@ -795,20 +795,20 @@ claims:
     value: "20261111.196.1"
     definition: "Runner image name and version from the job's Set up job / Runner Image log block; Python from python -VV in the Provenance step."
     n: 1
-    conditions: "CI run 43550220503 on commit c86f368 (2026-11-14), workflow .github/workflows/ci.yml; GitHub-hosted runners, no torch installed."
+    conditions: "CI run 43735287589 on commit e6c8044 (2026-11-15), workflow .github/workflows/ci.yml; GitHub-hosted runners, no torch installed."
     evidence: [.github/workflows/ci.yml]
-    command: "gh run view 43550220503 --repo hariom-s27/controlplane --log (logs expire)"
+    command: "gh run view 43735287589 --repo hariom-s27/controlplane --log (logs expire)"
     kind: ci
 
   - id: ci-run-image-full-suite-ubuntu-314
     file: README.md
-    text: "| full-suite (ubuntu-26.04, 3.14) | ubuntu-26.04, 20261111.82.6 | 3.14.10 | success |"
-    value: "20261111.82.6"
-    definition: "Runner image name and version from the job's Set up job / Runner Image log block; Python from python -VV in the Provenance step. A different image build from the other ubuntu-26.04 jobs in the same run."
+    text: "| full-suite (ubuntu-26.04, 3.14) | ubuntu-26.04, 20261111.196.1 | 3.14.10 | success |"
+    value: "20261111.196.1"
+    definition: "Runner image name and version from the job's Set up job / Runner Image log block; Python from python -VV in the Provenance step."
     n: 1
-    conditions: "CI run 43550220503 on commit c86f368 (2026-11-14), workflow .github/workflows/ci.yml; GitHub-hosted runners, no torch installed."
+    conditions: "CI run 43735287589 on commit e6c8044 (2026-11-15), workflow .github/workflows/ci.yml; GitHub-hosted runners, no torch installed."
     evidence: [.github/workflows/ci.yml]
-    command: "gh run view 43550220503 --repo hariom-s27/controlplane --log (logs expire)"
+    command: "gh run view 43735287589 --repo hariom-s27/controlplane --log (logs expire)"
     kind: ci
 
   - id: ci-run-image-full-suite-windows-314
@@ -817,20 +817,20 @@ claims:
     value: "20261103.298.1"
     definition: "Runner image name and version from the job's Set up job / Runner Image log block; Python from python -VV in the Provenance step."
     n: 1
-    conditions: "CI run 43550220503 on commit c86f368 (2026-11-14), workflow .github/workflows/ci.yml; GitHub-hosted runners, no torch installed."
+    conditions: "CI run 43735287589 on commit e6c8044 (2026-11-15), workflow .github/workflows/ci.yml; GitHub-hosted runners, no torch installed."
     evidence: [.github/workflows/ci.yml]
-    command: "gh run view 43550220503 --repo hariom-s27/controlplane --log (logs expire)"
+    command: "gh run view 43735287589 --repo hariom-s27/controlplane --log (logs expire)"
     kind: ci
 
   - id: ci-run-image-secret-scan
     file: README.md
-    text: "| secret-scan | ubuntu-26.04, 20261111.196.1 | — | success (no leaks found) |"
-    value: "20261111.196.1"
-    definition: "Runner image name and version from the job's Set up job / Runner Image log block; result from the gitleaks output line."
+    text: "| secret-scan | ubuntu-26.04, 20261111.82.6 | — | success (no leaks found) |"
+    value: "20261111.82.6"
+    definition: "Runner image name and version from the job's Set up job / Runner Image log block; result from the gitleaks output line. One of two ubuntu-26.04 jobs in this run (with product-smoke (3.12)) on a different image build from the others."
     n: 1
-    conditions: "CI run 43550220503 on commit c86f368 (2026-11-14), workflow .github/workflows/ci.yml; GitHub-hosted runners."
+    conditions: "CI run 43735287589 on commit e6c8044 (2026-11-15), workflow .github/workflows/ci.yml; GitHub-hosted runners."
     evidence: [.github/workflows/ci.yml, .gitleaks.toml]
-    command: "gh run view 43550220503 --repo hariom-s27/controlplane --log (logs expire)"
+    command: "gh run view 43735287589 --repo hariom-s27/controlplane --log (logs expire)"
     kind: ci
 
   - id: ci-run-image-ci-ok
@@ -839,42 +839,42 @@ claims:
     value: "20261111.196.1"
     definition: "Runner image name and version from the job's Set up job / Runner Image log block; result from the gate's output line."
     n: 1
-    conditions: "CI run 43550220503 on commit c86f368 (2026-11-14), workflow .github/workflows/ci.yml; GitHub-hosted runners."
+    conditions: "CI run 43735287589 on commit e6c8044 (2026-11-15), workflow .github/workflows/ci.yml; GitHub-hosted runners."
     evidence: [.github/workflows/ci.yml]
-    command: "gh run view 43550220503 --repo hariom-s27/controlplane --log (logs expire)"
+    command: "gh run view 43735287589 --repo hariom-s27/controlplane --log (logs expire)"
     kind: ci
 
   - id: ci-run-counts-ubuntu-312
     file: README.md
-    text: "| full-suite (ubuntu-26.04, 3.12) | 923 / 0 / 0 / 1 | 923 / 0 / 0 / 1 | tests/test_ground.py |"
-    value: "923 / 0 / 0 / 1"
+    text: "| full-suite (ubuntu-26.04, 3.12) | 995 / 0 / 0 / 1 | 995 / 0 / 0 / 1 | tests/test_ground.py |"
+    value: "995 / 0 / 0 / 1"
     definition: "passed / failed / errors / skipped from junit.xml and, independently, from pytest's terminal-reporter stats written by the tests/conftest.py hook (CP_CI_COUNTS_FILE); the Test summary step fails the job if they differ or a skip is not allowlisted. n counts every pytest outcome reported (passed + failed + errors + skipped); the one skipped item is the whole module tests/test_ground.py (module-level pytest.importorskip('torch')), whose tests are not collected without torch."
-    n: 924
-    conditions: "CI run 43550220503 on commit c86f368 (2026-11-14), workflow .github/workflows/ci.yml; GitHub-hosted runners, no torch installed."
+    n: 996
+    conditions: "CI run 43735287589 on commit e6c8044 (2026-11-15), workflow .github/workflows/ci.yml; GitHub-hosted runners, no torch installed."
     evidence: [.github/workflows/ci.yml, tests/conftest.py, tests/ci_allowed_skips.txt]
-    command: "gh run view 43550220503 --repo hariom-s27/controlplane --log (logs expire)"
+    command: "gh run view 43735287589 --repo hariom-s27/controlplane --log (logs expire)"
     kind: ci
 
   - id: ci-run-counts-ubuntu-314
     file: README.md
-    text: "| full-suite (ubuntu-26.04, 3.14) | 923 / 0 / 0 / 1 | 923 / 0 / 0 / 1 | tests/test_ground.py |"
-    value: "923 / 0 / 0 / 1"
+    text: "| full-suite (ubuntu-26.04, 3.14) | 995 / 0 / 0 / 1 | 995 / 0 / 0 / 1 | tests/test_ground.py |"
+    value: "995 / 0 / 0 / 1"
     definition: "passed / failed / errors / skipped from junit.xml and, independently, from pytest's terminal-reporter stats written by the tests/conftest.py hook (CP_CI_COUNTS_FILE); the Test summary step fails the job if they differ or a skip is not allowlisted. n counts every pytest outcome reported (passed + failed + errors + skipped); the one skipped item is the whole module tests/test_ground.py (module-level pytest.importorskip('torch')), whose tests are not collected without torch."
-    n: 924
-    conditions: "CI run 43550220503 on commit c86f368 (2026-11-14), workflow .github/workflows/ci.yml; GitHub-hosted runners, no torch installed."
+    n: 996
+    conditions: "CI run 43735287589 on commit e6c8044 (2026-11-15), workflow .github/workflows/ci.yml; GitHub-hosted runners, no torch installed."
     evidence: [.github/workflows/ci.yml, tests/conftest.py, tests/ci_allowed_skips.txt]
-    command: "gh run view 43550220503 --repo hariom-s27/controlplane --log (logs expire)"
+    command: "gh run view 43735287589 --repo hariom-s27/controlplane --log (logs expire)"
     kind: ci
 
   - id: ci-run-counts-windows-314
     file: README.md
-    text: "| full-suite (windows-2025, 3.14) | 923 / 0 / 0 / 1 | 923 / 0 / 0 / 1 | tests/test_ground.py |"
-    value: "923 / 0 / 0 / 1"
+    text: "| full-suite (windows-2025, 3.14) | 995 / 0 / 0 / 1 | 995 / 0 / 0 / 1 | tests/test_ground.py |"
+    value: "995 / 0 / 0 / 1"
     definition: "passed / failed / errors / skipped from junit.xml and, independently, from pytest's terminal-reporter stats written by the tests/conftest.py hook (CP_CI_COUNTS_FILE); the Test summary step fails the job if they differ or a skip is not allowlisted. n counts every pytest outcome reported (passed + failed + errors + skipped); the one skipped item is the whole module tests/test_ground.py (module-level pytest.importorskip('torch')), whose tests are not collected without torch."
-    n: 924
-    conditions: "CI run 43550220503 on commit c86f368 (2026-11-14), workflow .github/workflows/ci.yml; GitHub-hosted runners, no torch installed."
+    n: 996
+    conditions: "CI run 43735287589 on commit e6c8044 (2026-11-15), workflow .github/workflows/ci.yml; GitHub-hosted runners, no torch installed."
     evidence: [.github/workflows/ci.yml, tests/conftest.py, tests/ci_allowed_skips.txt]
-    command: "gh run view 43550220503 --repo hariom-s27/controlplane --log (logs expire)"
+    command: "gh run view 43735287589 --repo hariom-s27/controlplane --log (logs expire)"
     kind: ci
 
   - id: ci-ok-seen-red

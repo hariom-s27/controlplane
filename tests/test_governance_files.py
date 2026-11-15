@@ -1,8 +1,8 @@
 """docs/governance/ holds copies of the repository's GitHub rulesets.
 
 ruleset-main.json must stay byte-identical to the JSON submitted to create the
-`main` ruleset (so its sha256 is pinned here); ruleset-tags.json is a
-proposal that is not applied yet, and the folder's README must say so. GitHub
+`main` ruleset (so its sha256 is pinned here); ruleset-tags.json is applied
+as ruleset 27320545, and the folder's README must say so. GitHub
 enforces rulesets, not these files; the tests only keep the copies honest.
 """
 
@@ -38,9 +38,10 @@ def test_tag_ruleset_draft_protects_release_tags_from_update_and_deletion():
     assert rs["bypass_actors"] == []
 
 
-def test_readme_marks_the_tag_ruleset_as_not_applied():
+def test_readme_marks_the_tag_ruleset_as_applied():
     text = (GOV / "README.md").read_text(encoding="utf-8")
-    assert "proposed, not yet applied" in text
+    assert "**applied** (ruleset 27320545)" in text
+    assert "not yet applied" not in text
     assert MAIN_SHA256 in text
     flat = " ".join(text.split())
     assert "the request body used to create ruleset 27251565 on 14 nov 2026" in flat.lower()
